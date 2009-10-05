@@ -562,7 +562,7 @@ begin
           FCompileCall := nil;
         end;
           
-    raise EAbort.Create('');
+    raise ESE2ParserError.Create('');
   end;
 end;
 

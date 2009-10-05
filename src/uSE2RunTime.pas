@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, uSE2RunType, uSE2Consts, uSE2BaseTypes, uSE2OpCode, uSE2PEData, uSE2RunCall,
-  uSE2RunOperation, uSE2RunAccess, uSE2SafeBlockMngr, uSE2DebugData, uSE2MemoryManager, uSE2PerfMonitor;
+  uSE2RunOperation, uSE2RunAccess, uSE2SafeBlockMngr, uSE2DebugData, uSE2MemoryManager, uSE2PerfMonitor,
+  uSE2NativeCallList;
 
 type
   TSE2RunTimeError = procedure(Sender: TObject; Exp: ExceptClass; const Msg: string; CodePos: integer; const CallStack: string) of object;
@@ -23,6 +24,7 @@ type
     FAppCode           : TSE2PE;
     FStack             : TSE2Stack;
     FCodeAccess        : TSE2RunAccess;
+    FNativeList        : TSE2NativeCallList;
 
     {$IFDEF PERF_MONITOR}
     FPerfMonitor       : TSE2PerfMonitor;
@@ -52,7 +54,6 @@ type
     {$IFNDEF Run_Inline}
     procedure ProcessOperation;
     {$ENDIF}
-    procedure Process;
     procedure DoErrorEvent(Exp: ExceptClass; const Msg: string; ErrorPos: integer; const CallStack: string);
 
     function  MetaEntryToStr(Entry: TSE2MetaEntry; StackIndex: integer): string;
@@ -64,6 +65,8 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
+                              
+    procedure Process; // do not call directly
     procedure Initialize;
     procedure Run;
     function  Call(Method: Pointer; Params: array of const): variant;
@@ -74,13 +77,14 @@ type
 
     function  CreateClass(const Meta: TSE2MetaEntry): Pointer;
     procedure FreeClass(AClass: Pointer);
+    function  ScriptAsMethod(Method, ClassInstance: Pointer): TMethod;
 
 
 
     // Only for Debugging the component
       property Stack   : TSE2Stack read FStack;
       property AppCode : TSE2PE    read FAppCode   write SetAppCode;
-      property CodePos : integer   read FCodePos;
+      property CodePos : integer   read FCodePos   write FCodePos;
       {$IFDEF PERF_MONITOR}
       property PerfMonitor : TSE2PerfMonitor read FPerfMonitor;
       {$ENDIF}
@@ -89,6 +93,7 @@ type
     property RecordClassList   : TSE2RecordGC     read FRecordGC;
     property ScriptClassList   : TSE2ClassGC      read FClassGC;
     property CodeAccess        : TSE2RunAccess    read FCodeAccess;
+    property Initialized       : boolean          read FInitialized;
 
     // Events
     property OnError           : TSE2RunTimeError read FOnError              write FOnError;
@@ -99,7 +104,7 @@ type
 
 implementation
 
-uses  uSE2UnitManager, uSE2SystemUnit;
+uses  uSE2UnitManager, uSE2SystemUnit, uSE2NativeScriptCall;
 
 { TSE2RunTime }
 
@@ -123,6 +128,7 @@ end;
 destructor TSE2RunTime.Destroy;
 begin
   FreeAndNil(FCodeAccess);
+  FreeAndNil(FNativeList);
 
   FAppCode.Free;   
   FSafeBlocks.Free;
@@ -212,11 +218,17 @@ begin
      exit;
 
   FreeAndNil(FCodeAccess);
+  FreeAndNil(FNativeList);
   FAppCode := value;
   if value <> nil then
   begin
     FCodeAccess := TSE2RunAccess.Create(value);
-    TSE2UnitManager.RegisterMethods(FCodeAccess);
+    if not value.PointerReady then
+    begin
+      TSE2UnitManager.RegisterMethods(FCodeAccess);
+      value.PointerReady := True;
+    end;
+    FNativeList := TSE2NativeCallList.Create;
   end;
 end;
 
@@ -314,15 +326,15 @@ begin
         VarDat[0] := FStack.Top;//Items[FStack.Size - 2];
 
         if VarDat[0].AType <> btObject then
-           raise Exception.Create('Internal error: dynamic method call outside of a class');
+           raise ESE2RunTimeError.Create('Internal error: dynamic method call outside of a class');
 
         if Pointer(VarDat[0].tPointer^) = nil then
-           raise Exception.Create('Called class is not assigned');
+           raise ESE2NullReferenceError.Create('Called class is not assigned');
 
         CompareInt := GetClassMethods(PPointer(VarDat[0]^.tPointer)^).Items[PSE2OpFLOW_CALLDYN(OpCode)^.Offset];
 
         if CompareInt < 1 then
-           raise Exception.Create('Abstract method was not implemented');
+           raise ESE2RunTimeError.Create('Abstract method was not implemented');
 
         FCodePos := CompareInt - 1;
         Stack.Pop;
@@ -330,7 +342,7 @@ begin
   soFLOW_RET :
       begin
         if FStack.Top.AType <> btReturnAddress then
-           raise Exception.Create('['+IntToStr(FCodePos)+'] Internal error: return stack value not valid');
+           raise ESE2RunTimeError.Create('['+IntToStr(FCodePos)+'] Internal error: return stack value not valid');
 
         FCodePos := ((FStack.Top^.ts64^) and $FFFFFFFF) - 1;
         FStack.Pop;
@@ -561,7 +573,7 @@ begin
 
         VarDat[2] := FStack.Top;
         if not (FStack.Top.AType in [btU8, btS8, btU16, btS16, btU32, btS32]) then
-           raise Exception.Create('Internal error: array offset is not ordinal');
+           raise ESE2RunTimeError.Create('Internal error: array offset is not ordinal');
 
         if PSE2OpDAT_PTR_LOAD(OpCode).Static then
           VarDat[0] := FStack[CompareInt]
@@ -590,7 +602,7 @@ begin
 
         VarDat[2] := FStack.Top;
         if not (FStack.Top.AType in [btU8, btS8, btU16, btS16, btU32, btS32]) then
-           raise Exception.Create('Internal error: array offset is not ordinal');
+           raise ESE2RunTimeError.Create('Internal error: array offset is not ordinal');
 
         if PSE2OpDAT_PTR_LOAD(OpCode).Static then
           VarDat[0] := FStack[CompareInt]
@@ -614,7 +626,7 @@ begin
   soDAT_PTR_CREATE :
       begin
         if not (FStack.Top.AType in [btObject, btArray, btRecord]) then
-           raise Exception.Create('Internal error: data type not compatible');
+           raise ESE2RunTimeError.Create('Internal error: data type not compatible');
 
         FStack.Top.tPointer := FMemoryManager.GetMem( PSE2OpDAT_PTR_CREATE(OpCode).NewSize);
       end;
@@ -622,7 +634,7 @@ begin
       begin
         FStack.Pop;
         if not (FStack.Top.AType in [btObject, btArray, btRecord]) then
-           raise Exception.Create('Internal error: data type not compatible');
+           raise ESE2RunTimeError.Create('Internal error: data type not compatible');
 
         FMemoryManager.FreeMem(FStack.Top.tPointer);
         FStack.Top.tPointer := nil;
@@ -683,11 +695,11 @@ begin
         VarDat[1] := FStack[FStack.Size - PSE2OpSPEC_CREATE(OpCode).Variables - 1];
 
         if PSE2OpSPEC_CREATE(OpCode).MetaIndex = -1 then
-           raise Exception.Create('Runtime error: Meta index not assigned');
+           raise ESE2RunTimeError.Create('Runtime error: Meta index not assigned');
 
         if (not (VarDat[0].AType in [btObject])) or
            (not (VarDat[1].AType in [btObject])) then
-           raise Exception.Create('Runtime error: stack corrupt');
+           raise ESE2RunTimeError.Create('Runtime error: stack corrupt');
 
         Pointer(VarDat[0].tPointer^) := CreateClass(FAppCode.MetaData[PSE2OpSPEC_CREATE(OpCode).MetaIndex]);
         Pointer(VarDat[1].tPointer^) := Pointer(VarDat[0].tPointer^);
@@ -698,6 +710,7 @@ begin
         VarDat[0] := FStack.Top;
 
         FClassGC.Delete(Pointer(VarDat[0].tPointer^));
+        FNativeList.ClearForClass(Pointer(VarDat[0].tPointer^));
         FreeClass(Pointer(VarDat[0].tPointer^));
       end;
   soREC_MAKE :
@@ -706,10 +719,10 @@ begin
         VarDat[0] := FStack[FStack.Size - PSE2OpREC_MAKE(OpCode).Variables - 1];
 
         if PSE2OpREC_MAKE(OpCode).MetaIndex = -1 then
-           raise Exception.Create('Runtime error: Meta index not assigned');
+           raise ESE2RunTimeError.Create('Runtime error: Meta index not assigned');
 
         if (not (VarDat[0].AType in [btRecord])) then
-           raise Exception.Create('Runtime error: stack corrupt');
+           raise ESE2RunTimeError.Create('Runtime error: stack corrupt');
 
         Pointer(VarDat[0].tPointer^) := uSE2SystemUnit.CreateScriptRecord(FAppCode.MetaData[PSE2OpREC_MAKE(OpCode).MetaIndex], FAppCode);
       end;
@@ -731,7 +744,7 @@ begin
 
         if (VarDat[0].AType <> btRecord) or
            (FStack.Top.AType <> btRecord) then
-           raise Exception.Create('Record copy not possible');
+           raise ESE2RunTimeError.Create('Record copy not possible');
 
         uSE2SystemUnit.CopyScriptRecord(PPointer(FStack.Top.tPointer)^, PPointer(VarDat[0].tPointer)^);
       end;
@@ -965,7 +978,7 @@ begin
   soFLOW_RET :
       begin
         if FStack.Top.AType <> btReturnAddress then
-           raise Exception.Create('['+IntToStr(FCodePos)+'] Internal error: return stack value not valid');
+           raise ESE2RunTimeError.Create('['+IntToStr(FCodePos)+'] Internal error: return stack value not valid');
 
         FCodePos := ((FStack.Top^.ts64^) and $FFFFFFFF) - 1;
         FStack.Pop;
@@ -1328,8 +1341,9 @@ end;
 procedure TSE2RunTime.DoErrorEvent(Exp: ExceptClass; const Msg: string; ErrorPos: integer;
   const CallStack: string);
 begin
-  if Assigned(FOnError) then
-     FOnError(Self, Exp, Msg, ErrorPos, CallStack);
+  if not (Exp = EAbort) then
+    if Assigned(FOnError) then
+       FOnError(Self, Exp, Msg, ErrorPos, CallStack);
 end;
 
 procedure TSE2RunTime.Abort;
@@ -1365,7 +1379,7 @@ var MetaEntry  : TSE2MetaEntry;
           btS64     : newEntry.ts64^     := PInteger(Data)^;
           btSingle  : newEntry.tSingle^  := PInteger(Data)^;
           btDouble  : newEntry.tDouble^  := PInteger(Data)^;
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtInt64 :
@@ -1381,7 +1395,7 @@ var MetaEntry  : TSE2MetaEntry;
           btS64     : newEntry.ts64^     := PInt64(Data)^;
           btSingle  : newEntry.tSingle^  := PInt64(Data)^;
           btDouble  : newEntry.tDouble^  := PInt64(Data)^;
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtExtended :
@@ -1398,7 +1412,7 @@ var MetaEntry  : TSE2MetaEntry;
                 fDouble := PExtended(Data)^;
                 newEntry.tDouble^  := fDouble;
               end;
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtCurrency :
@@ -1415,7 +1429,7 @@ var MetaEntry  : TSE2MetaEntry;
                 fDouble := PCurrency(Data)^;
                 newEntry.tDouble^  := fDouble;
               end;
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtBoolean :
@@ -1423,7 +1437,7 @@ var MetaEntry  : TSE2MetaEntry;
           newEntry := FStack.PushNew(aParamType);
           case aParamType of
           btBoolean : newEntry.tu8^ := Ord(PBoolean(Data)^);
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtString :
@@ -1434,7 +1448,7 @@ var MetaEntry  : TSE2MetaEntry;
           btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
           btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtAnsiString :
@@ -1445,7 +1459,7 @@ var MetaEntry  : TSE2MetaEntry;
           btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
           btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtPChar:
@@ -1456,7 +1470,7 @@ var MetaEntry  : TSE2MetaEntry;
           btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
           btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtChar :
@@ -1467,7 +1481,7 @@ var MetaEntry  : TSE2MetaEntry;
           btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
           btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtWideString :
@@ -1478,7 +1492,7 @@ var MetaEntry  : TSE2MetaEntry;
           btWideString : PbtWideString(newEntry.tString^)^ := WideString(PPointer(Data)^);
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := UTF8Encode(WideString(PPointer(Data)^));
           btPChar      : PbtPChar(newEntry.tString^)^      := PChar(Utf8ToAnsi(UTF8Encode(WideString(PPointer(Data)^))));
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtPointer :
@@ -1487,7 +1501,7 @@ var MetaEntry  : TSE2MetaEntry;
           case aParamType of
           btPointer : Pointer(newEntry.tPointer^) := PPointer(Data)^;
           btObject  : Pointer(newEntry.tPointer^) := PPointer(Data)^;
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtClass :
@@ -1496,7 +1510,7 @@ var MetaEntry  : TSE2MetaEntry;
           case aParamType of
           btPointer : Pointer(newEntry.tPointer^) := PPointer(Data)^;
           btObject  : Pointer(newEntry.tPointer^) := PPointer(Data)^;
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
     vtObject :
@@ -1505,10 +1519,10 @@ var MetaEntry  : TSE2MetaEntry;
           case aParamType of
           btPointer : Pointer(newEntry.tPointer^) := PPointer(Data)^;
           btObject  : Pointer(newEntry.tPointer^) := PPointer(Data)^;
-          else raise Exception.Create(SParamNotCompatible);
+          else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
-    else raise Exception.Create('Unsupported parameter');
+    else raise ESE2CallParameterError.Create('Unsupported parameter');
     end;
     LastEntry := newEntry;
   end;
@@ -1536,7 +1550,7 @@ var MetaEntry  : TSE2MetaEntry;
 
       if bIsVarParam then
         if Parameter.VType <> vtPointer then
-          raise Exception.Create(SParamNotVarParam);
+          raise ESE2CallParameterError.Create(SParamNotVarParam);
 
       if not bIsVarParam then
       begin
@@ -1554,7 +1568,7 @@ var MetaEntry  : TSE2MetaEntry;
         vtPointer      : SetVariableContent(aParamType, vtPointer, @Parameter.VPointer);
         vtClass        : SetVariableContent(aParamType, vtClass, @Parameter.VClass);
         vtObject       : SetVariableContent(aParamType, vtObject, @Parameter.VObject);
-        else raise Exception.Create('Unsupported parameter');
+        else raise ESE2CallParameterError.Create('Unsupported parameter');
         end;
       end else
       begin
@@ -1573,7 +1587,7 @@ var MetaEntry  : TSE2MetaEntry;
             SetVariableContent(aParamType, vtWideString, Parameter.VPointer);
         btPChar :
             SetVariableContent(aParamType, vtAnsiString, Parameter.VPointer);
-        btPointer, btRecord, btArray :
+        btPointer, btRecord, btArray, btObject :
             SetVariableContent(aParamType, vtPointer, Parameter.VPointer); 
         end;
       end;
@@ -1587,7 +1601,7 @@ var MetaEntry  : TSE2MetaEntry;
     FStack.PushNew(btReturnAddress)^.ts64^ := int64($FFFFFFFF00000000);
   end;
 
-  procedure PopParamsToStack;
+  procedure PopParamsFromStack;
   var i           : integer;
       bIsVarParam : boolean;
       Parameter   : TVarRec;
@@ -1601,7 +1615,7 @@ var MetaEntry  : TSE2MetaEntry;
     begin
       bIsVarParam := TSE2ParamHelper.IsVarParam(Ord(MetaEntry.ParamDecl[i+1]));
       if bIsVarParam then
-      begin            
+      begin
         Parameter   := Params[i];
         Data := FStack.Top;
         case Data^.AType of
@@ -1659,12 +1673,12 @@ var OldCodePos : cardinal;
 begin
   SelfPtr := nil;
   if Method = nil then
-     raise Exception.Create('Method can not be nil');
+     raise ESE2NullReferenceError.Create('Method can not be nil');
 
   MetaEntry := Method;
 
   if length(Params) <> MetaEntry.ParamCount then
-     raise Exception.Create('Not enough parameters');
+     raise ESE2CallParameterError.Create('Not enough parameters');
 
   if not FInitialized then
      Initialize;
@@ -1689,7 +1703,7 @@ begin
       Process;
     end;
   finally
-    PopParamsToStack;
+    PopParamsFromStack;
     FCodePos := OldCodePos;
   end;
 end;
@@ -1702,6 +1716,22 @@ end;
 procedure TSE2RunTime.FreeClass(AClass: Pointer);
 begin
   uSE2SystemUnit.DestroyScriptClassObject(AClass);
+end;
+
+function TSE2RunTime.ScriptAsMethod(Method,
+  ClassInstance: Pointer): TMethod;
+var CodeData : Pointer;
+begin
+  if FNativeList = nil then
+     exit;
+
+  if Method = nil then
+     raise ESE2NullReferenceError.Create('Method pointer can not be nil');
+
+
+  CodeData := FNativeList.GenEntry(Self, Method, ClassInstance);
+  result.Data := CodeData;
+  result.Code := @SE2MethodScriptCallHandler;
 end;
 
 end.

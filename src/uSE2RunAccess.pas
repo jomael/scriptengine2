@@ -59,7 +59,7 @@ end;
 constructor TSE2RunAccess.Create(PEData: TSE2PE);
 begin
   if PEData = nil then
-     raise Exception.Create('PEData must not be nil');
+     raise ESE2NullReferenceError.Create('PEData must not be nil');
 
   inherited Create;
   FPEData := PEData;
@@ -267,6 +267,10 @@ function TSE2RunAccess.MethodMatches(index: integer;
         end;
       end;
     end;
+
+    if giveResult then
+       if TSE2ParamHelper.GetParamType(Data.ResultType) <> ParamTypes[High(ParamTypes)] then
+         exit;
 
     result := True;
   end;

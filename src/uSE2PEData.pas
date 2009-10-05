@@ -188,9 +188,10 @@ type
 
   TSE2PE = class(TSE2Object)
   private
-    FOpCodes    : TSE2OpCodes;
-    FStrings    : TSE2StringList;
-    FMetaData   : TSE2MetaList;
+    FOpCodes      : TSE2OpCodes;
+    FStrings      : TSE2StringList;
+    FMetaData     : TSE2MetaList;
+    FPointerReady : boolean;
 
     FInitializationPoint : cardinal;
     FMainMethodPoint     : cardinal;
@@ -203,11 +204,12 @@ type
     procedure SaveToStream(Stream: TStream);
 
     function FinalStreamSize: int64;
-    
+
     property OpCodes    : TSE2OpCodes    read FOpCodes;
     property Strings    : TSE2StringList read FStrings;
     property MetaData   : TSE2MetaList   read FMetaData;
 
+    property PointerReady        : boolean        read FPointerReady            write FPointerReady;
     property InitializationPoint : cardinal       read FInitializationPoint     write FInitializationPoint;
     property MainMethodPoint     : cardinal       read FMainMethodPoint         write FMainMethodPoint;
     property FinalizationPoint   : cardinal       read FFinalizationPoint       write FFinalizationPoint;
@@ -343,7 +345,7 @@ begin
       end;
   else
       begin
-        raise Exception.Create('Unsupported stream version');
+        raise ESE2InvalidDataStream.Create('Unsupported stream version');
       end;
   end;
 end;
@@ -466,7 +468,7 @@ begin
       end;
   else
       begin
-        raise Exception.Create('Unsupported stream version');
+        raise ESE2InvalidDataStream.Create('Unsupported stream version');
       end;
   end;
 end;
@@ -553,7 +555,7 @@ begin
       end;
   else
       begin
-        raise Exception.Create('Unsupported stream version');
+        raise ESE2InvalidDataStream.Create('Unsupported stream version');
       end;
   end;
 end;
@@ -684,7 +686,7 @@ begin
       end;
   else
       begin
-        raise Exception.Create('Unsupported stream version');
+        raise ESE2InvalidDataStream.Create('Unsupported stream version');
       end;
   end;
 end;
@@ -734,6 +736,7 @@ begin
   FOpCodes  := TSE2OpCodes.Create;
   FStrings  := TSE2StringList.Create;
   FMetaData := TSE2MetaList.Create;
+  FPointerReady := False;
 end;
 
 destructor TSE2PE.Destroy;
@@ -777,8 +780,9 @@ end;
 procedure TSE2PE.LoadFromStream(Stream: TStream);
 var version: byte;
 begin
+  FPointerReady := False;
   if not CheckPEHeader(Stream) then  
-     raise Exception.Create('Unsupported data stream');
+     raise ESE2InvalidDataStream.Create('Unsupported data stream');
 
   {$IFDEF FPC}
     {$HINTS OFF}
@@ -802,7 +806,7 @@ begin
       end;
   else
       begin
-        raise Exception.Create('Unsupported stream version');
+        raise ESE2InvalidDataStream.Create('Unsupported stream version');
       end;
   end;
 end;
@@ -907,7 +911,7 @@ begin
       end;
   else
       begin
-        raise Exception.Create('Unsupported stream version');
+        raise ESE2InvalidDataStream.Create('Unsupported stream version');
       end;
   end;
 end;
@@ -1035,7 +1039,7 @@ begin
       end;
   else
       begin
-        raise Exception.Create('Unsupported stream version');
+        raise ESE2InvalidDataStream.Create('Unsupported stream version');
       end;
   end;
 end;

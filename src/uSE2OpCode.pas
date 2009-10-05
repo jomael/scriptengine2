@@ -1078,7 +1078,7 @@ begin
         Stream.Read(OpCode^, SizeOf(TSE2OpDefault));
         FOpCode := OpCode;
       end;
-  else raise Exception.Create('Invalid Stream Version');
+  else raise ESE2InvalidDataStream.Create('Invalid Stream Version');
   end;
 end;
 
@@ -1203,7 +1203,7 @@ begin
           p.LoadFromStream(Stream);
         end;
       end;
-  else raise Exception.Create('Invalid Stream Version');
+  else raise ESE2InvalidDataStream.Create('Invalid Stream Version');
   end;
 end;
 

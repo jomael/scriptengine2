@@ -232,6 +232,10 @@ procedure TSE2VarHelper.ConvertContent(Data: PSE2VarData;
   newType: TSE2TypeIdent);
 var newData  : Pointer;
     FreeData : boolean;
+    pS       : PbtString;
+    pU       : PbtUTF8String;
+    pW       : PbtWideString;
+    pC       : PbtPChar;
 begin
   if Data.RefContent then
      exit;
@@ -378,41 +382,90 @@ begin
   btString :
       begin
         case newType of
-        btUTF8String   : TSE2StringHelper.StringToUTF8(Data.tString, newData);
-        btWideString   : TSE2StringHelper.StringToWide(Data.tString, newData);
-        btPChar        : TSE2StringHelper.StringToChar(Data.tString, newData);
+        btUTF8String   :
+            begin
+              New(pU);  pU^ := ''; PPointer(newData)^ := pU;
+              TSE2StringHelper.StringToUTF8(Data.tString, newData);
+            end;
+        btWideString   :
+            begin
+              New(pW);  pW^ := ''; PPointer(newData)^ := pW;
+              TSE2StringHelper.StringToWide(Data.tString, newData);
+            end;
+        btPChar        :
+            begin          
+              New(pC);  pC^ := ''; PPointer(newData)^ := pC;
+              TSE2StringHelper.StringToChar(Data.tString, newData);
+            end;
         end;
       end;
   btUTF8String :
       begin
         case newType of
-        btString       : TSE2StringHelper.UTF8ToString(Data.tString, newData);
-        btWideString   : TSE2StringHelper.UTF8ToWide(Data.tString, newData);
-        btPChar        : TSE2StringHelper.UTF8ToChar(Data.tString, newData);
+        btString       :
+            begin
+              New(pS); pS^ := ''; PPointer(newData)^ := pS;
+              TSE2StringHelper.UTF8ToString(Data.tString, newData);
+            end;
+        btWideString   :
+            begin
+              New(pW); pW^ := ''; PPointer(newData)^ := pW;
+              TSE2StringHelper.UTF8ToWide(Data.tString, newData);
+            end;
+        btPChar        : 
+            begin
+              New(pC); pC^ := ''; PPointer(newData)^ := pC;
+              TSE2StringHelper.UTF8ToChar(Data.tString, newData);
+            end;
         end;
       end;
   btWideString :
       begin
         case newType of
-        btString       : TSE2StringHelper.WideToString(Data.tString, newData);
-        btUTF8String   : TSE2StringHelper.WideToUTF8(Data.tString, newData);
-        btPChar        : TSE2StringHelper.WideToChar(Data.tString, newData);
+        btString       : 
+            begin
+              New(pS); pS^ := ''; PPointer(newData)^ := pS;
+              TSE2StringHelper.WideToString(Data.tString, newData);
+            end;
+        btUTF8String   : 
+            begin
+              New(pU); pU^ := ''; PPointer(newData)^ := pU;
+              TSE2StringHelper.WideToUTF8(Data.tString, newData);
+            end;
+        btPChar        : 
+            begin
+              New(pC); pC^ := ''; PPointer(newData)^ := pC;
+              TSE2StringHelper.WideToChar(Data.tString, newData);
+            end;
         end;
       end;
   btPChar :
       begin
         case newType of
-        btString       : TSE2StringHelper.CharToString(Data.tString, newData);
-        btUTF8String   : TSE2StringHelper.CharToUTF8(Data.tString, newData);
-        btWideString   : TSE2StringHelper.CharToWide(Data.tString, newData);
+        btString       : 
+            begin
+              New(pS); pS^ := ''; PPointer(newData)^ := pS;
+              TSE2StringHelper.CharToString(Data.tString, newData);
+            end;
+        btUTF8String   : 
+            begin
+              New(pU); pU^ := ''; PPointer(newData)^ := pU;
+              TSE2StringHelper.CharToUTF8(Data.tString, newData);
+            end;
+        btWideString   : 
+            begin
+              New(pW); pW^ := ''; PPointer(newData)^ := pW;
+              TSE2StringHelper.CharToWide(Data.tString, newData);
+            end;
         end;
       end;
   end;
 
-  Data.AType := newType;
   if FreeData then
-     MM.FreeMem(newData)
-  else
+  begin
+    Data.AType := newType;
+    MM.FreeMem(newData);
+  end else
   begin
     FreeVarContent(Data);
     Data.AType    := newType;
@@ -842,7 +895,7 @@ begin
   begin
     newSize := FSize + FIncSize;
     if newSize > FMaxSize then
-       raise Exception.Create('Script Stack Overflow');
+       raise ESE2RunTimeError.Create('Script Stack Overflow');
 
     FList.Count := newSize;
   end else
