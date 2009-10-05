@@ -493,7 +493,7 @@ var Caller    : TSE2MethodCall;
     CanUsePtr : boolean;
 begin
   if Method = nil then
-     raise Exception.Create('External Method "'+MetaData.AUnitName+'.'+MetaData.Name+'" is not assigned');
+     raise ESE2NullReferenceError.Create('External Method "'+MetaData.AUnitName+'.'+MetaData.Name+'" is not assigned');
   Caller := TSE2MethodCall.Create(Method, MetaData.CallType);
   try
     ReturnVar := nil;      

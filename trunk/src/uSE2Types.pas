@@ -581,7 +581,7 @@ end;
 
 procedure RaiseIncompatibleStream;
 begin
-  raise Exception.Create('Incompatible stream version');
+  raise ESE2InvalidDataStream.Create('Incompatible stream version');
 end;
 
 { TSE2BaseType }
@@ -1855,7 +1855,7 @@ begin
         end;
       end;
   else
-      raise Exception.Create('Incompatible stream version');
+      raise ESE2InvalidDataStream.Create('Incompatible stream version');
   end;
 end;
 
