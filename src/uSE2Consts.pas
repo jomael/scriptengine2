@@ -5,7 +5,7 @@ unit uSE2Consts;
 interface
 
 uses
-  Classes;
+  Classes, SysUtils;
 
 type
   TSE2TokenType  = (sesNone, sesUnknown, sesIdentifier,
@@ -48,6 +48,16 @@ type
   TSE2TokenTypes = set of TSE2TokenType;
 
   TSE2CallType   = (callRegister, callStdcall, callCdecl, callPascal, callSafecall);
+
+type
+  // Custom Exceptions
+  ESE2InvalidDataStream   = class(Exception);
+  ESE2ParserError         = class(EAbort);
+  ESE2InternalParserError = class(ESE2ParserError);
+  ESE2NullReferenceError  = class(Exception);
+  ESE2RunTimeError        = class(Exception);
+  ESE2RunTimeCallError    = class(Exception);
+  ESE2CallParameterError  = class(ESE2RunTimeCallError);
 
 const
   TSE2TokenString : array[TSE2TokenType] of string = (
@@ -136,8 +146,6 @@ type
   
 implementation
 
-uses SysUtils;
-
 { TSE2StreamHelper }
 
 class procedure TSE2StreamHelper.ReadString(Stream: TStream;
@@ -224,7 +232,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2009, 10, 1);
+  result := EncodeDate(2009, 10, 5);   
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
@@ -242,7 +250,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.Version: string;
 begin
-  result := '0.3.4.1';
+  result := '0.3.5.0';
 end;
 
 { TSE2ScriptEngineAdditionalInfo }
