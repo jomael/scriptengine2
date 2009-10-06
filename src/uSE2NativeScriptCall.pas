@@ -499,23 +499,39 @@ var CallInfo     : PSE2NativeCallEntry;
 
       btString     :
           begin
+            {$IFDEF FPC}
+            result := integer(PPointer(Data^.tString^)^);
+            {$ELSE}
             Parameter := pointer(integer(AStackPtr) + SizeOf(Pointer) * 0 );
             PbtString(Parameter^)^ := PbtString(Data^.tString^)^;
+            {$ENDIF}
           end;
       btUTF8String :
           begin
+            {$IFDEF FPC}
+            result := integer(PPointer(Data^.tString^)^);
+            {$ELSE}
             Parameter := pointer(integer(AStackPtr) + SizeOf(Pointer) * 0 );
             PbtUTF8String(Parameter^)^ := PbtUTF8String(Data^.tString^)^;
+            {$ENDIF}
           end;   
       btWideString :
           begin
+            {$IFDEF FPC}
+            result := integer(PPointer(Data^.tString^)^);
+            {$ELSE}
             Parameter := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 0);
             PbtWideString(Parameter^)^ := PbtWideString(Data^.tString^)^;
+            {$ENDIF}
           end;
-      btPChar :  
-          begin
+      btPChar :
+          begin    
+            {$IFDEF FPC}
+            result := integer(PPointer(Data^.tString^)^);
+            {$ELSE}
             Parameter := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 0);
             PbtPChar(Parameter^)^ := PbtPChar(Data^.tString^)^;
+            {$ENDIF}
           end;
       {
       btS64        : result := Data^.tS64^;
