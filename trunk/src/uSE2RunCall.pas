@@ -567,6 +567,12 @@ begin
       btSingle             : Caller.AsSingle(ReturnVar^.tSingle);
       btDouble             : Caller.AsDouble(ReturnVar^.tDouble);
       btPointer, btObject  : Pointer(ReturnVar^.tPointer^) := Caller.AsPointer;
+      {$IFDEF FPC}
+      btString             : PbtString(ReturnVar^.tString^)^     := TbtString(Caller.AsPointer);
+      btUTF8String         : PbtUTF8String(ReturnVar^.tString^)^ := TbtUTF8String(Caller.AsPointer);
+      btWideString         : PbtWideString(ReturnVar^.tString^)^ := TbtWideString(Caller.AsPointer);
+      btPChar              : PbtPChar(ReturnVar^.tString^)^      := PChar(Caller.AsPointer);
+      {$ENDIF}
       end;
     end;
 
