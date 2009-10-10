@@ -447,8 +447,10 @@ type
     class function YearsBetween(const ANow, AThen: TDateTime): Integer;
     class function YearSpan(const ANow, AThen: TDateTime): Double;
     class function Yesterday: TDateTime;
+    {$IFNDEF FPC}
     class function DateTimeToUTCTime(DateTime: TDateTime): TDateTime;
     class function UTCTimeToDateTime(UTCTime: TDateTime): TDateTime;
+    {$ENDIF}
   end;
 
 
@@ -717,6 +719,7 @@ begin
   result := SysUtils.DateTimeToStr(Date);
 end;
 
+{$IFNDEF FPC}
 class function DateTime.DateTimeToUTCTime(DateTime: TDateTime): TDateTime;
 var Zone : TTimeZoneInformation;
 begin
@@ -742,6 +745,7 @@ begin
       result := UTCTime;
   end;
 end;
+{$ENDIF}
 
 class function DateTime.DateToStr(const Date: TDateTime): string;
 begin
