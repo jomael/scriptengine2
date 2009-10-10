@@ -107,7 +107,7 @@ begin
 end;
 
 function TSE2Compiler.CompileUnits(const UnitName: string; var count: integer): boolean;
-var i           : integer;
+var i, j        : integer;
     Token       : TSE2Tokenizer;
     src         : string;
     FUnit       : TSE2Unit;
@@ -135,18 +135,19 @@ begin
       if CanUseCache then
       begin
         for i:=0 to TSE2UnitManager.Instance.Count-1 do
-        begin
-          if StringIdentical(TSE2UnitManager.Instance.Units[i].UnitName, UnitName) then
+          for j:=0 to TSE2UnitManager.Instance.Units[i].Modules-1 do
           begin
-            CanUseCache := CanUseCache and
-                           (
-                            (TSE2UnitManager.Instance.Units[i].CanCacheSource) and
-                            (TSE2UnitManager.Instance.Units[i].LastChangeTime < Cache.CacheTime)
-                           );
-            if not CanUseCache then
-               break;
+            if StringIdentical(TSE2UnitManager.Instance.Units[i].UnitNames[j], UnitName) then
+            begin
+              CanUseCache := CanUseCache and
+                             (
+                              (TSE2UnitManager.Instance.Units[i].CanCacheSource(j)) and
+                              (TSE2UnitManager.Instance.Units[i].LastChangeTime(j) < Cache.CacheTime)
+                             );
+              if not CanUseCache then
+                 break;
+            end;
           end;
-        end;
 
       end;
 
@@ -171,18 +172,19 @@ begin
     count  := 0;
     FUnit  := nil;
     for i:=0 to TSE2UnitManager.Instance.Count-1 do
-    begin
-      if StringIdentical(TSE2UnitManager.Instance.Units[i].UnitName, UnitName) then
+      for j:=0 to TSE2UnitManager.Instance.Units[i].Modules-1 do
       begin
-        TSE2UnitManager.Instance.Units[i].GetUnitSource(src);
-        Token := TSE2Tokenizer.Create(TSE2StringReader.Create(src));
-        FUnit := DoCompile(Token);
-        result := result and (FUnit <> nil);
-        count := count + 1;
-        if not result then
-           exit;
+        if StringIdentical(TSE2UnitManager.Instance.Units[i].UnitNames[j], UnitName) then
+        begin
+          TSE2UnitManager.Instance.Units[i].GetUnitSource(j, src);
+          Token := TSE2Tokenizer.Create(TSE2StringReader.Create(src));
+          FUnit := DoCompile(Token);
+          result := result and (FUnit <> nil);
+          count := count + 1;
+          if not result then
+             exit;
+        end;
       end;
-    end;
 
     if (Readers.Count > 0) and (result) then
     begin

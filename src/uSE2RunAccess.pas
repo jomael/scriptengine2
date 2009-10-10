@@ -11,6 +11,7 @@ type
   TSE2RunAccess = class(TSE2Object)
   private
     FPEData : TSE2PE;
+    FTmpObj : TObject;
   protected
     function  GetMetaEntry(const Name, UnitName: string): TSE2MetaEntry; overload;
     function  GetMetaEntry(const Name, UnitName: string; MetaType: TSE2MetaType): TSE2MetaEntry; overload;
@@ -24,7 +25,7 @@ type
     constructor Create(PEData: TSE2PE); reintroduce;
     destructor Destroy; override;
 
-
+    property TmpObj : TObject read FTmpObj write FTmpObj;
     function MethodMatches(index: integer; 
                         const ParamModes: array of TSE2ParamMode;
                         const ParamTypes: array of TSE2TypeIdent): boolean;

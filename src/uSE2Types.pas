@@ -77,6 +77,7 @@ type
     procedure  SaveToStream(Stream: TStream); virtual;
 
     function   GenLinkerName(i: integer = -1): string; virtual;
+    function   GetUniqueName(i: integer = -1): string;
 
     function   IsName(const value: string): boolean; overload;
     function   IsName(const value: string; const NameHash: integer): boolean; overload;
@@ -184,6 +185,27 @@ type
     function  DeleteCompatible(const obj: TSE2BaseType): boolean;
     function  IsCompatible(obj: TSE2BaseType; Action: TSE2TokenType): boolean;
   end;            *)
+
+  TSE2UsedByList = class(TSE2BaseType)
+  private
+    FList : TList;
+  protected
+    function GetCount: integer;
+    function GetItem(index: integer): TSE2BaseType;
+    function IndexOf(Item: TSE2BaseType): integer;
+  public
+    constructor Create; override;
+    destructor Destroy; override;
+
+    procedure LoadFromStream(Stream: TStream; Weaver: TSE2NameWeaver); override;
+    procedure SaveToStream(Stream: TStream); override;
+
+    procedure Clear;
+    procedure Add(Item: TSE2BaseType);
+
+    property  Items[index: integer]: TSE2BaseType read GetItem; default;
+    property  Count                : integer      read GetCount;
+  end;
 
   PSE2ClassRTTIEntry = ^TSE2ClassRTTIEntry;
   TSE2ClassRTTIEntry = record
@@ -419,6 +441,8 @@ type
     //FOwnerClass     : TSE2Class;
     FMethodType     : TSE2MethodType;
     FLists          : TSE2MethodLists;
+    FUsedMethods    : TSE2UsedByList;
+    FUsageProcessed : boolean;
 
 
     FVariables      : TSE2BaseTypeList;
@@ -441,6 +465,8 @@ type
     property Types             : TSE2BaseTypeList   read FTypes;
     property Lists             : TSE2MethodLists    read FLists;
 
+    property UsageProcessed    : boolean            read FUsageProcessed  write FUsageProcessed;
+    property UsedMethods       : TSE2UsedByList     read FUsedMethods;
     property HasSelfParam      : boolean            read GetHasSelfParam;
     property DynamicIndex      : integer            read FDynamicIndex    write FDynamicIndex;
     property IsStatic          : boolean            read FIsStatic        write FIsStatic;
@@ -574,7 +600,7 @@ var s: string;
 begin
   s := '';
   if obj <> nil then
-     s := obj.GenLinkerName();
+     s := obj.GetUniqueName();
 
   TSE2StreamHelper.WriteString(Stream, s);
 end;
@@ -721,6 +747,11 @@ begin
 end;
 
 function TSE2BaseType.GenLinkerName(i: integer = -1): string;
+begin
+  result := GetUniqueName(i);
+end;
+
+function TSE2BaseType.GetUniqueName(i: integer): string;
 var TypeName : string;
     Parents  : string;
     obj      : TSE2BaseType;
@@ -967,14 +998,14 @@ var i: integer;
   begin
     result := True;
     for i:=FList.Count-1 downto 0 do
-      if TSE2BaseType(FList[i]).GenLinkerName = value then
+      if TSE2BaseType(FList[i]).GetUniqueName = value then
         exit;
     result := False;
   end;
 
   function MakeStr(i: integer): string;
   begin
-    result := Entry.GenLinkerName(i);
+    result := Entry.GetUniqueName(i);
   end;
 
 begin
@@ -1310,6 +1341,7 @@ begin
   FTypes     := TSE2BaseTypeList.Create;
 
   FLists     := TSE2MethodLists.Create;
+  FUsedMethods := TSE2UsedByList.Create;
 end;
 
 destructor TSE2Method.Destroy;
@@ -1321,6 +1353,7 @@ begin
   FReturnValue.Free;
   FOpCodes.Free;
   FParams.Free;
+  FUsedMethods.Free;
   inherited;
 end;
 
@@ -1376,6 +1409,7 @@ begin
         FTypes.LoadFromStream(Stream, Weaver);
 
         FOpCodes.LoadFromStream(Stream);
+        FUsedMethods.LoadFromStream(Stream, Weaver);
       end
   else RaiseIncompatibleStream;
   end;
@@ -1413,6 +1447,7 @@ begin
   FTypes.SaveToStream(Stream);
 
   FOpCodes.SaveToStream(Stream);
+  FUsedMethods.SaveToStream(Stream);
 end;
 
 { TSE2Record }
@@ -2268,6 +2303,105 @@ begin
     Stream.Write(p^.Offset, SizeOf(integer));
     Stream.Write(p^.Size, SizeOf(integer));
     Stream.Write(p^.aType, SizeOf(TSE2TypeIdent));
+  end;
+end;
+
+{ TSE2UsedByList }
+
+procedure TSE2UsedByList.Add(Item: TSE2BaseType);
+var p: PPointer;
+begin
+  if IndexOf(Item) < 0 then
+  begin
+    New(p);
+    p^ := Item;
+    FList.Add(p);
+  end;
+end;
+
+procedure TSE2UsedByList.Clear;
+var i: integer;
+begin
+  for i:=FList.Count-1 downto 0 do
+    Dispose(FList[i]);
+  FList.Clear;
+end;
+
+constructor TSE2UsedByList.Create;
+begin
+  inherited;
+  FList := TList.Create;
+end;
+
+destructor TSE2UsedByList.Destroy;
+begin
+  Clear;
+  FList.Free;
+  inherited;
+end;
+
+function TSE2UsedByList.GetCount: integer;
+begin
+  result := FList.Count;
+end;
+
+function TSE2UsedByList.GetItem(index: integer): TSE2BaseType;
+begin
+  if (index < 0) or (index >= FList.Count) then
+     result := nil
+  else
+     result := PPointer(FList[index])^;
+end;
+
+function TSE2UsedByList.IndexOf(Item: TSE2BaseType): integer;
+begin
+  for result := FList.Count-1 downto 0 do
+    if PPointer(FList[result])^ = Item then
+      exit;
+
+  result := -1;
+end;
+
+procedure TSE2UsedByList.LoadFromStream(Stream: TStream;
+  Weaver: TSE2NameWeaver);
+var version  : byte;
+    i, count : integer;
+    p        : PPointer;
+begin
+  Clear;
+  if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
+     exit;
+
+  case version of
+  1 :
+      begin
+        Stream.Read(count, SizeOf(count));
+        FList.Count := count;
+
+        for i:=0 to count-1 do
+        begin
+          New(p);
+          FList[i] := p;
+          Weaver.Add(TSE2StreamHelper.ReadString(Stream), p);
+        end;
+      end;
+  else RaiseIncompatibleStream;
+  end;
+end;
+
+procedure TSE2UsedByList.SaveToStream(Stream: TStream);
+var version  : byte;
+    i, count : integer;
+begin
+  version := 1;
+  Stream.Write(version, SizeOf(version));
+
+  count := FList.Count;
+  Stream.Write(count, SizeOf(count));
+
+  for i:=0 to count-1 do
+  begin
+    TSE2StreamHelper.WriteString(Stream, Items[i].GetUniqueName());
   end;
 end;
 

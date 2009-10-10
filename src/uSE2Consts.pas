@@ -58,6 +58,8 @@ type
   ESE2RunTimeError        = class(Exception);
   ESE2RunTimeCallError    = class(Exception);
   ESE2CallParameterError  = class(ESE2RunTimeCallError);
+  ESE2PackageError        = class(Exception);
+  ESE2PackageIncompatible = class(ESE2PackageError);
 
 const
   TSE2TokenString : array[TSE2TokenType] of string = (
@@ -143,6 +145,13 @@ type
     class function  Copyright : string;
     class function  ChangeLog : string;
   end;
+
+  TSE2ScriptEngineVersion = packed record
+    Major, Minor, Patch, Build : word;
+  end;
+
+const
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 0; Build: 0);
   
 implementation
 
@@ -232,7 +241,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2009, 10, 5);   
+  result := EncodeDate(2009, 10, 8);   
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
@@ -250,7 +259,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.Version: string;
 begin
-  result := '0.3.5.0';
+  result := Format('%d.%d.%d.%d', [CSE2Version.Major, CSE2Version.Minor, CSE2Version.Patch, CSE2Version.Build]);
 end;
 
 { TSE2ScriptEngineAdditionalInfo }

@@ -41,27 +41,34 @@ type
 
   TSE2ManagedUnit = class(TSE2Object)
   private
-    FUnitName   : string;
-    FNameHash   : integer;
-    FPriority   : integer;
+    FPriority : integer;
   protected
-    procedure SetUnitName(const value: string);
+    function  GetNumModules: integer; virtual; abstract;
+    function  GetModuleName(index: integer): string; virtual; abstract;
+    procedure SetModuleName(index: integer; value: string); virtual; abstract;
+    function  GetNameHash(index: integer): integer; virtual; abstract;
+
+    function  GetFirstModuleName: string;
+    procedure SetFirstModuleName(value: string);
   public
     constructor Create; override;
     destructor Destroy; override;
 
-    function  LastChangeTime: TDateTime; virtual; abstract;
-    function  CanCacheSource: boolean; virtual; abstract;
+    function  LastChangeTime(index: integer): TDateTime; virtual; abstract;
+    function  CanCacheSource(index: integer): boolean; virtual; abstract;
 
-    procedure GetUnitSource(var Target: string); virtual; abstract;
-    procedure RegisterVariables(const Target: TSE2RunAccess); virtual; abstract;
-    procedure RegisterMethods(const Target: TSE2RunAccess); virtual; abstract;
+    procedure GetUnitSource(index: integer; var Target: string); overload; virtual; abstract;
+    function  GetUnitSource(index: integer): string; overload;
+    procedure RegisterVariables(index: integer; const Target: TSE2RunAccess); virtual; abstract;
+    procedure RegisterMethods(index: integer; const Target: TSE2RunAccess); virtual; abstract;
 
-    property  Priority: integer  read FPriority    write FPriority;
     {$Warnings off}
-    property  UnitName: string   read FUnitName    write SetUnitName;
+    property  Modules                  : integer  read GetNumModules;
+    property  Priority                 : integer  read FPriority          write FPriority;
+    property  UnitNames[index: integer]: string   read GetModuleName      write SetModuleName;
+    property  UnitName                 : string   read GetFirstModuleName write SetFirstModuleName;
+    property  NameHash[index: integer] : integer  read GetNameHash;
     {$Warnings on}
-    property  NameHash: integer  read FNameHash;
   end;
 
   TSE2UnitLastChangeTime     = function: TDateTime;
@@ -72,6 +79,14 @@ type
 
 
   TSE2MethodUnit = class(TSE2ManagedUnit)
+  private
+    FModuleName: string;
+    FModuleHash: integer;
+  protected
+    function  GetModuleName(index: Integer): String; override;
+    procedure SetModuleName(index: Integer; value: String); override;
+    function  GetNameHash(index: Integer): Integer; override;
+    function  GetNumModules: Integer; override;
   public
     DoLastChangeTime    : TSE2UnitLastChangeTime;
     DoCanCacheSource    : TSE2UnitCanCacheSource;
@@ -81,12 +96,12 @@ type
   public
     constructor Create; override;
 
-    function LastChangeTime: TDateTime; override;
-    function CanCacheSource: boolean; override;
+    function LastChangeTime(index: integer): TDateTime; override;
+    function CanCacheSource(index: integer): boolean; override;
 
-    procedure GetUnitSource(var Target: string); override;
-    procedure RegisterVariables(const Target: TSE2RunAccess); override;
-    procedure RegisterMethods(const Target: TSE2RunAccess); override;
+    procedure GetUnitSource(index: integer; var Target: string); override;
+    procedure RegisterVariables(index: integer; const Target: TSE2RunAccess); override;
+    procedure RegisterMethods(index: integer; const Target: TSE2RunAccess); override;
   end;
 
 implementation
@@ -138,17 +153,18 @@ end;
 
 class function TSE2UnitManager.FindUnit(
   const Name: string): TSE2ManagedUnit;
-var i        : integer;
+var i, j     : integer;
     NameHash : integer;
 begin
   NameHash := MakeHash(Name);
   for i:=Instance.FList.Count-1 downto 0 do
-    if Instance[i].NameHash = NameHash then
-      if StringIdentical(Instance[i].UnitName, Name) then
-      begin
-        result := Instance[i];
-        exit;
-      end;
+    for j:=TSE2ManagedUnit(Instance.FList[i]).Modules-1 downto 0 do
+      if Instance[i].NameHash[j] = NameHash then
+        if StringIdentical(Instance[i].UnitNames[j], Name) then
+        begin
+          result := Instance[i];
+          exit;
+        end;
   result := nil;
 end;
 
@@ -182,17 +198,19 @@ begin
 end;
 
 class procedure TSE2UnitManager.RegisterMethods(Target: TSE2RunAccess);
-var i: integer;
+var i, j: integer;
 begin
   for i:=0 to Instance.FList.Count-1 do
-    TSE2ManagedUnit(Instance.FList[i]).RegisterMethods(Target); 
+    for j:=0 to TSE2ManagedUnit(Instance.FList[i]).Modules-1 do
+      TSE2ManagedUnit(Instance.FList[i]).RegisterMethods(j, Target);
 end;
 
 class procedure TSE2UnitManager.RegisterVariables(Target: TSE2RunAccess);
-var i: integer;
+var i, j: integer;
 begin
-  for i:=0 to Instance.FList.Count-1 do
-    TSE2ManagedUnit(Instance.FList[i]).RegisterVariables(Target);
+  for i:=0 to Instance.FList.Count-1 do        
+    for j:=0 to TSE2ManagedUnit(Instance.FList[i]).Modules-1 do
+      TSE2ManagedUnit(Instance.FList[i]).RegisterVariables(j, Target);
 end;
 
 class function TSE2UnitManager.RegisterUnit(
@@ -236,12 +254,6 @@ begin
   inherited;
 end;
 
-procedure TSE2ManagedUnit.SetUnitName(const value: string);
-begin
-  FUnitName := value;
-  FNameHash := MakeHash(value);
-end;
-
 function MethodUnit_LastChangeTime: TDateTime;
 begin
   result := 0;
@@ -257,9 +269,24 @@ begin
 
 end;
 
+function TSE2ManagedUnit.GetFirstModuleName: string;
+begin
+  result := GetModuleName(0);
+end;
+
+function TSE2ManagedUnit.GetUnitSource(index: integer): string;
+begin
+  GetUnitSource(index, result);
+end;
+
+procedure TSE2ManagedUnit.SetFirstModuleName(value: string);
+begin
+  SetModuleName(0, value);
+end;
+
 { TSE2MethodUnit }
 
-function TSE2MethodUnit.CanCacheSource: boolean;
+function TSE2MethodUnit.CanCacheSource(index: integer): boolean;
 begin
   result := DoCanCacheSource;
 end;
@@ -272,24 +299,45 @@ begin
   DoRegisterVariables := MethodUnit_RegisterVariables;         
 end;
 
-procedure TSE2MethodUnit.GetUnitSource(var Target: string);
+function TSE2MethodUnit.GetModuleName(index: Integer): String;
+begin
+  result := FModuleName;
+end;
+
+function TSE2MethodUnit.GetNameHash(index: Integer): Integer;
+begin
+  result := FModuleHash;
+end;
+
+function TSE2MethodUnit.GetNumModules: Integer;
+begin
+  result := 1;
+end;
+
+procedure TSE2MethodUnit.GetUnitSource(index: integer; var Target: string);
 begin
   DoGetUnitSource(Target);
 end;
 
-function TSE2MethodUnit.LastChangeTime: TDateTime;
+function TSE2MethodUnit.LastChangeTime(index: integer): TDateTime;
 begin
   result := DoLastChangeTime;
 end;
 
-procedure TSE2MethodUnit.RegisterMethods(const Target: TSE2RunAccess);
+procedure TSE2MethodUnit.RegisterMethods(index: integer; const Target: TSE2RunAccess);
 begin
   DoRegisterMethods(Target);
 end;
 
-procedure TSE2MethodUnit.RegisterVariables(const Target: TSE2RunAccess);
+procedure TSE2MethodUnit.RegisterVariables(index: integer; const Target: TSE2RunAccess);
 begin
   DoRegisterVariables(Target);
+end;
+
+procedure TSE2MethodUnit.SetModuleName(index: Integer; value: String);
+begin
+  FModuleName := value;
+  FModuleHash := MakeHash(value);
 end;
 
 initialization
