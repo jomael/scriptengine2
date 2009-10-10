@@ -35,6 +35,10 @@ const
           '    function Minutes: integer;' + #13#10 +
           '    function Seconds: integer;' + #13#10 +
           '    function Milliseconds: integer;  ' + #13#10 +
+          {$IFNDEF FPC}
+          '    function DateTimeToUTCTime: TDateTime;' +#13#10+
+          '    function UTCTimeToDateTime: TDateTime;' +#13#10+
+          {$ENDIF}
           '  end;' + #13#10 +
           '  TStringHelper = helper for string' + #13#10 +
           '  protected' + #13#10 +
@@ -149,6 +153,18 @@ const
           '  DateTime.DecodeTime(Self, h, m, s, ms);' + #13#10 +
           '  result := ms;' + #13#10 +
           'end;' + #13#10 +
+
+          {$IFNDEF FPC}
+          'function TDateTimeHelper.DateTimeToUTCTime: TDateTime;' +#13#10+
+          'begin'+#13#10+
+          '  result := DateTime.DateTimeToUTCTime(Self);'+#13#10+
+          'end;'+#13#10+
+          'function TDateTimeHelper.UTCTimeToDateTime: TDateTime;' +#13#10+     
+          'begin'+#13#10+
+          '  result := DateTime.UTCTimeToDateTime(Self);'+#13#10+
+          'end;'+#13#10+
+          {$ENDIF}
+
           'function TDateTimeHelper.AddMilliseconds(value: double): TDateTime;' + #13#10 +
           'begin' + #13#10 +
           '  result := Self + (value / (24.0 * 60.0 * 60.0 * 1000.0));' + #13#10 +

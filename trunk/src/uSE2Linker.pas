@@ -34,6 +34,10 @@ type
     procedure LinkInitialization(PE: TSE2PE);
     procedure LinkFinalization(PE: TSE2PE);
     procedure LinkMain(PE: TSE2PE);
+    {$IFDEF SEII_SMART_LINKING}
+    procedure ProcessUsedMethods(BaseMethod: TSE2Method);
+    procedure ProcessUsage;
+    {$ENDIF}
 
     procedure UnlinkMethod(Method: TSE2Method);
     procedure UnlinkOpCodes;
@@ -75,6 +79,10 @@ function TSE2Linker.LinkProgram: TSE2PE;
 var i: integer;
 begin
   result := TSE2PE.Create;
+
+  {$IFDEF SEII_SMART_LINKING}
+  ProcessUsage;
+  {$ENDIF}
 
   // 1st of all - optimize
   for i:=0 to FUnitList.Count-1 do
@@ -991,5 +999,52 @@ begin
         end;
 
 end;
+
+{$IFDEF SEII_SMART_LINKING}
+procedure TSE2Linker.ProcessUsedMethods(BaseMethod: TSE2Method);
+var i: integer;
+begin
+  if BaseMethod.UsageProcessed then
+     exit;
+
+  BaseMethod.Used := True;
+  BaseMethod.UsageProcessed := True;
+
+  for i:=0 to BaseMethod.UsedMethods.Count-1 do
+    if BaseMethod.UsedMethods[i] is TSE2Method then
+      ProcessUsedMethods(TSE2Method(BaseMethod.UsedMethods[i]));
+end;
+
+procedure TSE2Linker.ProcessUsage;
+
+  procedure ProcessUnit(aUnit: TSE2Unit);
+  var i: integer;
+  begin
+    for i:=aUnit.ElemList.Count-1 downto 0 do
+      if aUnit.ElemList[i] is TSE2Method then
+        if TSE2Method(aUnit.ElemList[i]).Used or TSE2Method(aUnit.ElemList[i]).IsExport then
+          ProcessUsedMethods(TSE2Method(aUnit.ElemList[i]));
+
+    if aUnit.AInitialization <> nil then
+       for i:=0 to aUnit.AInitialization.Count-1 do
+         if TSE2Method(aUnit.AInitialization[i]).OpCodes.Count > 1 then
+          ProcessUsedMethods(TSE2Method(aUnit.AInitialization[i]));
+
+    if aUnit.AFinalization <> nil then
+       for i:=0 to aUnit.AFinalization.Count-1 do
+         if TSE2Method(aUnit.AFinalization[i]).OpCodes.Count > 1 then
+          ProcessUsedMethods(TSE2Method(aUnit.AFinalization[i]));
+
+    if aUnit.Main <> nil then
+       ProcessUsedMethods(aUnit.Main);
+  end;
+
+var i: integer;
+begin
+  for i:=0 to FUnitList.Count-1 do
+    ProcessUnit(TSE2Unit(FUnitList[i]));
+end;
+{$ENDIF}
+
 
 end.

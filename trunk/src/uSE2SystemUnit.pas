@@ -765,6 +765,21 @@ begin
   FillTExternalObject(AUnit, FillTObject(AUnit));
 end;
 
+function TPersistent_Create(Self: TPersistent): TPersistent;
+begin
+  result := TPersistent.Create;
+end;
+
+procedure TPersistent_Assign(Self, Source: TPersistent);
+begin
+  Self.Assign(Source);
+end;
+
+function TPersistent_GetNamePath(Self: TPersistent): string;
+begin
+  result := Self.GetNamePath;
+end;
+
 procedure Unit_RegisterMethods(const Target: TSE2RunAccess);
 begin
   if Target.HasUnit(C_SE2SystemUnitName) then
@@ -772,13 +787,27 @@ begin
     Target.Method[C_SE2TExternalObjectName + '.Create[0]', C_SE2SystemUnitName] := @TObject_Create;
     Target.Method[C_SE2TExternalObjectName + '.Free[0]', C_SE2SystemUnitName] := @TObject_Free;
     Target.Method[C_SE2TExternalObjectName + '.ClassName[0]', C_SE2SystemUnitName] := @TObject_ClassName;
+
+    Target.Method['TPersistent.Create[0]', C_SE2SystemUnitName] := @TPersistent_Create;  
+    Target.Method['TPersistent.Assign[0]', C_SE2SystemUnitName] := @TPersistent_Assign;
+    Target.Method['TPersistent.GetNamePath[0]', C_SE2SystemUnitName] := @TPersistent_GetNamePath;
   end;
 end;
 
 
 procedure Unit_GetSource(var Target: string);
 begin
-  Target := 'unit '+C_SE2SystemUnitName + '; interface implementation end.';
+  Target := 'unit '+C_SE2SystemUnitName + '; '+#13#10+
+  #13#10 +
+  'interface'+#13#10+
+  'type'+#13#10+
+  '  TPersistent = class(TExternalObject)'+#13#10+
+  '  public'+#13#10+
+  '    constructor Create; external;'+#13#10+
+  '    procedure Assign(Source: TPersistent);  external;'+#13#10+
+  '    function  GetNamePath: string;  external;'+#13#10+
+  '  end;'+#13#10+
+  'implementation end.';
 end;
 
 procedure RegisterUnit;

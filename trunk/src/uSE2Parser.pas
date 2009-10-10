@@ -13,12 +13,13 @@ type
   TSE2ErrorEvent  = procedure(Sender: TObject; ErrorType: TSE2ErrorType; ErrorUnit, ErrorText: string; ErrorPos, ErrorLine: integer; UserData: TObject) of object;
   
   TSE2CompileCallBack = procedure(Sender: TObject; CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method;
-                                  Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean) of object;
+                                  Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean; AllowedTokens: TSE2TokenTypes) of object;
 
 
 type
   TSE2ParseState = class
   public
+    AllowedTokens  : TSE2TokenTypes;
     StackSize      : integer;
     IsInInterface  : boolean;
     IsInLoop       : boolean;
@@ -308,6 +309,7 @@ function TSE2Parser.ExpectToken(Symbol: TSE2TokenTypes): boolean;
 var Expected : string;
     i        : TSE2TokenType;
 begin
+  FParserState.AllowedTokens := Symbol;
   result := True;
   if not (FTokenizer.Token.AType in Symbol) then
   begin
@@ -558,7 +560,7 @@ begin
           //if parentValue = nil then
           //   parentValue := FParserState.CurrentOwner;
 
-          FCompileCall(Self, Tokenizer.Reader.Position, FParserState.ParamIndex, FParserState.Method, FParserState.ParamMethod, parentValue, FParserState.TargetType, Tokenizer.Token.AType, FParserState.NoStaticPointer);
+          FCompileCall(Self, Tokenizer.Reader.Position, FParserState.ParamIndex, FParserState.Method, FParserState.ParamMethod, parentValue, FParserState.TargetType, Tokenizer.Token.AType, FParserState.NoStaticPointer, FParserState.AllowedTokens);
           FCompileCall := nil;
         end;
           
@@ -579,7 +581,7 @@ begin
         parentValue := FParserState.AParent;
         //if parentValue = nil then
         //   parentValue := FParserState.CurrentOwner;
-        FCompileCall(Self, Tokenizer.Reader.Position, FParserState.ParamIndex, FParserState.Method, FParserState.ParamMethod, parentValue, FParserState.TargetType, Tokenizer.Token.AType, FParserState.NoStaticPointer);
+        FCompileCall(Self, Tokenizer.Reader.Position, FParserState.ParamIndex, FParserState.Method, FParserState.ParamMethod, parentValue, FParserState.TargetType, Tokenizer.Token.AType, FParserState.NoStaticPointer, FParserState.AllowedTokens);
         FCompileCall := nil;
       end;
 
@@ -2034,8 +2036,9 @@ begin
         if (not pMeth.IsForwarded) and (not (pMeth.IsVirtual or pMeth.IsOverride)) and (pMeth.Parent = State.CurrentOwner) then
            RaiseError(petError, 'A method named "'+Name+'" already exists!');
 
-        if ((pMeth.IsStatic <> Method.IsStatic) and ((pMeth.MethodType <> mtConstructor) and (Method.MethodType <> mtConstructor))) or
-           (pMeth.MethodType <> Method.MethodType) then
+        if (((pMeth.IsStatic <> Method.IsStatic) and ((pMeth.MethodType <> mtConstructor) and (Method.MethodType <> mtConstructor))) or
+           (pMeth.MethodType <> Method.MethodType)) and
+           (not (pMeth.IsExternal or Method.IsExternal)) then
            RaiseError(petError, 'The method is not equal to the forwarded declaration');
 
         if pMeth.IsForwarded and (pMeth.Parent = State.CurrentOwner) then
@@ -2543,7 +2546,12 @@ begin
   State.TargetType := nil;
 
   if not CallMethod.IsOverload then
-     CallMethod.Used := True;
+  {$IFDEF SEII_SMART_LINKING}
+  Method.UsedMethods.Add(CallMethod);
+  {$ELSE}
+  CallMethod.Used := True;
+  {$ENDIF}
+
   case CallMethod.MethodType of
   mtProcedure   : result := nil;
   mtFunction    : result := CallMethod.ReturnValue.AType;
@@ -2769,7 +2777,12 @@ begin
     if Assigned(LastParamSetter) then
        LastParamSetter(Self, State, Method, TSE2Parameter(CallMethod.Params[iStop]).AType);
 
+    {$IFDEF SEII_SMART_LINKING}
+    Method.UsedMethods.Add(CallMethod);
+    {$ELSE}
     CallMethod.Used := True;
+    {$ENDIF}
+
     if CallMethod.IsDeprecated then
     begin
       if CallMethod.DeprecatedValue <> '' then
@@ -5064,6 +5077,7 @@ var aProperty : TSE2Property;
     iParams   : integer;
     aParamType: TSE2BaseType;
     i, start  : integer;
+    Item      : TSE2BaseType;
 begin
   if State.CurrentOwner = nil then
      RaiseError(petError, 'Internal error: property not in class');
@@ -5072,10 +5086,12 @@ begin
   ReadNextToken;
   ExpectToken([sesIdentifier]);
 
-  if FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, FUnit.Name) <> nil then
-  begin
-    RaiseError(petError, 'Identifier already declared: "'+Tokenizer.Token.Value+'"');
-  end;
+  Item := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, FUnit.Name);
+  if Item <> nil then
+    if Item.Parent = State.CurrentOwner then
+    begin
+      RaiseError(petError, 'Identifier already declared: "'+Tokenizer.Token.Value+'"');
+    end;
 
   aProperty := TSE2Property.Create;
   DeclareType(State, aProperty, Tokenizer.Token.Value);
@@ -5349,7 +5365,12 @@ begin
   pOverwrite := GetOverwrittenMethod(Method);
   if pOverwrite = nil then
      RaiseError(petError, 'Could not find the overwritten method');
+
+  {$IFDEF SEII_SMART_LINKING}
+  Method.UsedMethods.Add(pOverwrite);
+  {$ELSE}
   pOverwrite.Used := True;
+  {$ENDIF}
 
   ReadNextToken;
 

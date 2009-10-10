@@ -5,6 +5,9 @@ unit uSE2IncDateTime;
 interface
 
 uses
+  {$IFNDEF FPC}
+  Windows,
+  {$ENDIF}
   Classes, SysUtils, DateUtils, uSE2Types, uSE2BaseTypes, uSE2RunAccess, uSE2UnitManager;
 
 implementation
@@ -219,6 +222,12 @@ const
      '    class function YearsBetween(const ANow, AThen: TDateTime): Integer; external;'+#13#10+
      '    class function YearSpan(const ANow, AThen: TDateTime): Double; external;'+#13#10+
      '    class function Yesterday: TDateTime; external;'+#13#10+
+
+     {$IFNDEF FPC}
+     '    class function DateTimeToUTCTime(DateTime: TDateTime): TDateTime; external;'+#13#10+
+     '    class function UTCTimeToDateTime(UTC: TDateTime): TDateTime; external;'+#13#10+
+     {$ENDIF}
+
      '  end;'+#13#10+
 
      '  Convert = partial class'+#13#10+
@@ -438,6 +447,8 @@ type
     class function YearsBetween(const ANow, AThen: TDateTime): Integer;
     class function YearSpan(const ANow, AThen: TDateTime): Double;
     class function Yesterday: TDateTime;
+    class function DateTimeToUTCTime(DateTime: TDateTime): TDateTime;
+    class function UTCTimeToDateTime(UTCTime: TDateTime): TDateTime;
   end;
 
 
@@ -634,6 +645,11 @@ begin
     Target.Method['DateTime.YearSpan[0]', C_UnitName] := @                 DateTime.YearSpan;
     Target.Method['DateTime.Yesterday[0]', C_UnitName] := @                DateTime.Yesterday;
 
+    {$IFNDEF FPC}
+    Target.Method['DateTime.DateTimeToUTCTime[0]', C_UnitName] := @        DateTime.DateTimeToUTCTime;
+    Target.Method['DateTime.UTCTimeToDateTime[0]', C_UnitName] := @        DateTime.UTCTimeToDateTime;
+    {$ENDIF}
+
     // Convert
     
     Target.Method['Convert.DateTimeToStr[0]', C_UnitName] := @            DateTime.DateTimeToStr;
@@ -699,6 +715,32 @@ end;
 class function DateTime.DateTimeToStr(const Date: TDateTime): string;
 begin
   result := SysUtils.DateTimeToStr(Date);
+end;
+
+class function DateTime.DateTimeToUTCTime(DateTime: TDateTime): TDateTime;
+var Zone : TTimeZoneInformation;
+begin
+  case GetTimeZoneInformation(Zone) of
+  TIME_ZONE_ID_STANDARD :
+      result := DateTime + ((Zone.Bias) / 60 / 24);
+  TIME_ZONE_ID_DAYLIGHT :
+      result := DateTime + ((Zone.Bias + Zone.DaylightBias) / 60 / 24)
+  else
+      result := DateTime;
+  end;
+end;  
+
+class function DateTime.UTCTimeToDateTime(UTCTime: TDateTime): TDateTime;
+var Zone : TTimeZoneInformation;
+begin
+  case GetTimeZoneInformation(Zone) of
+  TIME_ZONE_ID_STANDARD :
+      result := UTCTime - ((Zone.Bias) / 60 / 24);
+  TIME_ZONE_ID_DAYLIGHT :
+      result := UTCTime - ((Zone.Bias + Zone.DaylightBias) / 60 / 24)
+  else
+      result := UTCTime;
+  end;
 end;
 
 class function DateTime.DateToStr(const Date: TDateTime): string;

@@ -142,7 +142,7 @@ procedure TSE2UnitCacheMngr.PublishEntry(Entry: TSE2BaseType;
   Weaver: TSE2NameWeaver);
 var i: integer;
 begin
-  Weaver.SetValues(Entry.GenLinkerName(), Entry);
+  Weaver.SetValues(Entry.GetUniqueName(), Entry);
 
   if Entry is TSE2Method then
   begin
