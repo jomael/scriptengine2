@@ -11,7 +11,7 @@ You can set up the options for the ScriptEngine II here.
 {Enable this option to suppress the generation of debug info for the
  ScriptEngine II files. This will prevent the integrated debugger from stepping
  into the ScriptEngine II Code.}
-{$define SEII_NoDebugInfo}    
+{.$define SEII_NoDebugInfo}    
 
 {This option will disable Range-Checking for the ScriptEngine II - Source. This
  allows faster execution and smaller program sizes. If you do not define this
@@ -35,6 +35,11 @@ You can set up the options for the ScriptEngine II here.
 {If you enable this define, every class of the ScriptEngine II will have
  TPersistant as the root object, otherwise TObject is used.} 
 {.$define SEII_UsePersistantAsRoot}
+
+{If you disable this define, only simple usage detection of methods is used. 
+ This improves the compilation speed, but increases the final size of the 
+ compiled data. It is not advised to disable this feature.}
+{$define SEII_UseSmartLinker}
 
 {--------------------------------Include-Files---------------------------------}
 
@@ -102,6 +107,10 @@ You can set up the options for the ScriptEngine II here.
 
 {$IFDEF SEII_UsePersistantAsRoot}
   {$DEFINE SEII_INCLUDE_RTTI}
+{$ENDIF}
+
+{$IFDEF SEII_UseSmartLinker}
+  {$DEFINE SEII_SMART_LINKING}
 {$ENDIF}
 
 {--------------------------------Compiler Selection----------------------------}
