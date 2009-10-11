@@ -16,6 +16,7 @@ var
   TSE2CallExternal : TSE2CallExternalType;
 
 type
+  PMethod = ^TMethod;
   TSE2MethodCall = class(TObject)
   private
     FRegister    : TList;
@@ -33,6 +34,7 @@ type
     constructor Create(Method: Pointer; CallType: TSE2CallType); reintroduce;
     destructor Destroy; override;
 
+    procedure AddMethod(const Method: PMethod);
     procedure AddU8(value: byte);
     procedure AddS8(value: Shortint);
     procedure AddU16(value: word);
@@ -488,9 +490,6 @@ begin
 end;
 
 procedure CallMethodFunc(Stack: TSE2Stack; Method: Pointer; MetaData: TSE2MetaEntry; RunTime: Pointer);
-type
-  PMethod = ^TMethod;
-
 var Caller    : TSE2MethodCall;
     ReturnVar : PSE2VarData;
     Param     : PSE2VarData;
@@ -560,13 +559,32 @@ begin
                             PPointer(Param^.tPointer)^,
                             PPointer( integer(Param^.tPointer) + SizeOf(Pointer) )^
                           );
+                Caller.AddMethod(MethPtr);
+              end else
+              begin
+                MethPtr.Code := nil;
+                MethPtr.Data := nil;
+                Caller.AddMethod(MethPtr);
+              end;
+
+              (*New(MethPtr);
+              if pList = nil then
+                 pList := TList.Create;
+              pList.Add(MethPtr);
+
+              if Pointer(Param^.tPointer^) <> nil then
+              begin
+                MethPtr^ := TSE2RunTime(RunTime).ScriptAsMethod(
+                            PPointer(Param^.tPointer)^,
+                            PPointer( integer(Param^.tPointer) + SizeOf(Pointer) )^
+                          );
                 Caller.AddPointer(MethPtr);
               end else
               begin
                 MethPtr^.Code := nil;
                 MethPtr^.Data := nil;
                 Caller.AddPointer(MethPtr);
-              end;
+              end;   *)
             end;
         end;
       end;
@@ -640,6 +658,12 @@ end;
 function TSE2MethodCall.EDXAsPointer: Pointer;
 begin
   result := Pointer(FReturn2);
+end;
+
+procedure TSE2MethodCall.AddMethod(const Method: PMethod);
+begin
+  FStack.Add(Method^.Data);
+  FStack.Add(Method^.Code);
 end;
 
 initialization
