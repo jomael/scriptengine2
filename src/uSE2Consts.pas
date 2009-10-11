@@ -32,7 +32,7 @@ type
                     sesClass, sesPrivate, sesProtected, sesPublic, sesProperty, sesVirtual, sesAbstract, sesOverride, sesOverload,
                     sesInherited, sesReintroduce, sesPartial, sesHelper,
                     // Method definitions
-                    sesProcedure, sesFunction, sesConstructor, sesDestructor, sesForward,
+                    sesProcedure, sesFunction, sesConstructor, sesDestructor, sesForward, sesObject,
                     // External Methods
                     sesExternal, sesCdecl, sesPascal, sesRegister, sesSafecall, sesStdCall, sesExport,
                     // Direct Value Types
@@ -87,7 +87,7 @@ const
                     'class', 'private', 'protected', 'public', 'property', 'virtual', 'abstract', 'override', 'overload',
                     'inherited', 'reintroduce', 'partial', 'helper',
                     // Method definitions
-                    'procedure', 'function', 'constructor', 'destructor', 'forward',
+                    'procedure', 'function', 'constructor', 'destructor', 'forward', 'object',
                     // External Methods
                     'external', 'cdecl', 'pascal', 'register', 'safecall', 'stdcall', 'export',
                     // Direct Value Types
@@ -151,7 +151,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 0; Build: 0);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 1; Build: 0);
   
 implementation
 
@@ -241,7 +241,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2009, 10, 8);   
+  result := EncodeDate(2009, 10, 11);   
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
