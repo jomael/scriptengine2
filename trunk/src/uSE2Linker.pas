@@ -238,6 +238,7 @@ var i, j  : integer;
     AUnit : TSE2Unit;
     Index : integer;
     pVar  : TSE2Variable;
+    aType : TSE2TypeIdent;
 begin
   Index := 0;
   for i:=0 to FUnitList.Count-1 do
@@ -249,8 +250,9 @@ begin
         begin
           pVar := TSE2Variable(AUnit.ElemList[j]);
           pVar.CodePos := Index;
+          aType := TSE2Type(TSE2Variable(AUnit.ElemList[j]).AType.InheritRoot).AType;
           SetCodePos(pVar.GenLinkerName, Index);
-          GenCode(PE, TSE2OpCodeGen.STACK_INC(TSE2Type(TSE2Variable(AUnit.ElemList[j]).AType.InheritRoot).AType));
+          GenCode(PE, TSE2OpCodeGen.STACK_INC(aType));
           if TSE2Variable(AUnit.ElemList[j]).AType is TSE2Record then
             GenCode(PE, TSE2OpCodeGen.REC_MAKE(0, GetIndexOfRecord(PE, TSE2Record(TSE2Variable(AUnit.ElemList[j]).AType))))
           else
@@ -447,6 +449,7 @@ var i, j     : integer;
         if Method.OpCodes[c].CodeIndex = ElemName then
           if Method.OpCodes[c].OpCode <> nil then
             if Method.OpCodes[c].OpCode.OpCode in [soFLOW_CALL, soFLOW_CALLEX] then
+            begin
               if Method.OpCodes[c-1] <> nil then
               begin
                 p := Method.OpCodes[c-1].OpCode;
@@ -456,6 +459,11 @@ var i, j     : integer;
                     PSE2OpFLOW_PUSHRET(p).DebugData := DebugPos + 1;
                   end;
               end;
+            end else
+            if Method.OpCodes[c].OpCode.OpCode in [soSPEC_GetProcPtr] then
+            begin
+              PSE2OpSPEC_GetProcPtr(Method.OpCodes[c].OpCode).MetaIndex := DebugPos;
+            end;
   end;
 
 begin

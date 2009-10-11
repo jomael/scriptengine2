@@ -5,11 +5,11 @@ unit uSE2RunCall;
 interface
 
 uses
-  Classes, SysUtils, uSE2RunType, uSE2BaseTypes, uSE2PEData, uSE2OpCode, uSE2Consts;
+  Classes, uSE2RunType, uSE2BaseTypes, uSE2PEData, uSE2OpCode, uSE2Consts;
 
 type
   TSE2CallExternalType = record
-    CallMethod : procedure(Stack: TSE2Stack; Method: Pointer; MetaData: TSE2MetaEntry);
+    CallMethod : procedure(Stack: TSE2Stack; Method: Pointer; MetaData: TSE2MetaEntry; RunTime: Pointer);
   end;
 
 var
@@ -54,10 +54,14 @@ type
     function  AsS64: int64;
     function  AsPointer: Pointer;
     function  AsString: string;
+    function  EDXAsPointer: Pointer;
     procedure SetResultPointer(const ptr: pointer);
   end;
 
 implementation
+
+uses
+  uSE2RunTime;
 
 function CallMethod(const ACallType : TSE2CallType; const AMethodPointer : Pointer; const AParameters : array of LongWord; const AResultPointer : LongInt; const AUseResultPointer : Boolean; var ASafecallErrorCode : LongInt; SndResultData: PInteger) : LongWord; stdcall;
   type
@@ -483,7 +487,10 @@ begin
   FUseResPoint := True;
 end;
 
-procedure CallMethodFunc(Stack: TSE2Stack; Method: Pointer; MetaData: TSE2MetaEntry);
+procedure CallMethodFunc(Stack: TSE2Stack; Method: Pointer; MetaData: TSE2MetaEntry; RunTime: Pointer);
+type
+  PMethod = ^TMethod;
+
 var Caller    : TSE2MethodCall;
     ReturnVar : PSE2VarData;
     Param     : PSE2VarData;
@@ -491,12 +498,16 @@ var Caller    : TSE2MethodCall;
     ParamDecl : byte;
     s         : string;
     CanUsePtr : boolean;
+    MethPtr   : PMethod;
+    pList     : TList;
 begin
   if Method = nil then
      raise ESE2NullReferenceError.Create('External Method "'+MetaData.AUnitName+'.'+MetaData.Name+'" is not assigned');
+
+  pList := nil;
   Caller := TSE2MethodCall.Create(Method, MetaData.CallType);
   try
-    ReturnVar := nil;      
+    ReturnVar := nil;
     CanUsePtr := True;
     if MetaData.HasResult then
     begin
@@ -536,6 +547,27 @@ begin
         btPChar       : Caller.AddPointer(PPointer(Param^.tString^)^);
         btObject,
         btPointer     : Caller.AddPointer(Pointer(Param^.tPointer^));
+        btProcPtr     :
+            begin
+              New(MethPtr);
+              if pList = nil then
+                 pList := TList.Create;
+              pList.Add(MethPtr);
+
+              if Pointer(Param^.tPointer^) <> nil then
+              begin
+                MethPtr^ := TSE2RunTime(RunTime).ScriptAsMethod(
+                            PPointer(Param^.tPointer)^,
+                            PPointer( integer(Param^.tPointer) + SizeOf(Pointer) )^
+                          );
+                Caller.AddPointer(MethPtr);
+              end else
+              begin
+                MethPtr^.Code := nil;
+                MethPtr^.Data := nil;
+                Caller.AddPointer(MethPtr);
+              end;
+            end;
         end;
       end;
     end;
@@ -549,6 +581,7 @@ begin
         btWideString,
         btUTF8String,
         btPChar         : Caller.SetResultPointer(Pointer(ReturnVar.tString^));
+        btProcPtr       : Caller.SetResultPointer(Pointer(ReturnVar.tPointer));
         end;
       end;
 
@@ -567,6 +600,17 @@ begin
       btSingle             : Caller.AsSingle(ReturnVar^.tSingle);
       btDouble             : Caller.AsDouble(ReturnVar^.tDouble);
       btPointer, btObject  : Pointer(ReturnVar^.tPointer^) := Caller.AsPointer;
+      btProcPtr            :
+          begin
+            if PPointer(ReturnVar.tPointer)^ <> nil then
+            begin
+              if not TSE2RunTime(RunTime).MethodAsScript(PPointer(integer(ReturnVar.tPointer) + SizeOf(Pointer))^,
+                   PPointer(ReturnVar.tPointer),
+                   PPointer(integer(ReturnVar.tPointer) + SizeOf(Pointer))
+                 ) then
+                 PPointer(ReturnVar.tPointer)^ := nil;
+            end;
+          end;
       {$IFDEF FPC}
       btString             : PPointer(ReturnVar^.tString^)^     := Pointer(Caller.AsPointer);
       btUTF8String         : PPointer(ReturnVar^.tString^)^     := Pointer(Caller.AsPointer);
@@ -577,6 +621,13 @@ begin
     end;
 
   finally
+    if pList <> nil then
+    begin
+      for i:=pList.Count-1 downto 0 do
+        Dispose(PMethod(pList[i]));
+      pList.Free;
+    end;
+
     Caller.Free;
   end;
 end;
@@ -584,6 +635,11 @@ end;
 procedure RegisterCallMethod;
 begin
   TSE2CallExternal.CallMethod := CallMethodFunc;
+end;
+
+function TSE2MethodCall.EDXAsPointer: Pointer;
+begin
+  result := Pointer(FReturn2);
 end;
 
 initialization

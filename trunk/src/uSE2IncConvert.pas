@@ -65,7 +65,7 @@ type
     class function IntToStr(i: int64): string;
     class function IntToHex(i: int64; Digits: int64): string;
     class function IsInteger(s: string): boolean;
-    class function StrToInt(s: string): integer;
+    class function StrToInt(s: string): int64;
     class function StrToIntDef(s: string; def: int64): int64;
 
     class function TryStrToIntU8(s: string; var i: byte): boolean;
@@ -223,9 +223,9 @@ begin
      result := SysUtils.StrToFloatDef(s, def);
 end;
 
-class function TConvert.StrToInt(s: string): integer;
+class function TConvert.StrToInt(s: string): int64;
 begin
-  result := SysUtils.StrToInt(s);
+  result := SysUtils.StrToInt64(s);
 end;
 
 class function TConvert.StrToIntDef(s: string; def: int64): int64;

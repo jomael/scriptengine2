@@ -38,7 +38,8 @@ const
                 'soSTACK_INC', 'soSTACK_DEC', 'soSTACK_DEC_NODEL',
 
                 // Program execution flow
-                'soFLOW_GOTO', 'soFLOW_JIZ', 'soFLOW_JNZ', 'soFLOW_CALL', 'soFLOW_CALLEX', 'soFLOW_CALLDYN', 'soFLOW_RET', 'soFLOW_PUSHRET',
+                'soFLOW_GOTO', 'soFLOW_JIZ', 'soFLOW_JNZ', 'soFLOW_CALL', 'soFLOW_CALLEX', 'soFLOW_CALLDYN', 'soFLOW_CALLPTR',
+                'soFLOW_RET', 'soFLOW_PUSHRET',
 
                 // Aritmetic operation
                 'soOP_OPERATION', 'soOP_COMPARE',
@@ -57,7 +58,7 @@ const
 
                 // Special Data
                 'soSPEC_INCP', 'soSPEC_CREATE', 'soSPEC_DESTROY', 'soSPEC_UNREF', 'soSPEC_DECP',
-                'soSPEC_GetRef',
+                'soSPEC_GetRef', 'soSPEC_GetProcPtr',
 
                 // Record Data
                 'soREC_MAKE', 'soREC_FREE', 'soREC_COPY_TO', 'soREC_MARK_DEL',
@@ -90,6 +91,8 @@ begin
   soFLOW_CALL            : result := Format('CALL [%d]', [PSE2OpFLOW_CALL(OpCode).Position]);
   soFLOW_CALLEX          : result := Format('CALL EX [%s.%s]', [PE.MetaData[PSE2OpFLOW_CALLEX(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpFLOW_CALLEX(OpCode).MetaIndex].Name]);
   soFLOW_CALLDYN         : result := Format('CALL DYN [%d]', [PSE2OpFLOW_CALLDYN(OpCode).Offset]);
+  soFLOW_CALLPTR         : result := 'CALL PTR';
+
   soFLOW_RET             : result := 'RET';
   soFLOW_PUSHRET         : result := Format('PUSH RET [%d]', [PSE2OpFLOW_PUSHRET(OpCode).Position]);
   soOP_OPERATION         : result := Format('OP [%s]', [OperationToStr(PSE2OpOP_OPERATION(OpCode).OpType)]);
@@ -110,11 +113,14 @@ begin
   soSPEC_DESTROY         : result := 'DELETE';
   soSPEC_UNREF           : result := 'UNREF';   
   soSPEC_DECP            : result := Format('DECP [%d]', [PSE2OpSPEC_DECP(OpCode).Target]);
+  soSPEC_GetProcPtr      : result := Format('PREF [%s, %s]', [ PE.MetaData[PSE2OpSPEC_GetProcPtr(OpCode).MetaIndex].Name, IfThen(PSE2OpSPEC_GetProcPtr(OpCode).HasSelf, 'Self', '-') ]);
 
   soREC_MAKE             : result := Format('REC.NEW [%d %s.%s]', [PSE2OpREC_MAKE(OpCode).Variables, PE.MetaData[PSE2OpREC_MAKE(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpREC_MAKE(OpCode).MetaIndex].Name]);
   soREC_FREE             : result := Format('REC.FREE [%d]', [PSE2OpREC_FREE(OpCode).Offset]);
   soREC_COPY_TO          : result := Format('REC.POP TO [%d %s]', [PSE2OpREC_COPY_TO(OpCode).Target, IfThen(PSE2OpREC_COPY_TO(OpCode).Static, 'Static', 'Dynamic')]);
   soREC_MARK_DEL         : result := 'REC.UNUSE';
+
+
 
 
   soINT_INCSTATIC        : result := Format('INC STATIC [%d %d]', [PSE2OpINT_INCSTATIC(OpCode).Offset, PSE2OpINT_INCSTATIC(OpCode).Value]);
@@ -253,6 +259,19 @@ begin
            result := result + s + '''';
         end;
       end;
+  btProcPtr :
+      begin
+        if Pointer(Data^.tPointer) = nil then
+           result := 'invalid'
+        else
+        begin
+          result := '0x' +IntToHex(integer(PPointer(Integer(Data^.tPointer) + SizeOf(Pointer))^), 8);
+          if RunTime <> nil then
+             Result := result + ' '+GetClassPtrName(RunTime, PPointer(Integer(Data^.tPointer) + SizeOf(Pointer))^);
+
+          result := '0x' + IntToHex(Integer(Data^.tPointer^), 8) + ' ' + result;
+        end;
+      end;
   end;
   if Data^.RefContent then
      result := '@['+result+']';
@@ -281,6 +300,7 @@ begin
   btUTF8String            : result := 'UTF8String';
   btWideString            : result := 'WideString';
   btRecord                : result := 'record';
+  btProcPtr               : result := 'ProcPtr';
   else                      result := '{unkown}';
   end;
 end;

@@ -1729,10 +1729,11 @@ begin
         btDouble    : result := Param1^.tDouble^ = Param2^.tDouble^;
         end;      
       end;
-  btPointer, btObject :
+  btPointer, btObject, btProcPtr :
       begin
         case Param2.AType of
         btPointer,
+        btProcPtr,
         btObject        : result := Pointer(Param1^.tPointer^) = Pointer(Param2^.tPointer^);
         end;
       end;  
@@ -2294,10 +2295,11 @@ begin
         btDouble    : result := Param1^.tDouble^ <> Param2^.tDouble^;
         end;      
       end;
-  btPointer, btObject :
+  btPointer, btObject, btProcPtr :
       begin
         case Param2.AType of
         btPointer,
+        btProcPtr,
         btObject        : result := Pointer(Param1^.tPointer^) <> Pointer(Param2^.tPointer^);
         end;
       end;

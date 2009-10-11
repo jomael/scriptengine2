@@ -36,7 +36,7 @@ const
                     'class', 'private', 'protected', 'public', 'property', 'virtual', 'abstract', 'override', 'overload',
                     'inherited', 'reintroduce', 'partial', 'helper',
                     // Method definitions
-                    'procedure', 'function', 'constructor', 'destructor', 'forward',
+                    'procedure', 'function', 'constructor', 'destructor', 'forward', 'object',
                     // External Methods
                     'external', 'cdecl', 'pascal', 'register', 'safecall', 'stdcall', 'export',
                     // Direct Value Types

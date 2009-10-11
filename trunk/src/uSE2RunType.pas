@@ -31,6 +31,7 @@ type
       btPointer,
       btRecord,
       btArray,
+      btProcPtr,
       btObject         : (tPointer    : Pointer);
   end;
 
@@ -223,6 +224,7 @@ begin
     btRecord,
     btArray,
     btObject         : v := SizeOf(Pointer);
+    btProcPtr        : v := SizeOf(Pointer) * 2;
     end;
     TSE2MemorySize[i] := v;
   end;
@@ -377,6 +379,14 @@ begin
         btDouble       : TbtDouble(newData^)      := cardinal(Data.tPointer^);
         btPointer,
         btObject       : FreeData := True;
+        btProcPtr      : PPointer(newData)^       := Pointer(Data.tPointer^);
+        end;
+      end;
+  btProcPtr :
+      begin
+        case newType of
+        btPointer,
+        btObject      : PPointer(newData)^        := Pointer(Data.tPointer^);
         end;
       end;
   btString :
@@ -631,12 +641,16 @@ begin
     else Move(Source^.tPointer^, Dest^.tPointer^, TSE2MemorySize[Dest^.AType]);
     end;
   end else
-  begin   
-    if Dest.AType <> Source.AType then
+  begin
+
+    if Dest.AType <> btProcPtr then
     begin
-      FreeVarContent(Dest);
-      Dest.AType := Source.AType;
-      CreateVarContent(Dest);
+      if Dest.AType <> Source.AType then
+      begin
+        FreeVarContent(Dest);
+        Dest.AType := Source.AType;
+        CreateVarContent(Dest);
+      end;
     end;
 
     case Source^.AType of
