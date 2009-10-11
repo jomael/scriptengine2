@@ -23,8 +23,7 @@ type
     FCanExecute       : boolean;
   protected
     procedure CompileCallBack(Sender: TObject; CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method;
-                                  Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean;
-                                  AllowedTokens: TSE2TokenTypes);
+                                  Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean);
 
     procedure DoGetCustomUnits(const Target: TStrings);
     procedure DoAddItem(const DispText, InsText: string); virtual;
@@ -51,8 +50,8 @@ type
     function  GetDisplayStr(Entry: TSE2BaseType): string; virtual;
     function  GetInsertStr(Entry: TSE2BaseType): string; virtual;
 
-    procedure ProcessUnit(AUnit: TSE2Unit; ParentObj: TSE2BaseType; Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean; AllowedTokens: TSE2TokenTypes);
-    procedure ProcessUnits(Compiler: TSE2Compiler; Parser: TSE2Parser; ParentObj: TSE2BaseType; Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean; AllowedTokens: TSE2TokenTypes);
+    procedure ProcessUnit(AUnit: TSE2Unit; ParentObj: TSE2BaseType; Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean);
+    procedure ProcessUnits(Compiler: TSE2Compiler; Parser: TSE2Parser; ParentObj: TSE2BaseType; Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean);
   public
     constructor Create(CallBack: TSE2AddItemEvent); reintroduce;
     destructor Destroy; override;
@@ -97,8 +96,7 @@ type
     FCanExecute    : boolean;
   protected
     procedure CompileCallBack(Sender: TObject; CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method;
-                                  Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean;
-                                  AllowedTokens: TSE2TokenTypes);
+                                  Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean);
 
     procedure DoAddItem(const DispText: string); virtual;
     function  FormatParamStr(Entry: TSE2Parameter; IsLastParam: boolean): string; virtual; abstract;
@@ -198,6 +196,9 @@ begin
     result := False;
     if TSE2Method(Item).ReturnValue <> nil then
        result := TSE2Parser.IsCompatible(ResType, TSE2Method(Item).ReturnValue.AType, Opr);
+
+    if ResType is TSE2MethodVariable then
+       result := True;
   end;
 end;
 
@@ -243,11 +244,10 @@ begin
   end;
 end;
 
-procedure TSE2CodeCompletion.ProcessUnit(AUnit: TSE2Unit; ParentObj: TSE2BaseType; Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean; AllowedTokens: TSE2TokenTypes);
+procedure TSE2CodeCompletion.ProcessUnit(AUnit: TSE2Unit; ParentObj: TSE2BaseType; Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean);
 var i   : integer;
     obj : TSE2BaseType;
     aVis: TSE2Visibilities;
-    Token : TSE2TokenType;
 begin
   if (Method <> nil) and (ParentObj = nil) then
   begin
@@ -364,16 +364,6 @@ begin
     if ParentObj <> nil then
        ParentObj := ParentObj.InheritFrom;
   until ParentObj = nil;
-
-  if AllowedTokens <> [] then
-  begin
-    for Token := sesNone to sesLastToken do
-      if Token in AllowedTokens then
-      begin
-        if TSE2TokenString[Token] <> '' then
-           DoAddItem(GetDisplayStrToken(TSE2TokenString[Token]), GetInsertStrToken(TSE2TokenString[Token]));
-      end;
-  end;
 end;
 
 procedure TSE2CodeCompletion.DoProcessItem(Item: TSE2BaseType);
@@ -431,6 +421,7 @@ end;
 function TSE2CodeCompletion.GetCodeCompletion(const Source: string;
   CursorPos: integer): boolean;
 var UnitMngr : TSE2UnitCacheMngr;
+    Token    : TSE2TokenType;
 begin
   FEventRaised := False;
   FCanExecute  := True;
@@ -444,24 +435,28 @@ begin
 
   if not FEventRaised then
   begin
-    ProcessUnits(FCompiler, nil, nil, CAllVisibilities, nil, nil, False, []);
+    ProcessUnits(FCompiler, nil, nil, CAllVisibilities, nil, nil, False);
   end;
+
+  for Token := sesNone to sesLastToken do
+      if length(TSE2TokenString[Token]) > 2 then
+         DoAddItem(GetDisplayStrToken(TSE2TokenString[Token]), GetInsertStrToken(TSE2TokenString[Token]));
 
   result := FCanExecute;
 end;
 
 procedure TSE2CodeCompletion.CompileCallBack(Sender: TObject;
   CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method; Parent: TSE2BaseType;
-  TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean; AllowedTokens: TSE2TokenTypes);
+  TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean);
 begin
   FEventRaised := True;
   FCanExecute  := not (TokenType in [sesString, sesInteger, sesFloat]);
-  ProcessUnits(FCompiler, TSE2Parser(Sender), Parent, CAllVisibilities, TargetType, CurrentMethod, StaticOnly, AllowedTokens);
+  ProcessUnits(FCompiler, TSE2Parser(Sender), Parent, CAllVisibilities, TargetType, CurrentMethod, StaticOnly);
 end;
 
 procedure TSE2CodeCompletion.ProcessUnits(Compiler: TSE2Compiler;
   Parser: TSE2Parser; ParentObj: TSE2BaseType;
-  Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean; AllowedTokens: TSE2TokenTypes);
+  Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean);
 var i          : integer;
     IgnoreUnit : TSE2Unit;
     vis        : TSE2Visibilities;
@@ -475,7 +470,7 @@ begin
           if Parser.AUnit = ParentObj then
             vis := CAllVisibilities;
 
-       ProcessUnit(TSE2Unit(ParentObj), nil, vis, nil, nil, StaticOnly, AllowedTokens);
+       ProcessUnit(TSE2Unit(ParentObj), nil, vis, nil, nil, StaticOnly);
        exit;
      end;
 
@@ -483,15 +478,13 @@ begin
   if Parser <> nil then
   begin
     IgnoreUnit := Parser.AUnit;
-    ProcessUnit(IgnoreUnit, ParentObj, CAllVisibilities, ResultType, Method, StaticOnly, AllowedTokens);
-    AllowedTokens := [];
+    ProcessUnit(IgnoreUnit, ParentObj, CAllVisibilities, ResultType, Method, StaticOnly);
   end;
 
   for i:=0 to Compiler.UnitList.Count-1 do
     if Compiler.UnitList[i] <> IgnoreUnit then
     begin
-      ProcessUnit(TSE2Unit(Compiler.UnitList[i]), ParentObj, CPublicVisibilities, ResultType, Method, StaticOnly, AllowedTokens);
-      AllowedTokens := [];
+      ProcessUnit(TSE2Unit(Compiler.UnitList[i]), ParentObj, CPublicVisibilities, ResultType, Method, StaticOnly);
     end;
 
   if ParentObj = nil then
@@ -774,7 +767,7 @@ end;
 
 procedure TSE2ParamCompletion.CompileCallBack(Sender: TObject;
   CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method; Parent: TSE2BaseType;
-  TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean; AllowedTokens: TSE2TokenTypes);
+  TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean);
 var i    : integer;
     List : TSE2BaseTypeList;
 begin
