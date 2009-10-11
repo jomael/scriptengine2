@@ -33,7 +33,7 @@ type
     procedure GetUnitReader(const UnitName: string; var Readers: TList);
 
     function  CreateParser(Tokenizer: TSE2Tokenizer): TSE2Parser;
-    function  DoCompile(const Tokenizer: TSE2Tokenizer; CallBack: TSE2CompileCallBack = nil; CompilePos: integer = -1): TSE2Unit;
+    function  DoCompile(const Tokenizer: TSE2Tokenizer; CallBack: TSE2CompileCallBack = nil; CompilePos: integer = -1; ExpectedName: string = ''): TSE2Unit;
     function  MakeSystemUnit: boolean;
     function  CompileUnits(const UnitName: string; var count: integer): boolean;
 
@@ -178,7 +178,7 @@ begin
         begin
           TSE2UnitManager.Instance.Units[i].GetUnitSource(j, src);
           Token := TSE2Tokenizer.Create(TSE2StringReader.Create(src));
-          FUnit := DoCompile(Token);
+          FUnit := DoCompile(Token, nil, -1, UnitName);
           result := result and (FUnit <> nil);
           count := count + 1;
           if not result then
@@ -193,7 +193,7 @@ begin
         Token := TSE2Tokenizer.Create(TSE2Reader(Readers[0]));
         Readers.Delete(0);
 
-        FUnit  := DoCompile(Token);
+        FUnit  := DoCompile(Token, nil, -1, UnitName);
         result := result and (FUnit <> nil);
         count  := count + 1;
         if not result then
@@ -242,7 +242,7 @@ begin
     result := True;
 end;
 
-function TSE2Compiler.DoCompile(const Tokenizer: TSE2Tokenizer; CallBack: TSE2CompileCallBack = nil; CompilePos: integer = -1): TSE2Unit;
+function TSE2Compiler.DoCompile(const Tokenizer: TSE2Tokenizer; CallBack: TSE2CompileCallBack = nil; CompilePos: integer = -1; ExpectedName: string = ''): TSE2Unit;
 var FParser    : TSE2Parser;
 begin
   result  := nil;
@@ -260,6 +260,7 @@ begin
     if (Assigned(CallBack) and (CompilePos > -1)) then
        FParser.RegisterCallBack(CompilePos, CallBack);
 
+    FParser.ExpectedName := ExpectedName;
     if not FParser.Compile then
        exit;
 
