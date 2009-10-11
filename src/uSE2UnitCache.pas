@@ -94,6 +94,7 @@ begin
   RegisterComponent(TSE2Property);
   RegisterComponent(TSE2ClassRTTI);
   RegisterComponent(TSE2UsedByList);
+  RegisterComponent(TSE2MethodVariable);
 end;
 
 function  GetClassByName(const Name: string): TSE2BaseTypeClass;

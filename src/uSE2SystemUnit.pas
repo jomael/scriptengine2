@@ -801,6 +801,7 @@ begin
   #13#10 +
   'interface'+#13#10+
   'type'+#13#10+
+  '  TNotifyEvent = procedure(Sender: TObject) of object;'+#13#10+
   '  TPersistent = class(TExternalObject)'+#13#10+
   '  public'+#13#10+
   '    constructor Create; external;'+#13#10+

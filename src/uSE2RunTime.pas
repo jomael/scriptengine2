@@ -78,6 +78,7 @@ type
     function  CreateClass(const Meta: TSE2MetaEntry): Pointer;
     procedure FreeClass(AClass: Pointer);
     function  ScriptAsMethod(Method, ClassInstance: Pointer): TMethod;
+    function  MethodAsScript(Data: Pointer; MethodPos, ClassPtr: Pointer): boolean;
 
 
 
@@ -252,6 +253,7 @@ var OpCode        : PSE2OpDefault;
     CompareInt    : integer;
     Pos           : array[0..1] of integer;
     VarDat        : array[0..3] of PSE2VarData;
+    Meta          : TSE2MetaEntry;
     TryBlock      : TSE2TryBlock;
     TempTryBlock  : TSE2TryBlock;
 {$ELSE}
@@ -319,7 +321,7 @@ begin
   soFLOW_CALLEX :
       begin            
         TSE2CallExternal.CallMethod(FStack, Pointer(PSE2OpFLOW_CALLEX(OpCode).Position),
-                                    FAppCode.MetaData[PSE2OpFLOW_CALLEX(OpCode).MetaIndex]);
+                                    FAppCode.MetaData[PSE2OpFLOW_CALLEX(OpCode).MetaIndex], Self);
       end;
   soFLOW_CALLDYN :
       begin
@@ -337,6 +339,30 @@ begin
            raise ESE2RunTimeError.Create('Abstract method was not implemented');
 
         FCodePos := CompareInt - 1;
+        Stack.Pop;
+      end;
+  soFLOW_CALLPTR :
+      begin
+        VarDat[0] := FStack.Top;
+        if not (VarDat[0].AType in [btPointer, btProcPtr]) then
+           raise ESE2RunTimeError.Create('Internal error: stack corrupt');
+
+        if Pointer(VarDat[0].tPointer^) = nil then
+           raise ESE2NullReferenceError.Create('Method call not assigned');
+
+        Meta := PPointer(VarDat[0].tPointer)^;
+        if Meta.HasSelf then
+        begin
+          VarDat[2] := FStack.Items[FStack.Size - Meta.ParamCount - 2];
+
+          VarDat[1] := FVarHelper.CreateVarData(btProcPtr);
+          FVarHelper.CreateVarContent(VarDat[1]);
+          PPointer(VarDat[1]^.tPointer)^ := PPointer(Integer(VarDat[2]^.tPointer) + SizeOf(Pointer))^;
+
+          FStack.Items[FStack.Size - Meta.ParamCount - 2] := VarDat[1];
+          FStack.Pool.Push(VarDat[2]);
+        end;
+        FCodePos := Meta.CodePos - 1;
         Stack.Pop;
       end;
   soFLOW_RET :
@@ -687,6 +713,26 @@ begin
 
         VarDat[1] := FStack.PushNew(btPointer);
         PPointer(VarDat[1].tPointer)^ := Pointer(VarDat[0]);
+      end;
+  soSPEC_GetProcPtr :
+      begin
+        Meta := FAppCode.MetaData[PSE2OpSPEC_GetProcPtr(OpCode).MetaIndex];
+        if Meta = nil then
+           raise ESE2RunTimeError.Create('Method pointer could not be get');
+
+
+
+        VarDat[0] := FStack.PushNew(btProcPtr);
+        PPointer(VarDat[0].tPointer)^ := Meta;
+        if Meta.HasSelf then
+        begin
+          VarDat[1] := FStack.Items[FStack.Size - 2];
+          PPointer(Integer(VarDat[0]^.tPointer) + SizeOf(Pointer))^ := PPointer(VarDat[1].tPointer)^;
+          VarDat[2] := VarDat[1];
+          FStack.Items[FStack.Size - 2] := VarDat[0];
+          FStack.Pop;
+          FStack.Pool.Push(VarDat[1]);
+        end;
       end;
   soSPEC_CREATE :
       begin
@@ -1732,6 +1778,12 @@ begin
   CodeData := FNativeList.GenEntry(Self, Method, ClassInstance);
   result.Data := CodeData;
   result.Code := @SE2MethodScriptCallHandler;
+end;
+
+function TSE2RunTime.MethodAsScript(Data, MethodPos,
+  ClassPtr: Pointer): boolean;
+begin
+  result := FNativeList.FindEntry(Data, MethodPos, ClassPtr);
 end;
 
 end.

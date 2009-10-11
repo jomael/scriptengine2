@@ -124,7 +124,8 @@ type
                 soSTACK_INC, soSTACK_DEC, soSTACK_DEC_NODEL,
 
                 // Program execution flow
-                soFLOW_GOTO, soFLOW_JIZ, soFLOW_JNZ, soFLOW_CALL, soFLOW_CALLEX, soFLOW_CALLDYN, soFLOW_RET, soFLOW_PUSHRET,
+                soFLOW_GOTO, soFLOW_JIZ, soFLOW_JNZ, soFLOW_CALL, soFLOW_CALLEX, soFLOW_CALLDYN, soFLOW_CALLPTR,
+                soFLOW_RET, soFLOW_PUSHRET,
 
                 // Aritmetic operation
                 soOP_OPERATION, soOP_COMPARE,
@@ -143,7 +144,7 @@ type
 
                 // Special Data
                 soSPEC_INCP, soSPEC_CREATE, soSPEC_DESTROY, soSPEC_UNREF, soSPEC_DECP,
-                soSPEC_GetRef,
+                soSPEC_GetRef, soSPEC_GetProcPtr,
 
                 // Record Data
                 soREC_MAKE, soREC_FREE, soREC_COPY_TO, soREC_MARK_DEL,
@@ -221,6 +222,11 @@ type
   TSE2OpFLOW_CALLDYN = packed record
     OpCode     : TSE2OpCode;
     Offset     : cardinal;
+  end;
+
+  PSE2OpFLOW_CALLPTR = ^TSE2OpFLOW_CALLPTR;
+  TSE2OpFLOW_CALLPTR = packed record
+    OpCode     : TSE2OpCode;
   end;
 
   PSE2OpFLOW_RET = ^TSE2OpFLOW_RET;
@@ -361,6 +367,13 @@ type
     Offset     : integer;
     Static     : boolean;
     UsePush    : boolean;
+  end;
+
+  PSE2OpSPEC_GetProcPtr = ^TSE2OpSPEC_GetProcPtr;
+  TSE2OpSPEC_GetProcPtr = packed record
+    OpCode     : TSE2OpCode;
+    MetaIndex  : integer;
+    HasSelf    : boolean;
   end;
 
   PSE2OpSPEC_CREATE = ^TSE2OpSPEC_CREATE;
@@ -542,6 +555,7 @@ type
     class function FLOW_CALL(Position: cardinal): PSE2OpDefault;
     class function FLOW_CALLEX(Position: cardinal; MetaIndex: integer): PSE2OpDefault;
     class function FLOW_CALLDYN(Offset: cardinal): PSE2OpDefault;
+    class function FLOW_CALLPTR: PSE2OpDefault;
     class function FLOW_RET: PSE2OpDefault;
     class function FLOW_PUSHRET(Target, DebugIndex: integer): PSE2OpDefault;
     class function OP_OPERATION(OpType: byte): PSE2OpDefault;
@@ -568,6 +582,7 @@ type
     class function SPEC_UNREF: PSE2OpDefault;
     class function SPEC_DECP(Target: integer): PSE2OpDefault;
     class function SPEC_GetRef(Offset: integer; Static, UsePush: boolean): PSE2OpDefault;
+    class function SPEC_GetProcPtr(MetaIndex: integer; HasSelf: boolean): PSE2OpDefault;
 
     class function REC_MAKE(Variables: integer; MetaIndex: integer): PSE2OpDefault;
     class function REC_FREE(Offset: integer): PSE2OpDefault;
@@ -907,6 +922,19 @@ end;
 class function TSE2OpCodeGen.REC_MARK_DEL: PSE2OpDefault;
 begin
   result := DefaultOP(soREC_MARK_DEL);
+end;
+
+class function TSE2OpCodeGen.FLOW_CALLPTR: PSE2OpDefault;
+begin
+  result := DefaultOP(soFLOW_CALLPTR);
+end;
+
+class function TSE2OpCodeGen.SPEC_GetProcPtr(MetaIndex: integer;
+  HasSelf: boolean): PSE2OpDefault;
+begin
+  result := DefaultOP(soSPEC_GetProcPtr);
+  PSE2OpSPEC_GetProcPtr(result)^.MetaIndex := MetaIndex;
+  PSE2OpSPEC_GetProcPtr(result)^.HasSelf   := HasSelf;
 end;
 
 { TSE2OpCodeList }

@@ -219,6 +219,7 @@ end;
 procedure TSE2ScriptImporterPascal.FormatMethod(AUnit: TSE2Unit; AMethod: TSE2Method;
   var NativeMethod, ImportName: String; Target: TStrings);
 var s         : string;
+    TypeName  : string;
     i         : integer;
     Start     : integer;
     Stop      : integer;
@@ -228,6 +229,7 @@ var s         : string;
     bIsGetter : boolean;
     bIsSetter : boolean;
     PropertyName : string;
+    TypeDecl  : TStringList;
 
   function NextParamEqual: boolean;
   begin
@@ -254,136 +256,185 @@ var s         : string;
 begin
   inherited;
 
-  MethodIsPropertyMethod(AUnit, AMethod, bIsGetter, bIsSetter, PropertyName);
+  TypeDecl := TStringList.Create;
+  try
+    TypeDecl.Sorted := True;
+    TypeDecl.Duplicates := dupIgnore;
+    TypeDecl.CaseSensitive := False;
+
+    MethodIsPropertyMethod(AUnit, AMethod, bIsGetter, bIsSetter, PropertyName);
 
 
-  ImportName := AMethod.Name;
-  if AMethod.Parent <> nil then
-     ImportName := AMethod.Parent.Name + '.' + ImportName;
-  ImportName := ImportName + '['+TSE2Converter.IntToStr(AMethod.ID)+']';
+    ImportName := AMethod.Name;
+    if AMethod.Parent <> nil then
+       ImportName := AMethod.Parent.Name + '.' + ImportName;
+    ImportName := ImportName + '['+TSE2Converter.IntToStr(AMethod.ID)+']';
 
-  NativeMethod := '_' + AMethod.Name;
-  if AMethod.Parent <> nil then
-     NativeMethod := AMethod.Parent.Name + NativeMethod;
+    NativeMethod := '_' + AMethod.Name;
+    if AMethod.Parent <> nil then
+       NativeMethod := AMethod.Parent.Name + NativeMethod;
 
-  if AMethod.ID > 0 then
-     NativeMethod := NativeMethod + TSE2Converter.IntToStr(AMethod.ID);
+    if AMethod.ID > 0 then
+       NativeMethod := NativeMethod + TSE2Converter.IntToStr(AMethod.ID);
 
-  if AMethod.ReturnValue <> nil then
-     s := 'function '
-  else
-     s := 'procedure ';
+    if AMethod.ReturnValue <> nil then
+       s := 'function '
+    else
+       s := 'procedure ';
 
-  s := s + NativeMethod;
-  if AMethod.Params.Count > 0 then
-  begin
-    s := s + '(';
-
-    PrevParam := nil;
-    for i:=0 to AMethod.Params.Count-1 do
+    s := s + NativeMethod;
+    if AMethod.Params.Count > 0 then
     begin
-      Param     := TSE2Parameter(AMethod.Params[i]);
-      NextParam := TSE2Parameter(AMethod.Params[i + 1]);
-
-      if not PrevParamEqual then
-      begin
-        case Param.ParameterType of
-        ptDefault : ;
-        ptConst   : s := s + 'const ';
-        ptVar     : s := s + 'var ';
-        end;
-      end;
-
-      s := s + Param.Name;
-      if NextParamEqual then
-         s := s + ', '
-      else
-      begin
-         s := s + ': ' + Param.AType.Name;
-         if i < AMethod.Params.Count - 1 then
-            s := s + '; ';
-      end;
-
-      PrevParam := Param;
-    end;
-
-    s := s + ')';
-  end;
-
-  if AMethod.ReturnValue <> nil then
-     s := s + ': ' + AMethod.ReturnValue.AType.Name;
-  s := s + ';';
-
-  case AMethod.CallConvention of
-  callRegister : ;
-  callStdcall  : s := s + ' stdcall;';
-  callCdecl    : s := s + ' cdecl;';
-  callPascal   : s := s + ' pascal;';
-  callSafecall : s := s + ' safecall;';
-  end;
-
-  Output.Add(s);
-  Output.Add('begin');
-
-  s := '  ';
-  if AMethod.ReturnValue <> nil then
-     s := s + 'result := ';
-
-  if AMethod.Parent <> nil then
-  begin
-    if AMethod.MethodType = mtConstructor then
-       s := s + AMethod.Parent.Name + '.'
-    else
-    if AMethod.IsStatic then
-       s := s + AMethod.Parent.Name + '.'
-    else
-       s := s + 'Self.';
-  end;
-
-  if bIsGetter or bIsSetter then
-    s := s + PropertyName
-  else
-    s := s + AMethod.Name;
-
-  Start := 0;
-  if AMethod.Parent <> nil then
-  begin
-    Start := 1;
-  end;
-
-  if bIsSetter then
-     Stop := AMethod.Params.Count-2
-  else
-     Stop := AMethod.Params.Count-1;
-
-  if (AMethod.Params.Count > Start) and (Start <= Stop) then
-  begin
-    if bIsGetter or bIsSetter then
-      s := s + '['
-    else
       s := s + '(';
 
-    for i:=Start to Stop do
-    begin
-      s := s + AMethod.Params[i].Name;
-      if i < Stop then
-         s := s + ', ';
-    end;
-              
-    if bIsGetter or bIsSetter then
-    begin
-      s := s + ']';
-    end else
+      PrevParam := nil;
+      for i:=0 to AMethod.Params.Count-1 do
+      begin
+        Param     := TSE2Parameter(AMethod.Params[i]);
+        NextParam := TSE2Parameter(AMethod.Params[i + 1]);
+
+        if not PrevParamEqual then
+        begin
+          case Param.ParameterType of
+          ptDefault : ;
+          ptConst   : s := s + 'const ';
+          ptVar     : s := s + 'var ';
+          end;
+        end;
+
+        s := s + Param.Name;
+        if NextParamEqual then
+           s := s + ', '
+        else
+        begin
+          TypeName := Param.AType.Name;
+          if Param.AType is TSE2MethodVariable then
+          begin
+            TypeDecl.Add(TypeName);
+            TypeName := 'Pointer';
+          end;
+
+          s := s + ': ' + TypeName;
+          if i < AMethod.Params.Count - 1 then
+             s := s + '; ';
+        end;
+
+        PrevParam := Param;
+      end;
+
       s := s + ')';
+    end;
+
+    if AMethod.ReturnValue <> nil then
+       s := s + ': ' + AMethod.ReturnValue.AType.Name;
+    s := s + ';';
+
+    case AMethod.CallConvention of
+    callRegister : ;
+    callStdcall  : s := s + ' stdcall;';
+    callCdecl    : s := s + ' cdecl;';
+    callPascal   : s := s + ' pascal;';
+    callSafecall : s := s + ' safecall;';
+    end;
+
+    Output.Add(s);
+
+    if TypeDecl.Count > 0 then
+    begin
+      Output.Add('type');
+      for i:=0 to TypeDecl.Count-1 do
+      begin
+        TypeName    := TypeDecl[i];
+        TypeName[1] := 'P';
+        TypeName    := '  ' + TypeName + ' = ^' + TypeDecl[i];
+        Output.Add(TypeName);
+      end;
+    end;
+
+    Output.Add('begin');
+
+    s := '  ';
+    if AMethod.ReturnValue <> nil then
+       s := s + 'result := ';
+
+    if AMethod.Parent <> nil then
+    begin
+      if AMethod.MethodType = mtConstructor then
+         s := s + AMethod.Parent.Name + '.'
+      else
+      if AMethod.IsStatic then
+         s := s + AMethod.Parent.Name + '.'
+      else
+         s := s + 'Self.';
+    end;
+
+    if bIsGetter or bIsSetter then
+      s := s + PropertyName
+    else
+      s := s + AMethod.Name;
+
+    Start := 0;
+    if AMethod.Parent <> nil then
+    begin
+      Start := 1;
+    end;
+
+    if bIsSetter then
+       Stop := AMethod.Params.Count-2
+    else
+       Stop := AMethod.Params.Count-1;
+
+    if (AMethod.Params.Count > Start) and (Start <= Stop) then
+    begin
+      if bIsGetter or bIsSetter then
+        s := s + '['
+      else
+        s := s + '(';
+
+      for i:=Start to Stop do
+      begin
+        TypeName := AMethod.Params[i].Name;
+
+        if TSE2Parameter(AMethod.Params[i]).AType is TSE2MethodVariable then
+        begin
+          TypeName    := TSE2Parameter(AMethod.Params[i]).AType.Name;
+          TypeName[1] := 'P';
+          TypeName    := TypeName + '('+AMethod.Params[i].Name+')^'
+        end;
+
+        s := s + TypeName;
+        if i < Stop then
+           s := s + ', ';
+      end;
+
+      if bIsGetter or bIsSetter then
+      begin
+        s := s + ']';
+      end else
+        s := s + ')';
+    end;
+
+    if bIsSetter then
+    begin
+      TypeName := AMethod.Params[AMethod.Params.Count-1].Name;
+
+      if TSE2Parameter(AMethod.Params[AMethod.Params.Count-1]).AType is TSE2MethodVariable then
+      begin
+        TypeName    := TSE2Parameter(AMethod.Params[AMethod.Params.Count-1]).AType.Name;
+        TypeName[1] := 'P';
+        TypeName    := TypeName + '('+AMethod.Params[AMethod.Params.Count-1].Name+')^'
+      end;
+
+      s := s + ' := ' + TypeName;
+    end;
+
+    s := s + ';';
+    Output.Add(s);
+    Output.Add('end;');
+    Output.Add('');
+  finally
+    TypeDecl.Free;
   end;
-
-  if bIsSetter then
-     s := s + ' := ' + AMethod.Params[AMethod.Params.Count-1].Name;
-
-  s := s + ';';
-  Output.Add(s);
-  Output.Add('end;');
-  Output.Add('');
 end;
 
 procedure TSE2ScriptImporterPascal.AddUnitSource(AUnit: TSE2Unit);

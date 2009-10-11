@@ -5,6 +5,9 @@ unit uSE2Types;
 interface
 
 uses
+  Dialogs,
+
+
   Classes, uSE2Tokenizer, uSE2Reader, uSE2BaseTypes, uSE2Consts, uSE2OpCode,
   uSE2NameWeaver;
 
@@ -434,6 +437,8 @@ type
     FIsOverride     : boolean;
     FIsStatic       : boolean;
     FIsExport       : boolean;
+    FIsMethodType   : boolean;
+    FAddHasSelfParam: boolean;
     FCallConvention : TSE2CallType;
     FReturnValue    : TSE2Variable;
     FStackSize      : integer;
@@ -467,6 +472,7 @@ type
 
     property UsageProcessed    : boolean            read FUsageProcessed  write FUsageProcessed;
     property UsedMethods       : TSE2UsedByList     read FUsedMethods;
+    property AddHasSelfParam   : boolean            read FAddHasSelfParam write FAddHasSelfParam;
     property HasSelfParam      : boolean            read GetHasSelfParam;
     property DynamicIndex      : integer            read FDynamicIndex    write FDynamicIndex;
     property IsStatic          : boolean            read FIsStatic        write FIsStatic;
@@ -476,6 +482,7 @@ type
     property IsExternal        : boolean            read FIsExternal      write FIsExternal;
     property IsOverload        : boolean            read FIsOverload      write FIsOverload; 
     property IsExport          : boolean            read FIsExport        write FIsExport;
+    property IsMethodType      : boolean            read FIsMethodType    write FIsMethodType;
     property CallConvention    : TSE2CallType       read FCallConvention  write FCallConvention;
     property ReturnValue       : TSE2Variable       read FReturnValue     write FReturnValue;
     property StackSize         : integer            read FStackSize       write FStackSize;
@@ -582,6 +589,21 @@ type
 
     property Items[index: integer]: TSE2LinkString read GetItem; default;
     property Count: integer                        read GetCount;
+  end;
+
+  TSE2MethodVariable = class(TSE2Type)
+  private
+    FMethod: TSE2Method;
+  protected
+    procedure SetMethod(value: TSE2Method);
+  public                 
+    constructor Create; override;
+    destructor Destroy; override;
+
+    procedure LoadFromStream(Stream: TStream; Weaver: TSE2NameWeaver); override;
+    procedure SaveToStream(Stream: TStream); override;         
+
+    property Method: TSE2Method read FMethod write SetMethod;
   end;
 
 implementation
@@ -879,20 +901,28 @@ end;
 
 function TSE2BaseTypeList.Delete(index: integer): boolean;
 var obj: TSE2BaseType;
+    nm  : string;
+
+  procedure DoDelete(s: string);
+  begin
+    s := s + ' ';
+    nm := s;
+  end;
+
 begin
   if (index < 0) or (index >= FList.Count) then
      result := False
   else
   begin
+
     obj := FList[index];
+    DoDelete(obj.Name);
     FList.Delete(index);
     try
       if FOwnsObjs then
          obj.Free;
     except
-      asm
-       NOP;
-      end;
+      
     end;
     result := True;
   end;
@@ -1359,7 +1389,7 @@ end;
 
 function TSE2Method.GetHasSelfParam: boolean;
 begin
-  result := Parent <> nil;
+  result := (Parent <> nil) or (FAddHasSelfParam);
   if result then
   begin
     if IsStatic then
@@ -1390,6 +1420,9 @@ begin
         Stream.Read(FIsOverride     , SizeOf(boolean));
         Stream.Read(FIsStatic       , SizeOf(boolean));
         Stream.Read(FIsExport       , SizeOf(boolean));
+        Stream.Read(FIsMethodType   , SizeOf(boolean));
+        Stream.Read(FAddHasSelfParam, SizeOf(boolean));
+
         Stream.Read(FCallConvention , SizeOf(TSE2CallType));
         Stream.Read(FDynamicIndex   , SizeOf(FDynamicIndex));
 
@@ -1431,6 +1464,8 @@ begin
   Stream.Write(FIsOverride     , SizeOf(boolean));
   Stream.Write(FIsStatic       , SizeOf(boolean));
   Stream.Write(FIsExport       , SizeOf(boolean));
+  Stream.Write(FIsMethodType   , SizeOf(boolean));
+  Stream.Write(FAddHasSelfParam, SizeOf(boolean));
   Stream.Write(FCallConvention , SizeOf(TSE2CallType));
   Stream.Write(FDynamicIndex   , SizeOf(FDynamicIndex));
 
@@ -2403,6 +2438,62 @@ begin
   begin
     TSE2StreamHelper.WriteString(Stream, Items[i].GetUniqueName());
   end;
+end;
+
+{ TSE2MethodType }
+
+constructor TSE2MethodVariable.Create;
+begin
+  inherited;
+  FMethod  := TSE2Method.Create;
+  AType    := btProcPtr;
+  DataSize := SizeOf(Pointer) * 2;
+end;
+
+destructor TSE2MethodVariable.Destroy;
+begin
+  FMethod.Free;
+  inherited;
+end;
+
+procedure TSE2MethodVariable.LoadFromStream(Stream: TStream;
+  Weaver: TSE2NameWeaver);
+var version: byte;
+begin
+  inherited;
+  if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
+     exit;
+
+  case version of
+  1 :
+      begin
+        // read class name - will not be readed by the
+        TSE2StreamHelper.ReadString(Stream);
+
+        FMethod.LoadFromStream(Stream, Weaver);
+      end;
+  else RaiseIncompatibleStream;
+  end;
+end;
+
+procedure TSE2MethodVariable.SaveToStream(Stream: TStream);
+var version: byte;
+begin
+  inherited;
+  version := 1;
+  Stream.Write(version, SizeOf(version));
+
+  FMethod.SaveToStream(Stream);
+end;
+
+procedure TSE2MethodVariable.SetMethod(value: TSE2Method);
+begin
+  if value <> nil then
+    if FMethod <> value then
+    begin
+      FreeAndNil(FMethod);
+      FMethod := value;
+    end;
 end;
 
 end.

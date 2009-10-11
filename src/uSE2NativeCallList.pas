@@ -30,6 +30,7 @@ type
     procedure Clear;
 
     function  GenEntry(RunTime, MethodInfo, ClassData: Pointer): PSE2NativeCallEntry;
+    function  FindEntry(Data: Pointer; MethodPos, ClassPtr: Pointer): boolean;
     procedure Add(Entry: PSE2NativeCallEntry);
     procedure ClearForClass(ClassData: Pointer);
 
@@ -85,6 +86,27 @@ begin
   Clear;
   FList.Free;
   inherited;
+end;
+
+function TSE2NativeCallList.FindEntry(Data, MethodPos,
+  ClassPtr: Pointer): boolean;
+var i: integer;
+    p: PSE2NativeCallEntry;
+begin
+  result := False;
+  for i:=FList.Count-1 downto 0 do
+  begin
+    p := FList[i];
+    if Data = p then
+    begin
+      result := True;
+
+      PPointer(MethodPos)^ := p^.MethodInfo;
+      PPointer(ClassPtr)^  := p^.ClassData;
+
+      exit;
+    end;
+  end;
 end;
 
 function TSE2NativeCallList.GenEntry(RunTime, MethodInfo,
