@@ -811,19 +811,7 @@ begin
   '    function  GetNamePath: string;  external;'+#13#10+
   '  end;'+#13#10+
   #13#10+
-  '  TNotifyEventHelper = helper for TNotifyEvent'+#13#10+
-  '  public'+#13#10+
-  '    function Assigned: boolean;'+#13#10+
-  '  end;'+#13#10+
-  #13#10+
-  'implementation'+#13#10+
-  #13#10+
-  'function TNotifyEventHelper.Assigned: boolean;'+#13#10+
-  'begin'+#13#10+
-  '  result := @Self <> nil;'+#13#10+
-  'end;'+#13#10+
-  #13#10+
-  'end.';
+  'implementation end.';
 end;
 
 procedure RegisterUnit;

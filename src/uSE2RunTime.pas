@@ -351,6 +351,7 @@ begin
            raise ESE2NullReferenceError.Create('Method call not assigned');
 
         Meta := PPointer(VarDat[0].tPointer)^;
+        FCodePos := Meta.CodePos - 1;
         if Meta.HasSelf then
         begin
           VarDat[2] := FStack.Items[FStack.Size - Meta.ParamCount - 2];
@@ -361,8 +362,15 @@ begin
 
           FStack.Items[FStack.Size - Meta.ParamCount - 2] := VarDat[1];
           FStack.Pool.Push(VarDat[2]);
+
+          if Meta.DynIndex > -1 then
+          begin
+            FCodePos := GetClassMethods(PPointer(VarDat[1]^.tPointer)^).Items[Meta.DynIndex];
+            if FCodePos < 1 then
+               raise ESE2RunTimeError.Create('Abstract method was not implemented');
+            FCodePos := FCodePos - 1;
+          end;
         end;
-        FCodePos := Meta.CodePos - 1;
         Stack.Pop;
       end;
   soFLOW_RET :

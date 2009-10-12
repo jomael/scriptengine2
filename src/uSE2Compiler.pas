@@ -18,6 +18,7 @@ type
     FUnitCache       : TSE2UnitCacheMngr;
     FUseUnitCache    : boolean;
     FCompiledUnits   : TStringList;
+    FLines           : integer;
 
     // Events
     FGetFileReader   : TSE2GetFileReader;
@@ -50,6 +51,7 @@ type
     property UnitList         : TSE2BaseTypeList   read FUnitList;
     property UseUnitCache     : boolean            read FUseUnitCache      write SetUseUnitCache;
     property UnitCache        : TSE2UnitCacheMngr  read FUnitCache         write FUnitCache;
+    property CompiledLines    : integer            read FLines;
 
     // Events
     property OnGetFile        : TSE2GetFileReader  read FGetFileReader     write FGetFileReader;
@@ -65,6 +67,7 @@ var Linker: TSE2Linker;
 begin
   result := nil;
   FCompiledUnits.Clear;
+  FLines := 0;
   if DoCompile(Tokenizer) <> nil then
   begin
     Linker := TSE2Linker.Create(FUnitList);
@@ -264,6 +267,7 @@ begin
     if not FParser.Compile then
        exit;
 
+    FLines := FLines + Tokenizer.Reader.Line;
     result := FParser.AUnit;
     if FParser.OwnsUnit then
        FUnitList.Add(FParser.AUnit);
