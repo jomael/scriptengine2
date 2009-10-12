@@ -110,7 +110,19 @@ const
           '    function Blue: byte;' + #13#10 +  
           '    function ToGrayscale: TColor;' + #13#10 +
           '  end;' + #13#10 +
-          'implementation' + #13#10 +
+          #13#10+
+          '  TNotifyEventHelper = helper for TNotifyEvent'+#13#10+
+          '  public'+#13#10+
+          '    function Assigned: boolean;'+#13#10+
+          '  end;'+#13#10+
+          #13#10+
+          'implementation'+#13#10+
+          #13#10+
+          'function TNotifyEventHelper.Assigned: boolean;'+#13#10+
+          'begin'+#13#10+
+          '  result := @Self <> nil;'+#13#10+
+          'end;'+#13#10+
+          #13#10+
           'function TDateTimeHelper.Year: integer;' + #13#10 +
           'var y, m, d: word;' + #13#10 +
           'begin' + #13#10 +
