@@ -26,6 +26,7 @@ type
     IsAtStatement  : boolean;
     Visibility     : TSE2Visibility;
     LastVariable   : TSE2Variable;
+    LastProperty   : TSE2Property;
     LastMethod     : TSE2Method;
     LastTargetVar  : TSE2Variable;
     LastSetVariable: TSE2Variable;
@@ -3048,6 +3049,7 @@ begin
   pSearchParent := nil;       
   LastItem      := nil;  
   State.WasFunction := False;
+  State.LastProperty := nil;
   while not FHasError do
   begin
     ExpectToken([sesIdentifier]);
@@ -3148,6 +3150,7 @@ begin
     if FindItem is TSE2Property then
     begin
       result             := TSE2Property(FindItem).AType;
+      State.LastProperty := TSE2Property(FindItem);
       LastItem           := FindItem;
       pSearchParent      := result;
       State.LastVariable := nil;       
@@ -3331,11 +3334,10 @@ begin
         end;
       end;
 
-
       if Tokenizer.Token.AType <> sesBecomes then
       begin
         if FindItem is TSE2Property then
-        begin        
+        begin
           if State.IsExpression then
           begin
             if TSE2Property(FindItem).Getter = nil then
@@ -3386,6 +3388,61 @@ begin
                  DoMethodCall(TSE2Method(TSE2Property(FindItem).Setter), True, SetterCallBack);
                  State.NoStaticPointer := False;
               end;
+            end else
+            if TSE2Property(FindItem).Getter = nil then
+               RaiseError(petError, 'Property is write only')
+            else
+            if TSE2Property(FindItem).Getter is TSE2Variable then
+            begin
+              if TSE2Variable(TSE2Property(FindItem).Getter).AType is TSE2MethodVariable then
+              begin
+                if (not State.IsAtStatement) then
+                begin
+                  PushVarToStack(State, Method, TSE2Variable(TSE2Property(FindItem).Getter), False);
+                  result   := TSE2Variable(TSE2Property(FindItem).Getter).AType;
+                  LastItem := result;
+                  result := DoMethodCall(TSE2MethodVariable(result).Method, False, nil, True, nil);
+                  if result <> nil then
+                  begin
+                    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-1, False), ''));
+                    State.DecStack;
+                  end else
+                  if not TSE2MethodVariable(LastItem).Method.HasSelfParam then
+                  begin
+                    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+                    State.DecStack;
+                  end;
+                  LastItem := nil;
+                end else
+                  RaiseError(petError, 'expression not allowed here');
+              end else
+                RaiseError(petError, 'Internal error: unkown state expression');
+            end else
+            if TSE2Property(FindItem).Getter is TSE2Method then
+            begin
+              if TSE2Method(TSE2Property(FindItem).Getter).ReturnValue.AType is TSE2MethodVariable then
+              begin
+                if (not State.IsAtStatement) then
+                begin
+                  DoMethodCall(TSE2Method(TSE2Property(FindItem).Getter), True);
+                  result   := TSE2Method(TSE2Property(FindItem).Getter).ReturnValue.AType;
+                  LastItem := result;
+                  result := DoMethodCall(TSE2MethodVariable(result).Method, False, nil, True, nil);
+                  if result <> nil then
+                  begin
+                    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-1, False), ''));
+                    State.DecStack;
+                  end else
+                  if not TSE2MethodVariable(LastItem).Method.HasSelfParam then
+                  begin
+                    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+                    State.DecStack;
+                  end;
+                  LastItem := nil;
+                end else
+                  RaiseError(petError, 'expression not allowed here');
+              end else
+                RaiseError(petError, 'Internal error: unknown state method expression');
             end else
               RaiseError(petError, 'Internal error: lost parser state');
           end;
@@ -5727,17 +5784,27 @@ procedure TSE2Parser.AtStatement(State: TSE2ParseState;
   Method: TSE2Method);
 var variable  : TSE2Variable;
     CodeIndex : integer;
+    aType     : TSE2Type;
 begin
   ExpectToken([sesAt]);
   ReadNextToken;
 
   State.IsAtStatement := True;
   State.LastVariable := nil;
-  if IdentifierExpression(State, Method, nil) = nil then
+  State.LastProperty := nil;
+  aType := IdentifierExpression(State, Method, nil);
+  if aType = nil then
      RaiseError(petError, 'invalid expression for @ - operator');
 
-  if (State.LastVariable = nil) and (State.LastMethod = nil) then
+  if (State.LastVariable = nil) and (State.LastMethod = nil) and (State.LastProperty = nil) then
      RaiseError(petError, '@ operator not allowed here');
+
+  if State.LastProperty <> nil then
+  begin
+    if not (State.LastProperty.Getter is TSE2Variable) then
+       RaiseError(petError, '@ not allowed for property getter type');
+    State.LastVariable := TSE2Variable(State.LastProperty.Getter);
+  end;
 
   if State.LastVariable <> nil then
   begin

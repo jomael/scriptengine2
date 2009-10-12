@@ -800,15 +800,30 @@ begin
   Target := 'unit '+C_SE2SystemUnitName + '; '+#13#10+
   #13#10 +
   'interface'+#13#10+
+  #13#10+
   'type'+#13#10+
   '  TNotifyEvent = procedure(Sender: TObject) of object;'+#13#10+
+  #13#10+
   '  TPersistent = class(TExternalObject)'+#13#10+
   '  public'+#13#10+
   '    constructor Create; external;'+#13#10+
   '    procedure Assign(Source: TPersistent);  external;'+#13#10+
   '    function  GetNamePath: string;  external;'+#13#10+
   '  end;'+#13#10+
-  'implementation end.';
+  #13#10+
+  '  TNotifyEventHelper = helper for TNotifyEvent'+#13#10+
+  '  public'+#13#10+
+  '    function Assigned: boolean;'+#13#10+
+  '  end;'+#13#10+
+  #13#10+
+  'implementation'+#13#10+
+  #13#10+
+  'function TNotifyEventHelper.Assigned: boolean;'+#13#10+
+  'begin'+#13#10+
+  '  result := @Self <> nil;'+#13#10+
+  'end;'+#13#10+
+  #13#10+
+  'end.';
 end;
 
 procedure RegisterUnit;

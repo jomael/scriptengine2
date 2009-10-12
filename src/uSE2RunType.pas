@@ -643,7 +643,7 @@ begin
   end else
   begin
 
-    if Dest.AType <> btProcPtr then
+    if not ((Dest.AType = btProcPtr) and (Source.AType in [btProcPtr, btPointer])) then
     begin
       if Dest.AType <> Source.AType then
       begin
