@@ -662,8 +662,12 @@ end;
 
 procedure TSE2MethodCall.AddMethod(const Method: PMethod);
 begin
+  {$IFDEF FPC}      
+  AddPointer(Method);
+  {$ELSE}
   FStack.Add(Method^.Data);
   FStack.Add(Method^.Code);
+  {$ENDIF}
 end;
 
 initialization
