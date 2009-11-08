@@ -385,7 +385,9 @@ var pUnit : TSE2Unit;
           begin
             result := FindIdentifier(Method, IdentName, TSE2Class(aUnit.TypeList[i]), '', ClassTypes, AcceptSetType);
             if result <> nil then
-               exit;
+            begin
+              exit;
+            end;
           end;
   end;
 
@@ -1061,7 +1063,7 @@ begin
                     begin
                       MethodTypeDeclaration(State, TypeName);
                     end;
-    else ExpectToken([sesIdentifier, sesClass, sesHelper, sesPartial, sesSet, sesOpenRound, sesPartial, sesInterface, sesRecord, sesProcedure, sesFunction]);
+    else ExpectToken([sesIdentifier, sesClass, sesHelper, sesSet, sesOpenRound, sesPartial, sesInterface, sesRecord, sesProcedure, sesFunction]);
     end;
 
     if FHasError then
@@ -1266,6 +1268,12 @@ begin
       RaiseError(petError, 'This class is already defined: "'+ClassName+'"');
       exit;
     end;
+
+    if (ClassType.IsForwarded and IsPartial) then
+    begin
+      RaiseError(petError, 'Forwarded classes can not be declared as partial class');
+      exit;
+    end;
   end;
 
   ExpectToken([sesClass, sesHelper]);
@@ -1341,6 +1349,11 @@ begin
       if BaseClass is TSE2Class then
         if TSE2Class(BaseClass).IsHelper then
           RaiseError(petError, 'Helper objects can not be a helper for another helper object');
+
+      if BaseClass is TSE2MethodVariable then
+        if TSE2MethodVariable(BaseClass).Method.ReturnValue <> nil then
+           RaiseError(petError, 'Helper classes can not be made for method types with a return value');
+
 
       if BaseClass.IsDeprecated then
       begin
@@ -3101,20 +3114,25 @@ begin
         if (not State.IsAtStatement) and (Tokenizer.Token.AType <> sesBecomes) then
         begin
           LastItem := result;
+          if Tokenizer.Token.AType in [sesDot] then
+          begin
 
-          result := DoMethodCall(TSE2MethodVariable(result).Method, False, nil, True, nil);
-          if result <> nil then
-          begin
-            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-1, False), ''));
-            State.DecStack;
           end else
-          if not TSE2MethodVariable(LastItem).Method.HasSelfParam then
           begin
-            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-            State.DecStack;
+            result := DoMethodCall(TSE2MethodVariable(result).Method, False, nil, True, nil);
+            if result <> nil then
+            begin
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-1, False), ''));
+              State.DecStack;
+            end else
+            if not TSE2MethodVariable(LastItem).Method.HasSelfParam then
+            begin
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+              State.DecStack;
+            end;
+            pSearchParent := result;
+            LastItem := nil;
           end;
-          pSearchParent := result;
-          LastItem := nil;
         end;
       end;
     end else
@@ -3442,7 +3460,10 @@ begin
                 end else
                   RaiseError(petError, 'expression not allowed here');
               end else
-                RaiseError(petError, 'Internal error: unknown state method expression');
+              begin
+                RaiseError(petError, 'Assignment expected')
+                //RaiseError(petError, 'Internal error: unknown state method expression');
+              end;
             end else
               RaiseError(petError, 'Internal error: lost parser state');
           end;

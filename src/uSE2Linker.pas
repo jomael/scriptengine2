@@ -62,6 +62,8 @@ type
 
 implementation
 
+uses SysUtils;
+
 { TSE2Linker }
 
 constructor TSE2Linker.Create(const UnitList: TSE2BaseTypeList);
@@ -446,7 +448,7 @@ var i, j     : integer;
 
     for c := 0 to Method.OpCodes.Count-1 do
       if Method.OpCodes[c].CodeHash = NameHash then
-        if Method.OpCodes[c].CodeIndex = ElemName then
+        if AnsiSameText(Method.OpCodes[c].CodeIndex, ElemName) then
           if Method.OpCodes[c].OpCode <> nil then
             if Method.OpCodes[c].OpCode.OpCode in [soFLOW_CALL, soFLOW_CALLEX] then
             begin
@@ -500,7 +502,7 @@ var i, j     : integer;
 
     for c := 0 to Method.OpCodes.Count-1 do
       if Method.OpCodes[c].CodeHash = NameHash then
-        if Method.OpCodes[c].CodeIndex = ElemName then
+        if AnsiSameText(Method.OpCodes[c].CodeIndex, ElemName) then
         begin
           Assert(Method.OpCodes[c].OpCode <> nil);
           Method.OpCodes[c].SetPosition(NewPos);
