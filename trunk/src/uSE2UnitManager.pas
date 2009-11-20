@@ -46,7 +46,8 @@ type
     function  GetNumModules: integer; virtual; abstract;
     function  GetModuleName(index: integer): string; virtual; abstract;
     procedure SetModuleName(index: integer; value: string); virtual; abstract;
-    function  GetNameHash(index: integer): integer; virtual; abstract;
+    function  GetNameHash(index: integer): integer; virtual; abstract; 
+    function  GetIsExtender(index: integer): boolean; virtual; abstract;
 
     function  GetFirstModuleName: string;
     procedure SetFirstModuleName(value: string);
@@ -63,11 +64,12 @@ type
     procedure RegisterMethods(index: integer; const Target: TSE2RunAccess); virtual; abstract;
 
     {$Warnings off}
-    property  Modules                  : integer  read GetNumModules;
-    property  Priority                 : integer  read FPriority          write FPriority;
-    property  UnitNames[index: integer]: string   read GetModuleName      write SetModuleName;
-    property  UnitName                 : string   read GetFirstModuleName write SetFirstModuleName;
-    property  NameHash[index: integer] : integer  read GetNameHash;
+    property  Modules                   : integer  read GetNumModules;
+    property  Priority                  : integer  read FPriority          write FPriority;
+    property  IsExtender[index: integer]: boolean  read GetIsExtender;
+    property  UnitNames[index: integer] : string   read GetModuleName      write SetModuleName;
+    property  UnitName                  : string   read GetFirstModuleName write SetFirstModuleName;
+    property  NameHash[index: integer]  : integer  read GetNameHash;
     {$Warnings on}
   end;
 
@@ -87,6 +89,7 @@ type
     procedure SetModuleName(index: Integer; value: String); override;
     function  GetNameHash(index: Integer): Integer; override;
     function  GetNumModules: Integer; override;
+    function  GetIsExtender(index: Integer): Boolean; override;
   public
     DoLastChangeTime    : TSE2UnitLastChangeTime;
     DoCanCacheSource    : TSE2UnitCanCacheSource;
@@ -297,6 +300,11 @@ begin
   DoLastChangeTime    := MethodUnit_LastChangeTime;
   DoCanCacheSource    := MethodUnit_CanCacheSource;
   DoRegisterVariables := MethodUnit_RegisterVariables;         
+end;
+
+function TSE2MethodUnit.GetIsExtender(index: Integer): Boolean;
+begin
+  result := False;
 end;
 
 function TSE2MethodUnit.GetModuleName(index: Integer): String;

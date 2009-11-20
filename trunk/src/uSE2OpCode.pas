@@ -507,7 +507,7 @@ type
     procedure SaveToStream(Stream: TStream);
 
     procedure SetPosition(index: integer);
-    procedure AddOffset(Offset: integer);
+    procedure AddOffset(Offset: integer; MinJumpPos: integer);
     function  GetJumpPos: integer;
 
     property OpCode      : PSE2OpDefault    read FOpCode      write FOpCode;
@@ -1018,6 +1018,14 @@ end;
 
 {$Warnings off}
 function TSE2LinkOpCode.GetJumpPos: integer;
+
+  function Max(i1, i2: integer): integer;
+  begin
+    result := i1;
+    if i2 > result then
+       result := i2;
+  end;
+
 begin
   result := 0;
   if FOpCode = nil then
@@ -1029,10 +1037,15 @@ begin
   soFLOW_JNZ        : result := PSE2OpFLOW_JNZ(FOpCode).Position;
   soFLOW_CALL       : result := PSE2OpFLOW_CALL(FOpCode).Position;
   soFLOW_PUSHRET    : result := PSE2OpFLOW_PUSHRET(FOpCode).Position;
+
+  soSAFE_SJUMP      : result := Max(PSE2OpSAFE_SJUMP(FOpCode).Target, PSE2OpSAFE_SJUMP(FOpCode).ExitTo);
+  soSAFE_TRYEX      : result := Max(PSE2OpSAFE_TRYEX(FOpCode).SavePos, PSE2OpSAFE_TRYEX(FOpCode).LeavePos);
+  soSAFE_TRYFIN     : result := Max(PSE2OpSAFE_TRYFIN(FOpCode).SavePos, PSE2OpSAFE_TRYFIN(FOpCode).LeavePos);
+  soSAFE_BLOCK      : result := PSE2OpSAFE_BLOCK(FOpCode)^.SkipPoint;
   end;
 end;
 
-procedure TSE2LinkOpCode.AddOffset(Offset: integer);
+procedure TSE2LinkOpCode.AddOffset(Offset: integer; MinJumpPos: integer);
 begin
   if FOpCode = nil then
      exit;
@@ -1043,6 +1056,33 @@ begin
   soFLOW_JNZ        : PSE2OpFLOW_JNZ(FOpCode).Position    := PSE2OpFLOW_JNZ(FOpCode).Position + Offset;
   soFLOW_CALL       : PSE2OpFLOW_CALL(FOpCode).Position   := PSE2OpFLOW_CALL(FOpCode).Position + Offset;
   soFLOW_PUSHRET    : PSE2OpFLOW_PUSHRET(FOpCode).Position:= PSE2OpFLOW_CALL(FOpCode).Position + Offset;
+
+  soSAFE_SJUMP      :
+      begin
+        if PSE2OpSAFE_SJUMP(FOpCode)^.Target > MinJumpPos then
+           PSE2OpSAFE_SJUMP(FOpCode)^.Target := PSE2OpSAFE_SJUMP(FOpCode)^.Target  + Offset;
+
+        if PSE2OpSAFE_SJUMP(FOpCode)^.ExitTo > MinJumpPos then
+           PSE2OpSAFE_SJUMP(FOpCode)^.ExitTo := PSE2OpSAFE_SJUMP(FOpCode)^.ExitTo  + Offset;
+      end;
+  soSAFE_TRYEX      :
+      begin
+        if PSE2OpSAFE_TRYEX(FOpCode)^.SavePos > MinJumpPos then
+           PSE2OpSAFE_TRYEX(FOpCode)^.SavePos  := PSE2OpSAFE_TRYEX(FOpCode)^.SavePos  + Offset;
+        if PSE2OpSAFE_TRYEX(FOpCode)^.LeavePos > MinJumpPos then
+           PSE2OpSAFE_TRYEX(FOpCode)^.LeavePos := PSE2OpSAFE_TRYEX(FOpCode)^.LeavePos + Offset;
+      end;
+  soSAFE_TRYFIN     :
+      begin
+        if PSE2OpSAFE_TRYFIN(FOpCode)^.SavePos > MinJumpPos then
+           PSE2OpSAFE_TRYFIN(FOpCode)^.SavePos  := PSE2OpSAFE_TRYFIN(FOpCode)^.SavePos  + Offset;  
+        if PSE2OpSAFE_TRYFIN(FOpCode)^.LeavePos > MinJumpPos then
+           PSE2OpSAFE_TRYFIN(FOpCode)^.LeavePos := PSE2OpSAFE_TRYFIN(FOpCode)^.LeavePos + Offset;
+      end;
+  soSAFE_BLOCK     :
+      begin
+        PSE2OpSAFE_BLOCK(FOpCode)^.SkipPoint  := PSE2OpSAFE_BLOCK(FOpCode)^.SkipPoint + Offset;
+      end;
   end;
 end;
 {$Warnings on}

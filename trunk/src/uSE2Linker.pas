@@ -695,7 +695,7 @@ var i, j    : integer;
     for i:=0 to Method.OpCodes.Count-1 do
     begin
       if Method.OpCodes[i].GetJumpPos > CurIndex then
-         Method.OpCodes[i].AddOffset(Offset);
+         Method.OpCodes[i].AddOffset(Offset, CurIndex);
     end;
   end;
 

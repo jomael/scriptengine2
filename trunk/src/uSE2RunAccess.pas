@@ -190,8 +190,18 @@ begin
 end;
 
 function TSE2RunAccess.HasUnit(const UnitName: string): boolean;
+var i: integer;
 begin
-  result := True;
+  for i:=FPEData.MetaData.Count-1 downto 0 do
+  begin
+    if AnsiSameText(FPEData.MetaData[i].AUnitName, UnitName) then
+    begin
+      result := True;
+      exit;
+    end;
+  end;
+
+  result := False; // True;
 end;
 
 function TSE2RunAccess.IsChildOfClass(BaseClass,

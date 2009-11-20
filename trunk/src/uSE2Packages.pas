@@ -22,6 +22,7 @@ type
     FMinVersion      : TSE2Version;
     FGUID            : TGUID;
 
+    FGetIsExtender   : TSE2PackageIsExtender;
     FGetNumModules   : TSE2PackageNumModules;
     FGetModuleSize   : TSE2PackageModuleSize;
     FGetModuleName   : TSE2PackageGetModuleName;
@@ -32,6 +33,7 @@ type
     procedure PackageGetModuleName(index: integer; var Target: AnsiString);
     procedure PackageGetModuleSource(index: integer; var Target: AnsiString);
     procedure PackageRegisterMethods(index: integer; const Target: TSE2RunAccess);
+    function  PackageIsExtender(index: integer): boolean;
   protected
     function  InitializePackage: boolean;
     procedure FinalizePackage;
@@ -42,7 +44,9 @@ type
     function  GetNameHash(index: Integer): Integer; override;
 
     function  GetModuleName(index: Integer): String; override;
-    procedure SetModuleName(index: Integer; value: String); override;
+    procedure SetModuleName(index: Integer; value: String); override; 
+    function  GetIsExtender(index: Integer): Boolean; override;
+
   public
     constructor Create(DLLHandle: THandle); reintroduce; overload;
     constructor Create(PackageName: TFileName); reintroduce; overload;
@@ -264,6 +268,7 @@ begin
   if not Assigned(FRegisterMethods) then
      exit;
 
+  FGetIsExtender   := GetProcAddress(FDLLHandle, PAnsiChar(CSE2PackageIsExtender));  
 
   if PackInit() <> 0 then
      exit;
@@ -405,6 +410,19 @@ begin
   if Target.HasUnit(FCurrentUnitName) then
     if Assigned(FRegisterMethods) then
        FRegisterMethods(index, Target, @PackageRegisterCallback);
+end;
+
+function TSE2PackageUnit.GetIsExtender(index: Integer): Boolean;
+begin
+  result := PackageIsExtender(index)
+end;
+
+function TSE2PackageUnit.PackageIsExtender(index: integer): boolean;
+begin
+  if @FGetIsExtender <> nil then
+     result := FGetIsExtender(index)
+  else
+     result := False;
 end;
 
 end.

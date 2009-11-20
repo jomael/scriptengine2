@@ -735,6 +735,11 @@ begin
         RaiseError(petError, Format(C_ERR_UnitAlreadyAdded, [Tokenizer.Token.Value]));
         exit;
       end;
+      if FUnit.IsName(FTokenizer.Token.Value) then
+      begin
+        RaiseError(petError, Format(C_ERR_CanNotUseOwnUnit, [Tokenizer.Token.Value]));
+        exit;
+      end;
       aNewUnit := DoNeedUnit(FTokenizer.Token.Value);
       if aNewUnit = nil then
          RaiseError(petError, Format(C_ERR_CouldNotAddUnit, [Tokenizer.Token.Value]))
@@ -959,6 +964,12 @@ begin
             if (State.CurrentOwner is TSE2Class) and (State.Method = nil) and (not State.IsStatic) then
             begin
               NewVar.CodePos := TSE2Class(State.CurrentOwner).ClassSize;
+
+              if TSE2Type(NewVar.AType.InheritRoot).DataSize = 0 then
+                 RaiseError(petError, 'Internal error: data size can not be 0');
+
+              //Assert(NewVar.AType <> nil);
+              //Assert(TSE2Type(NewVar.AType.InheritRoot).DataSize <> 0);
 
 
               TSE2Class(State.CurrentOwner).ClassSize := TSE2Class(State.CurrentOwner).ClassSize + TSE2Type(NewVar.AType.InheritRoot).DataSize;
@@ -1297,6 +1308,15 @@ begin
       ClassType.IsPartial   := IsPartial;
       ClassType.IsForwarded := True;
       FUnit.TypeList.Add(ClassType);
+
+      BaseClass := TSE2Class(FindIdentifier(nil, C_SE2TObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class])));
+      if BaseClass = nil then
+      begin
+        RaiseError(petError, 'FATAL ERROR: internal '+C_SE2TObjectName+' not found!');
+        exit;
+      end;
+
+      ClassType.DataSize := BaseClass.DataSize;
       ReadNextToken;
       exit;
     end else
@@ -3171,7 +3191,7 @@ begin
       State.LastProperty := TSE2Property(FindItem);
       LastItem           := FindItem;
       pSearchParent      := result;
-      State.LastVariable := nil;       
+      State.LastVariable := nil;
       if not State.IsExpression then
          State.LastTargetVar := nil;
     end else
@@ -3296,6 +3316,7 @@ begin
         begin
           DoMethodCall(TSE2Method(TSE2Property(FindItem).Getter));
           State.NoStaticPointer := False;
+          State.AParent := pSearchParent;
         end;
       end;
 
@@ -4804,12 +4825,6 @@ begin
 
   StatementSquence(State, Method);
 
-  PopMethodVariables(State, Method);
-  ExpectToken([sesEnd]);
-  ReadNextToken;
-  ExpectToken([sesSemiColon]);
-  ReadNextToken;
-
   Method.Lists.ExitTableList.Delete(Method.Lists.ExitTableList.Count-1);
 
   for i:=Method.Lists.ExitList.Count-1 downto oldExitList do
@@ -4818,6 +4833,14 @@ begin
        PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.ExitList[i]].OpCode)^.Position := Method.OpCodes.Count;
     Method.Lists.ExitList.Delete(Method.Lists.ExitList.Count-1);
   end;
+
+  PopMethodVariables(State, Method);
+  ExpectToken([sesEnd]);
+  ReadNextToken;
+  ExpectToken([sesSemiColon]);
+  ReadNextToken;
+
+  
 
   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
 

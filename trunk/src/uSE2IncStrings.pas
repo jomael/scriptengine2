@@ -25,6 +25,8 @@ const
       #13#10+
       '  Strings = class(TExternalObject)'+#13#10+
       '  public'+#13#10+
+      '    class function ToASCIIIndex(const s: string): word; external;'+#13#10+
+      '    class function FromASCIIIndex(index: word): string; external;'+#13#10+
       '    class function AdjustLineBreaks(const S: string; Style: TTextLineBreakStyle): string; external;'+#13#10+
       '    class function CompareStr(const S1, S2: string): Integer; external;'+#13#10+
       '    class function CompareText(const S1, S2: string): Integer; external;'+#13#10+
@@ -106,6 +108,8 @@ end;
 type
   Strings = class
   public
+    class function FromASCIIIndex(index: word): string;
+    class function ToASCIIIndex(const s: string): word;
     class function AdjustLineBreaks(const S: string; Style: TTextLineBreakStyle): string;
     class function CompareStr(const S1, S2: string): Integer;
     class function CompareText(const S1, S2: string): Integer;
@@ -178,6 +182,8 @@ procedure Unit_RegisterMethods(const Target: TSE2RunAccess);
 begin
   if Target.HasUnit(C_UnitName) then
   begin
+    Target.Method['Strings.ToASCIIIndex[0]', C_UnitName] := @Strings.ToASCIIIndex;
+    Target.Method['Strings.FromASCIIIndex[0]', C_UnitName] := @Strings.FromASCIIIndex;
     Target.Method['Strings.AdjustLineBreaks[0]', C_UnitName] := @Strings.AdjustLineBreaks;
     Target.Method['Strings.CompareStr[0]', C_UnitName] := @Strings.CompareStr;
     Target.Method['Strings.CompareText[0]', C_UnitName] := @Strings.CompareText;
@@ -297,6 +303,11 @@ class function Strings.Duplicate(const AText: string;
   ACount: Integer): string;
 begin
   result := StrUtils.DupeString(AText, ACount)
+end;
+
+class function Strings.FromASCIIIndex(index: word): string;
+begin
+  result := Chr(index);
 end;
 
 class procedure Strings.Insert(Source: string; var S: string;
@@ -513,6 +524,14 @@ class function Strings.StuffString(const AText: string; AStart,
   ALength: Cardinal; const ASubText: string): string;
 begin
   result := StrUtils.StuffString(AText, AStart, ALength, ASubText)
+end;
+
+class function Strings.ToASCIIIndex(const s: string): word;
+begin
+  if s <> '' then
+     result := Ord(s[1])
+  else
+     result := 0;
 end;
 
 class function Strings.Trim(const Text: string): string;

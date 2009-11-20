@@ -1721,9 +1721,10 @@ var MetaEntry  : TSE2MetaEntry;
     end;
   end;
 
-var OldCodePos : cardinal;
-    Methods    : TSE2DynMethodList;
-    Index      : integer;
+var OldCodePos   : cardinal;
+    OldStackSize : integer;
+    Methods      : TSE2DynMethodList;
+    Index        : integer;
 begin
   SelfPtr := nil;
   if Method = nil then
@@ -1737,9 +1738,16 @@ begin
   if not FInitialized then
      Initialize;
 
+  OldStackSize := MaxInt;
   OldCodePos := FCodePos;
   try
     PushParamsToStack;
+    // -1 because of the return value, which is automatically
+    // removed after Self.Process
+    if MetaEntry.HasResult then
+      OldStackSize := FStack.Size
+    else
+      OldStackSize := FStack.Size - 1;
     FDoAbort   := False;
 
     if (MetaEntry.DynIndex > -1) and (SelfPtr <> nil) then
@@ -1757,6 +1765,9 @@ begin
       Process;
     end;
   finally
+    while FStack.Size > OldStackSize do
+      Stack.Pop;
+    
     PopParamsFromStack;
     FCodePos := OldCodePos;
   end;

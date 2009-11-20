@@ -181,7 +181,9 @@ var CallInfo     : PSE2NativeCallEntry;
         if (Registers < 4 - PointerSize(aParamType, bIsVarParam)) and (SupportsRegister(aParamType) or bIsVarParam) then
            result := RegPtr
         else
+        begin
            result := StackPtr;
+        end;
         exit;
       end;
 
@@ -410,11 +412,11 @@ var CallInfo     : PSE2NativeCallEntry;
         btDouble :
             SetVariableContent(aParamType, vtExtended, Pointer(integer(Parameter) - SizeOf(Pointer)));
         btString, btUTF8String :
-            SetVariableContent(aParamType, vtAnsiString, @Parameter);
+            SetVariableContent(aParamType, vtAnsiString, Parameter);
         btPChar :
-            SetVariableContent(aParamType, vtPChar, @Parameter);
+            SetVariableContent(aParamType, vtPChar, Parameter);
         btChar :
-            SetVariableContent(aParamType, vtChar, @Parameter);
+            SetVariableContent(aParamType, vtChar, Parameter);
         btWideString :
             SetVariableContent(aParamType, vtWideString, Parameter);
         btPointer :
@@ -553,7 +555,8 @@ var CallInfo     : PSE2NativeCallEntry;
     end;
   end;
 
-var iRes: integer;
+var iRes         : integer;
+    OldStackSize : integer;
 begin
   CallInfo      := MethodPtr;
   RunTime       := CallInfo^.RunTime;
@@ -564,9 +567,17 @@ begin
   if not RunTime.Initialized then
      RunTime.Initialize;
 
-  OldCodePos := RunTime.CodePos;
+  OldStackSize := MaxInt;
+  OldCodePos   := RunTime.CodePos;
   try
     PushParamsToStack;
+
+    // -1 because of the return value, which is automatically
+    // removed after RunTime.Process
+    if ScriptMethod.HasResult then
+      OldStackSize  := RunTime.Stack.Size
+    else
+      OldStackSize  := RunTime.Stack.Size - 1;
 
     if (ScriptMethod.DynIndex > -1) and (ClassPtr <> nil) then
     begin
@@ -583,6 +594,8 @@ begin
       RunTime.Process;
     end;
   finally
+    while RunTime.Stack.Size > OldStackSize do
+      RunTime.Stack.Pop;
     iRes := PopParamsFromStack;
     RunTime.CodePos := OldCodePos;
   end;

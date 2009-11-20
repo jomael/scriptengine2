@@ -60,6 +60,7 @@ const
   C_ERR_SystemUnitNotFound   = 'FATAL ERROR: System unit not available';
   C_ERR_UnitAlreadyAdded     = 'Unit "%s" already added into uses list';
   C_ERR_CouldNotAddUnit      = 'Could not add the unit "%s"';
+  C_ERR_CanNotUseOwnUnit     = 'Units can not use the own unit: %s';
 
 implementation
 
