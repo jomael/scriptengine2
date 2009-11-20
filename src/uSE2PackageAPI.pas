@@ -16,6 +16,7 @@ const
   CSE2PackageInitModule       = 'SE2InitModule';
   CSE2PackageFinalizeModule   = 'SE2FinalizeModule';
 
+  CSE2PackageIsExtender       = 'SE2IsExtender';
   CSE2PackageModuleSize       = 'SE2GetModuleSize';
   CSE2PackageGetModuleName    = 'SE2ModuleName';
   CSE2PackageGetModuleSource  = 'SE2ModuleSource';
@@ -55,6 +56,9 @@ type
   TSE2PackageFinalizeModule   = procedure(Module: TPackageModule); stdcall;
   // Finalize the module
   TSE2PackageModuleSize       = procedure(Module: TPackageModule; var NameLen, SourceLen: integer); stdcall;
+  
+  // Get Module Dependency
+  TSE2PackageIsExtender       = function(Module: TPackageModule): boolean; stdcall;
 
   // Get Module Data
   TSE2PackageGetModuleName    = function(Module: TPackageModule; pName: PAnsiChar; BuffSize: integer): integer; stdcall;

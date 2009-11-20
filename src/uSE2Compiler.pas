@@ -178,15 +178,32 @@ begin
       for j:=0 to TSE2UnitManager.Instance.Units[i].Modules-1 do
       begin
         if StringIdentical(TSE2UnitManager.Instance.Units[i].UnitNames[j], UnitName) then
-        begin
-          TSE2UnitManager.Instance.Units[i].GetUnitSource(j, src);
-          Token := TSE2Tokenizer.Create(TSE2StringReader.Create(src));
-          FUnit := DoCompile(Token, nil, -1, UnitName);
-          result := result and (FUnit <> nil);
-          count := count + 1;
-          if not result then
-             exit;
-        end;
+          if not TSE2UnitManager.Instance.Units[i].IsExtender[j] then
+          begin
+            TSE2UnitManager.Instance.Units[i].GetUnitSource(j, src);
+            Token := TSE2Tokenizer.Create(TSE2StringReader.Create(src));
+            FUnit := DoCompile(Token, nil, -1, UnitName);
+            result := result and (FUnit <> nil);
+            count := count + 1;
+            if not result then
+               exit;
+          end;
+      end;
+
+    for i:=0 to TSE2UnitManager.Instance.Count-1 do
+      for j:=0 to TSE2UnitManager.Instance.Units[i].Modules-1 do
+      begin
+        if StringIdentical(TSE2UnitManager.Instance.Units[i].UnitNames[j], UnitName) then
+          if TSE2UnitManager.Instance.Units[i].IsExtender[j] then
+          begin
+            TSE2UnitManager.Instance.Units[i].GetUnitSource(j, src);
+            Token := TSE2Tokenizer.Create(TSE2StringReader.Create(src));
+            FUnit := DoCompile(Token, nil, -1, UnitName);
+            result := result and (FUnit <> nil);
+            count := count + 1;
+            if not result then
+               exit;
+          end;
       end;
 
     if (Readers.Count > 0) and (result) then

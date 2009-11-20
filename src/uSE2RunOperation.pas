@@ -703,7 +703,13 @@ end;
 procedure TSE2VarOperation.BooleanNot(Data: PSE2VarData);
 begin
   case Data^.AType of
-  btU8          : Data^.tu8^      := TbtU8(not boolean(Data^.tu8^));
+  btBoolean     :
+      begin
+        if Data^.tu8^ <> 0 then
+           Data^.tu8^ := 0
+        else
+           Data^.tu8^ := 1;
+      end;
   btS8          : Data^.ts8^      := TbtS8(not boolean(Data^.ts8^));
   btU16         : Data^.tu16^     := TbtU16(not boolean(Data^.tu16^));
   btS16         : Data^.ts16^     := TbtS16(not boolean(Data^.ts16^));
