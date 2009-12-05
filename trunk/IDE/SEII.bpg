@@ -1,0 +1,29 @@
+#------------------------------------------------------------------------------
+VERSION = BWS.01
+#------------------------------------------------------------------------------
+!ifndef ROOT
+ROOT = $(MAKEDIR)\..
+!endif
+#------------------------------------------------------------------------------
+MAKE = $(ROOT)\bin\make.exe -$(MAKEFLAGS) -f$**
+DCC = $(ROOT)\bin\dcc32.exe $**
+BRCC = $(ROOT)\bin\brcc32.exe $**
+#------------------------------------------------------------------------------
+PROJECTS = ScriptEngineII.exe IO.dll Streams.dll Collections.dll
+#------------------------------------------------------------------------------
+default: $(PROJECTS)
+#------------------------------------------------------------------------------
+
+ScriptEngineII.exe: ScriptEngineII.dpr
+  $(DCC)
+
+IO.dll: packages\IO\IO.dpr
+  $(DCC)
+
+Streams.dll: packages\Streams\Streams.dpr
+  $(DCC)
+
+Collections.dll: packages\Collections\Collections.dpr
+  $(DCC)
+
+
