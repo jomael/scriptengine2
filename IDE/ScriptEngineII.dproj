@@ -1,0 +1,161 @@
+﻿	<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<ProjectGuid>{1281A09E-890B-47E5-9641-B8A13BB116EB}</ProjectGuid>
+			<MainSource>ScriptEngineII.dpr</MainSource>
+			<Config Condition="'$(Config)'==''">Debug</Config>
+			<DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
+			<ProjectVersion>12.0</ProjectVersion>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Basis' or '$(Base)'!=''">
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Release' or '$(Cfg_1)'!=''">
+			<Cfg_1>true</Cfg_1>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Config)'=='Debug' or '$(Cfg_2)'!=''">
+			<Cfg_2>true</Cfg_2>
+			<CfgParent>Base</CfgParent>
+			<Base>true</Base>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Base)'!=''">
+			<DCC_ImageBase>00400000</DCC_ImageBase>
+			<DCC_UsePackage>vcl;rtl;vclx;indy;inet;xmlrtl;vclie;inetdbbde;inetdbxpress;dbrtl;dsnap;dsnapcon;vcldb;soaprtl;VclSmp;dbexpress;dbxcds;inetdb;bdertl;vcldbx;webdsnap;websnap;adortl;ibxpress;teeui;teedb;tee;dss;visualclx;visualdbclx;vclactnband;vclshlctrls;IntrawebDB_50_70;Intraweb_50_70;Rave50CLX;Rave50VCL;dclOfficeXP</DCC_UsePackage>
+			<DCC_StrictVarStrings>false</DCC_StrictVarStrings>
+			<DCC_DependencyCheckOutputName>_bin\ScriptEngineII.exe</DCC_DependencyCheckOutputName>
+			<DCC_UnitAlias>WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;$(DCC_UnitAlias)</DCC_UnitAlias>
+			<DCC_Platform>x86</DCC_Platform>
+			<DCC_ExeOutput>.\_bin</DCC_ExeOutput>
+			<DCC_K>false</DCC_K>
+			<DCC_N>true</DCC_N>
+			<DCC_S>false</DCC_S>
+			<DCC_F>false</DCC_F>
+			<DCC_SymbolReferenceInfo>1</DCC_SymbolReferenceInfo>
+			<DCC_DcuOutput>.\_dcu</DCC_DcuOutput>
+			<DCC_E>false</DCC_E>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_1)'!=''">
+			<DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
+			<DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
+			<DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
+			<DCC_DebugInformation>false</DCC_DebugInformation>
+		</PropertyGroup>
+		<PropertyGroup Condition="'$(Cfg_2)'!=''">
+			<DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+		</PropertyGroup>
+		<ItemGroup>
+			<DelphiCompile Include="ScriptEngineII.dpr">
+				<MainSource>MainSource</MainSource>
+			</DelphiCompile>
+			<DCCReference Include="main.pas">
+				<Form>MainForm</Form>
+			</DCCReference>
+			<DCCReference Include="units\Script Engine\uSE2Consts.pas"/>
+			<DCCReference Include="units\Script Engine\Reader\uSE2Reader.pas"/>
+			<DCCReference Include="units\Script Engine\uSE2BaseTypes.pas"/>
+			<DCCReference Include="units\Script Engine\Reader\uSE2Tokenizer.pas"/>
+			<DCCReference Include="units\Script Engine\Compiler\uSE2Compiler.pas"/>
+			<DCCReference Include="units\Script Engine\Compiler\uSE2Types.pas"/>
+			<DCCReference Include="units\Script Engine\Compiler\uSE2Parser.pas"/>
+			<DCCReference Include="units\Script Engine\uSE2OpCode.pas"/>
+			<DCCReference Include="units\Script Engine\uSE2Errors.pas"/>
+			<DCCReference Include="units\Script Engine\Compiler\uSE2SystemUnit.pas"/>
+			<DCCReference Include="units\Script Engine\Compiler\uSE2Linker.pas"/>
+			<DCCReference Include="units\Script Engine\uSE2PEData.pas"/>
+			<DCCReference Include="units\Script Engine\RunTime\uSE2RunTime.pas"/>
+			<DCCReference Include="units\Script Engine\RunTime\uSE2RunType.pas"/>
+			<DCCReference Include="units\Script Engine\RunTime\uSE2MemoryManager.pas"/>
+			<DCCReference Include="units\Script Engine\RunTime\uSE2RunCall.pas"/>
+			<DCCReference Include="units\Script Engine\RunTime\uSE2RunOperation.pas"/>
+			<DCCReference Include="units\Script Engine\Debug\uSE2DebugData.pas"/>
+			<DCCReference Include="units\Script Engine\RunTime\uSE2RunAccess.pas"/>
+			<DCCReference Include="units\Script Engine\Compiler\uSE2UnitManager.pas"/>
+			<DCCReference Include="units\Script Engine\Imports\uSE2IncConsole.pas"/>
+			<DCCReference Include="units\Script Engine\Imports\uSE2IncConvert.pas"/>
+			<DCCReference Include="units\Script Engine\Imports\uSE2IncDateTime.pas"/>
+			<DCCReference Include="units\Script Engine\RunTime\uSE2SafeBlockMngr.pas"/>
+			<DCCReference Include="units\Script Engine\Imports\uSE2IncStrings.pas"/>
+			<DCCReference Include="units\Script Engine\Helper\uSE2CodeCompletion.pas"/>
+			<DCCReference Include="units\Script Engine\Imports\uSE2IncMath.pas"/>
+			<DCCReference Include="units\Script Engine\Compiler\uSE2UnitCache.pas"/>
+			<DCCReference Include="units\Script Engine\Compiler\uSE2NameWeaver.pas"/>
+			<DCCReference Include="units\Script Engine\Compiler\uSE2UnitCacheMngr.pas"/>
+			<DCCReference Include="units\Script Engine\Imports\uSE2IncInfo.pas"/>
+			<DCCReference Include="units\Editor\uFormCodeEditor.pas"/>
+			<DCCReference Include="units\Editor\uFormCompileMessages.pas"/>
+			<DCCReference Include="units\ScriptProject\uScriptProject.pas"/>
+			<DCCReference Include="units\Console\ConsoleForm.pas">
+				<Form>ConsoleWindow</Form>
+			</DCCReference>
+			<DCCReference Include="units\Console\CONSOLE.PAS"/>
+			<DCCReference Include="units\Script Engine\uSE2PerfMonitor.pas"/>
+			<DCCReference Include="units\uFolderDialog.pas"/>
+			<DCCReference Include="units\Script Engine\Imports\uSE2IncPerformance.pas"/>
+			<DCCReference Include="units\Script Engine\Imports\uSE2IncClasses.pas"/>
+			<DCCReference Include="units\Forms\uFrmAbout.pas">
+				<Form>frmAbout</Form>
+			</DCCReference>
+			<DCCReference Include="units\Editor\SynHighlighterSE2.pas"/>
+			<DCCReference Include="units\Script Engine\Imports\uSE2IncHelpers.pas"/>
+			<BuildConfiguration Include="Basis">
+				<Key>Base</Key>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Debug">
+				<Key>Cfg_2</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+			<BuildConfiguration Include="Release">
+				<Key>Cfg_1</Key>
+				<CfgParent>Base</CfgParent>
+			</BuildConfiguration>
+		</ItemGroup>
+		<Import Project="$(BDS)\Bin\CodeGear.Delphi.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Delphi.Targets')"/>
+		<ProjectExtensions>
+			<Borland.Personality>Delphi.Personality.12</Borland.Personality>
+			<Borland.ProjectType>VCLApplication</Borland.ProjectType>
+			<BorlandProject>
+				<Delphi.Personality>
+					<Source>
+						<Source Name="MainSource">ScriptEngineII.dpr</Source>
+					</Source>
+					<Parameters>
+						<Parameters Name="UseLauncher">False</Parameters>
+						<Parameters Name="LoadAllSymbols">True</Parameters>
+						<Parameters Name="LoadUnspecifiedSymbols">False</Parameters>
+					</Parameters>
+					<Language>
+						<Language Name="RootDir">D:\Programming\Delphi\Projects\Script Engine II\</Language>
+					</Language>
+					<VersionInfo>
+						<VersionInfo Name="IncludeVerInfo">False</VersionInfo>
+						<VersionInfo Name="AutoIncBuild">False</VersionInfo>
+						<VersionInfo Name="MajorVer">1</VersionInfo>
+						<VersionInfo Name="MinorVer">0</VersionInfo>
+						<VersionInfo Name="Release">0</VersionInfo>
+						<VersionInfo Name="Build">0</VersionInfo>
+						<VersionInfo Name="Debug">False</VersionInfo>
+						<VersionInfo Name="PreRelease">False</VersionInfo>
+						<VersionInfo Name="Special">False</VersionInfo>
+						<VersionInfo Name="Private">False</VersionInfo>
+						<VersionInfo Name="DLL">False</VersionInfo>
+						<VersionInfo Name="Locale">1031</VersionInfo>
+						<VersionInfo Name="CodePage">1252</VersionInfo>
+					</VersionInfo>
+					<VersionInfoKeys>
+						<VersionInfoKeys Name="CompanyName"/>
+						<VersionInfoKeys Name="FileDescription"/>
+						<VersionInfoKeys Name="FileVersion">1.0.0.0</VersionInfoKeys>
+						<VersionInfoKeys Name="InternalName"/>
+						<VersionInfoKeys Name="LegalCopyright"/>
+						<VersionInfoKeys Name="LegalTrademarks"/>
+						<VersionInfoKeys Name="OriginalFilename"/>
+						<VersionInfoKeys Name="ProductName"/>
+						<VersionInfoKeys Name="ProductVersion">1.0.0.0</VersionInfoKeys>
+						<VersionInfoKeys Name="Comments"/>
+					</VersionInfoKeys>
+				</Delphi.Personality>
+			</BorlandProject>
+			<ProjectFileVersion>12</ProjectFileVersion>
+		</ProjectExtensions>
+	</Project>
