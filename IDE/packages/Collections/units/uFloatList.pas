@@ -1,5 +1,9 @@
 unit uFloatList;
 
+{$IFDEF FPC}
+{$MODE Delphi}{$H+}
+{$ENDIF}
+
 interface
 
 uses
