@@ -885,7 +885,7 @@ begin
            RaiseError(petError, 'Identifier is not a type identifier: "'+Tokenizer.Token.Value+'"')
         else
         begin
-          if (State.CurrentOwner = VarType) and (State.CurrentOwner is TSE2Record) then
+          if (State.CurrentOwner = VarType) and (State.CurrentOwner is TSE2Record) and (Method = nil) then
           begin
             RaiseError(petError, 'recursive record declaration not possible');
             exit;
@@ -1489,6 +1489,13 @@ begin
               ExpectToken([sesIdentifier]);
               VariableDeclaration(State, nil);
             end;
+        sesConst :
+            if State.IsStatic then
+               RaiseError(petError, 'constants are always static')
+            else
+            begin
+               ConstDeclaration(State, nil);
+            end;
         sesIdentifier   :
             begin
               if State.IsStatic then
@@ -1524,7 +1531,7 @@ begin
               PropertyDeclaration(State);
             end;
         end;
-        if not (Tokenizer.Token.AType in [sesIdentifier, sesProcedure, sesFunction, sesClass, sesConstructor, sesDestructor, sesProperty]) then
+        if not (Tokenizer.Token.AType in [sesIdentifier, sesProcedure, sesFunction, sesConst, sesClass, sesConstructor, sesDestructor, sesProperty]) then
            break;
       end;
     end;
@@ -1686,6 +1693,13 @@ begin
             else
                VariableDeclaration(State, nil);
           end;
+      sesConst :
+          begin
+            if State.IsStatic then
+               RaiseError(petError, 'Record constants are always static')
+            else
+               ConstDeclaration(State, nil);
+          end;
       sesProcedure,
       sesFunction     :
           begin
@@ -1704,7 +1718,7 @@ begin
             PropertyDeclaration(State);
           end
       end;
-      if not (Tokenizer.Token.AType in [sesIdentifier, sesProcedure, sesFunction, sesClass, sesProperty, sesPrivate, sesProtected, sesPublic]) then
+      if not (Tokenizer.Token.AType in [sesIdentifier, sesProcedure, sesConst, sesFunction, sesClass, sesProperty, sesPrivate, sesProtected, sesPublic]) then
          break;
 
     end;
@@ -2322,9 +2336,15 @@ begin
             else
             begin
                if State.CurrentOwner <> nil then
-                 if TSE2Type(State.CurrentOwner.InheritRoot) <> TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
+               begin
+                 if State.CurrentOwner is TSE2Class then
+                 begin
+                   if TSE2Type(State.CurrentOwner.InheritRoot) <> TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
                     RaiseError(petError, 'External method "'+Method.Name+'" of classes must be declared in classes which are decents of TExternalObject');
-
+                 end else
+                 begin
+                 end;
+               end;
 
                Method.IsExternal := True;
                Method.IsForwarded := False;
@@ -2631,6 +2651,7 @@ var i          : integer;
     end
   end;
 
+var ResultCodeIndex : integer;
 begin
   State.AParent     := nil;
   State.ParamMethod := CallMethod;
@@ -2683,6 +2704,7 @@ begin
       State.DecStack;
     end;
 
+  ResultCodeIndex := Method.OpCodes.Count;
   // Add the return value as a new stack element
   if result <> nil then
   begin
@@ -2766,12 +2788,7 @@ begin
             exit;
           end;
 
-          case CallMethod.MethodType of
-          mtProcedure   : result := nil;
-          mtFunction    : result := CallMethod.ReturnValue.AType;
-          mtConstructor : result := TSE2Type(CallMethod.Parent);
-          mtDestructor  : result := nil;
-          end;
+          
 
           ExpectToken([tokClose]);
           ReadNextToken;
@@ -2786,6 +2803,19 @@ begin
         end;
       finally
         ParamDecl.Free;
+      end;
+
+      case CallMethod.MethodType of
+      mtProcedure   : result := nil;
+      mtFunction    : result := CallMethod.ReturnValue.AType;
+      mtConstructor : result := TSE2Type(CallMethod.Parent);
+      mtDestructor  : result := nil;
+      end;
+
+      if result <> nil then
+      begin
+        if Method.OpCodes[ResultCodeIndex].OpCode.OpCode = soSTACK_INC then
+           PSE2OpSTACK_INC(Method.OpCodes.Items[ResultCodeIndex].OpCode).AType := TSE2Type(result.InheritRoot).AType;
       end;
 
       //AddMethodPointerStack(CallMethod, iPushPos);
@@ -3197,14 +3227,19 @@ begin
     end else
     if FindItem is TSE2Constant then
     begin
+      if (not State.NoStaticPointer) and (FindItem.Parent <> nil) then
+      begin
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        State.DecStack;
+      end;
       result    := TSE2Constant(FindItem).AType;
-      LastItem  := nil;                
+      LastItem  := nil;
       State.NoStaticPointer := False;
-      State.LastVariable := nil;   
+      State.LastVariable := nil;
       if not State.IsExpression then
          State.LastTargetVar := nil;
 
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(TSE2Constant(FindItem).AType.AType), ''));
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC( TSE2Type(TSE2Constant(FindItem).AType.InheritRoot).AType), ''));
       case TSE2Type(TSE2Constant(FindItem).AType.InheritRoot).AType of
       btU8, btS8, btU16, btS16, btU32, btS32, btS64 :
           begin
@@ -3342,11 +3377,21 @@ begin
                RaiseError(petError, 'This property does not have any index');
           end else
           begin
-            if not (TSE2Property(FindItem).Setter is TSE2Method) then
-               RaiseError(petError, '"[" is not allowed here');
-            if ((TSE2Method(TSE2Property(FindItem).Setter).Params.Count < 2) and (TSE2Method(TSE2Property(FindItem).Setter).HasSelfParam)) or
-               ((TSE2Method(TSE2Property(FindItem).Setter).Params.Count < 1) and (not TSE2Method(TSE2Property(FindItem).Setter).HasSelfParam)) then
-               RaiseError(petError, 'This property does not have any index');
+            if TSE2Property(FindItem).Getter is TSE2Method then
+            begin
+              if not (TSE2Property(FindItem).Getter is TSE2Method) then
+                 RaiseError(petError, '"[" is not allowed here');
+              if ((TSE2Method(TSE2Property(FindItem).Getter).Params.Count < 2) and (TSE2Method(TSE2Property(FindItem).Getter).HasSelfParam)) or
+                 ((TSE2Method(TSE2Property(FindItem).Getter).Params.Count < 1) and (not TSE2Method(TSE2Property(FindItem).Getter).HasSelfParam)) then
+                 RaiseError(petError, 'This property does not have any index');
+            end else
+            begin
+              if not (TSE2Property(FindItem).Setter is TSE2Method) then
+                 RaiseError(petError, '"[" is not allowed here');
+              if ((TSE2Method(TSE2Property(FindItem).Setter).Params.Count < 2) and (TSE2Method(TSE2Property(FindItem).Setter).HasSelfParam)) or
+                 ((TSE2Method(TSE2Property(FindItem).Setter).Params.Count < 1) and (not TSE2Method(TSE2Property(FindItem).Setter).HasSelfParam)) then
+                 RaiseError(petError, 'This property does not have any index');
+            end;
           end;
         end else
         begin
@@ -4606,6 +4651,13 @@ begin
       result := False;
   end;
 
+  if Operation in [sesSmaller, sesSmallerEqual, sesEqual, sesBigger, sesBiggerEqual, sesUnEqual] then
+    if not result then
+    begin
+      if IsCompatible(orgCurrent, orgTarget, sesNone, StrictInt, AInstance) then
+         result := True;
+    end;
+
   if result and (Operation <> sesNone) then
   begin
     case TargetType.AType of
@@ -5061,6 +5113,16 @@ type
     result := Param.AType = MethodParam.AType;
   end;
 
+  procedure AddOffsets(Method: TSE2Method; MinJumpLimit, Offset: integer);
+  var i: integer;
+  begin
+    for i:=0 to Method.OpCodes.Count-1 do
+    begin
+      if Method.OpCodes[i].GetJumpPos > MinJumpLimit then
+         Method.OpCodes[i].AddOffset(Offset, MinJumpLimit);
+    end;
+  end;
+
   procedure MakeParamsCompatible(Method, CallMethod: TSE2Method; ParamList: TSE2BaseTypeList; iParamStart: integer);
   var CodeOffset  : integer;
       param       : TSE2ParamExpression;
@@ -5079,7 +5141,8 @@ type
         OpCode := ConvertVariableCode(State, Method, param.AType, TSE2Parameter(CallMethod.Params[i]).AType, False);
         if OpCode <> nil then
         begin
-          Method.OpCodes.Insert(param.CodePos, OpCode);
+          Method.OpCodes.Insert(param.CodePos + CodeOffset, OpCode);
+          AddOffsets(Method, param.CodePos + CodeOffset - 1, 1);
           CodeOffset := CodeOffset + 1;
         end;
       end;
@@ -5200,7 +5263,7 @@ begin
   begin
     ExpectToken([sesIdentifier]);
     ConstName := Tokenizer.Token.Value;
-    if FindIdentifier(Method, Tokenizer.Token.Value, nil) <> nil then
+    if FindIdentifier(Method, Tokenizer.Token.Value, State.CurrentOwner) <> nil then
     begin
       RaiseError(petError, 'Identifier is already in usage: "'+Tokenizer.Token.Value+'"');
       exit;
@@ -5242,6 +5305,7 @@ begin
         DeclareType(State, cnst, ConstName);
         cnst.AType := oldC.AType;
         cnst.Value := oldC.Value;
+        cnst.Parent := State.CurrentOwner;
         FUnit.ElemList.Add(cnst);
       end else
       begin
@@ -5275,13 +5339,14 @@ begin
               cnst.Value   := Tokenizer.Token.Value;
             end;
         end;
+        cnst.Parent := State.CurrentOwner;
         FUnit.ElemList.Add(cnst);
       end;
     end else
     begin
-      if aType.InheritRoot is TSE2Type then
-         aType := TSE2Type(aType.InheritRoot);
-      case aType.AType of
+      //if aType.InheritRoot is TSE2Type then
+      //   aType := TSE2Type(aType.InheritRoot);
+      case TSE2Type(aType.InheritRoot).AType of
       btU8, btS8, btU16, btS16, btU32, btS32, btS64 :
           begin
             ExpectToken([sesInteger, sesMinus]);
@@ -5293,12 +5358,13 @@ begin
             end;
 
             cnst := TSE2Constant.Create;
-            cnst.AType := GetIntegerType;
+            cnst.AType := aType;
             DeclareType(State, cnst, ConstName);
             cnst.AsInteger := Tokenizer.Token.AsInteger;
             if neg then
                cnst.AsInteger := -cnst.AsInteger;
 
+            cnst.Parent := State.CurrentOwner;
             FUnit.ElemList.Add(cnst);
           end;
       btSingle, btDouble :
@@ -5312,12 +5378,13 @@ begin
             end;
 
             cnst := TSE2Constant.Create;
-            cnst.AType := GetDoubleType;
+            cnst.AType := aType;
             DeclareType(State, cnst, ConstName);
             cnst.AsFloat := Tokenizer.Token.AsFloat;
             if neg then
                cnst.AsFloat := -cnst.AsFloat;
 
+            cnst.Parent := State.CurrentOwner;
             FUnit.ElemList.Add(cnst);
           end;
       btString, btWideString, btUTF8String, btPChar :
@@ -5329,6 +5396,7 @@ begin
             DeclareType(State, cnst, ConstName);
             cnst.Value := Tokenizer.Token.Value;
 
+            cnst.Parent := State.CurrentOwner;
             FUnit.ElemList.Add(cnst);
           end;
       else
@@ -5339,7 +5407,7 @@ begin
     ExpectToken([sesSemiColon]);
     ReadNextToken;
 
-    if not (Tokenizer.Token.AType in [sesIdentifier]) then
+    if (not (Tokenizer.Token.AType in [sesIdentifier])) or (State.CurrentOwner <> nil) then
        break;
   end;
   //

@@ -15,31 +15,6 @@ const
           'unit System;' + #13#10 +
           'interface' + #13#10 +
           'type' + #13#10 +
-          '  TDateTimeHelper = helper for TDateTime' + #13#10 +
-          '  public' + #13#10 +
-          '    function AddDays(value: double): TDateTime;' + #13#10 +
-          '    function AddHours(value: double): TDateTime;' + #13#10 +
-          '    function AddMinutes(value: double): TDateTime;' + #13#10 +
-          '    function AddSeconds(value: double): TDateTime;' + #13#10 +
-          '    function AddMilliseconds(value: double): TDateTime;' + #13#10 +
-          '    function DayOfWeek: integer;' + #13#10 +
-          '    function DayOfYear: integer;' + #13#10 +
-          '    function DateToStr: string;' + #13#10 +
-          '    function TimeToStr: string;' + #13#10 +
-          '    function ToString: string; overload;' + #13#10 +
-          '    function ToString(Format: string): string; overload;' + #13#10 +
-          '    function Year: integer;' + #13#10 +
-          '    function Month: integer;' + #13#10 +
-          '    function Day: integer;' + #13#10 +
-          '    function Hours: integer;' + #13#10 +
-          '    function Minutes: integer;' + #13#10 +
-          '    function Seconds: integer;' + #13#10 +
-          '    function Milliseconds: integer;  ' + #13#10 +
-          {$IFNDEF FPC}
-          '    function DateTimeToUTCTime: TDateTime;' +#13#10+
-          '    function UTCTimeToDateTime: TDateTime;' +#13#10+
-          {$ENDIF}
-          '  end;' + #13#10 +
           '  TStringHelper = helper for string' + #13#10 +
           '  protected' + #13#10 +
           '    function GetChar(index: integer): string;' + #13#10 +
@@ -69,12 +44,12 @@ const
           '    function Copy(Start, Count: integer): WideString;' + #13#10 +
           '    function Insert(Position: integer; value: WideString): WideString;' + #13#10 +
           '    function IndexOf(value: WideString): integer; ' + #13#10 +
-          '    function Length: integer;' + #13#10 + 
+          '    function Length: integer;' + #13#10 +
           '    function ToUpper: WideString;' + #13#10 +
           '    function ToLower: WideString;' + #13#10 +
           '    function Trim: WideString;' + #13#10 +
           '    function TrimLeft: WideString;' + #13#10 +
-          '    function TrimRight: WideString; ' + #13#10 +              
+          '    function TrimRight: WideString; ' + #13#10 +
           '    function EndsWith(const value: WideString): boolean; overload;' + #13#10 +
           '    function EndsWith(const value: WideString; CaseSensitive: boolean): boolean; overload;' + #13#10 +
           '    function StartsWith(const value: WideString): boolean; overload;' + #13#10 +
@@ -93,21 +68,23 @@ const
           '    function RoundTo(digits: integer): double;' + #13#10 +
           '    function Trunc: int64;' + #13#10 +
           '    function Floor: integer;' + #13#10 +
+          '    function ToString: string;' + #13#10 +
           '  end;' + #13#10 +
           '  TSingleHelper = helper for single' + #13#10 +
           '  public' + #13#10 +
           '    function IsNan: boolean;' + #13#10 +
-          '    function IsInfinite: boolean;' + #13#10 +  
+          '    function IsInfinite: boolean;' + #13#10 +
           '    function Round: int64;' + #13#10 +
           '    function RoundTo(digits: integer): double;' + #13#10 +
           '    function Trunc: int64;' + #13#10 +
           '    function Floor: integer;' + #13#10 +
+          '    function ToString: string;' + #13#10 +
           '  end;' + #13#10 +
           '  TColorHelper = helper for TColor' + #13#10 +
           '  public' + #13#10 +
           '    function Red: byte;' + #13#10 +
           '    function Green: byte;' + #13#10 +
-          '    function Blue: byte;' + #13#10 +  
+          '    function Blue: byte;' + #13#10 +
           '    function ToGrayscale: TColor;' + #13#10 +
           '  end;' + #13#10 +
           #13#10+
@@ -115,6 +92,73 @@ const
           '  public'+#13#10+
           '    function Assigned: boolean;'+#13#10+
           '  end;'+#13#10+
+          #13#10+
+          '  TByteHelper = helper for byte' + #13#10 +
+          '  public' + #13#10 +
+          '    function ToString: string;' + #13#10 +
+          '  end;' + #13#10 +
+          #13#10 +
+          '  TShortIntHelper = helper for shortint' + #13#10 +
+          '  public' + #13#10 +
+          '    function ToString: string;' + #13#10 +
+          '  end;' + #13#10 +
+          #13#10 +
+          '  TWordHelper = helper for word' + #13#10 +
+          '  public' + #13#10 +
+          '    function ToString: string;' + #13#10 +
+          '  end;' + #13#10 +
+          #13#10 +
+          '  TSmallIntHelper = helper for smallint' + #13#10 +
+          '  public' + #13#10 +
+          '    function ToString: string;' + #13#10 +
+          '  end;' + #13#10 +
+          #13#10 +
+          '  TIntegerHelper = helper for integer' + #13#10 +
+          '  public' + #13#10 +
+          '    function ToString: string;' + #13#10 +
+          '  end;' + #13#10 +
+          #13#10 +
+          '  TCardinalHelper = helper for cardinal' + #13#10 +
+          '  public' + #13#10 +
+          '    function ToString: string;' + #13#10 +
+          '  end;' + #13#10 +
+          #13#10 +
+          '  TInt64Helper = helper for int64' + #13#10 +
+          '  public' + #13#10 +
+          '    function ToString: string;' + #13#10 +
+          '  end;' + #13#10 +
+          #13#10 +
+          '  TBooleanHelper = helper for boolean' + #13#10 +
+          '  public' + #13#10 +
+          '    function ToString: string;' + #13#10 +
+          '  end;' + #13#10 +
+          #13#10+
+          '  TDateTimeHelper = helper for TDateTime' + #13#10 +
+          '  public' + #13#10 +
+          '    function AddDays(value: double): TDateTime;' + #13#10 +
+          '    function AddHours(value: double): TDateTime;' + #13#10 +
+          '    function AddMinutes(value: double): TDateTime;' + #13#10 +
+          '    function AddSeconds(value: double): TDateTime;' + #13#10 +
+          '    function AddMilliseconds(value: double): TDateTime;' + #13#10 +
+          '    function DayOfWeek: integer;' + #13#10 +
+          '    function DayOfYear: integer;' + #13#10 +
+          '    function DateToStr: string;' + #13#10 +
+          '    function TimeToStr: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 +
+          '    function ToString(Format: string): string; overload;' + #13#10 +
+          '    function Year: integer;' + #13#10 +
+          '    function Month: integer;' + #13#10 +
+          '    function Day: integer;' + #13#10 +
+          '    function Hours: integer;' + #13#10 +
+          '    function Minutes: integer;' + #13#10 +
+          '    function Seconds: integer;' + #13#10 +
+          '    function Milliseconds: integer;  ' + #13#10 +
+          {$IFNDEF FPC}
+          '    function DateTimeToUTCTime: TDateTime;' +#13#10+
+          '    function UTCTimeToDateTime: TDateTime;' +#13#10+
+          {$ENDIF}
+          '  end;' + #13#10 +
+          
           #13#10+
           'implementation'+#13#10+
           #13#10+
@@ -171,7 +215,7 @@ const
           'begin'+#13#10+
           '  result := DateTime.DateTimeToUTCTime(Self);'+#13#10+
           'end;'+#13#10+
-          'function TDateTimeHelper.UTCTimeToDateTime: TDateTime;' +#13#10+     
+          'function TDateTimeHelper.UTCTimeToDateTime: TDateTime;' +#13#10+
           'begin'+#13#10+
           '  result := DateTime.UTCTimeToDateTime(Self);'+#13#10+
           'end;'+#13#10+
@@ -441,6 +485,56 @@ const
           'begin' + #13#10 +
           '  result := Math.Round(Self.Red * 0.56 + Self.Green * 0.33 + Self.Blue * 0.11);' + #13#10 +
           '  result := Colors.RGB(result, result, result);' + #13#10 + 
+          'end;' + #13#10 +
+          #13#10 + 
+          'function TByteHelper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TShortIntHelper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TWordHelper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TSmallIntHelper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TCardinalHelper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TIntegerHelper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TInt64helper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TBooleanHelper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.BoolToStr(Self, True);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TSingleHelper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.FloatToStr(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TDoubleHelper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.FloatToStr(Self);' + #13#10 + 
           'end;' + #13#10 +
           'end.';
 

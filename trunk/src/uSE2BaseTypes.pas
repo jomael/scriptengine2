@@ -99,7 +99,7 @@ type
     procedure Remove(p: pointer);
     procedure Delete(index: integer);
     procedure DeleteLast;
-    procedure Clear;
+    procedure Clear; virtual;
 
     property  Items[index: integer]: Pointer      read GetItem    write SetItem; default;
     property  Count                : integer      read FCount     write SetCount;
@@ -205,7 +205,12 @@ begin
   if c = 0 then
      result := i
   else
-     result := NaN;
+  begin
+    if not TryStrToFloat(s, i) then
+       result := NaN
+    else
+       result := i;
+  end;
 end;
 
 class function TSE2Converter.StrToInt(s: string): int64;

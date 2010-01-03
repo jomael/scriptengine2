@@ -26,6 +26,9 @@ function  CreateScriptRecord(const Meta: TSE2MetaEntry; PE: TSE2PE): Pointer;
 procedure DestroyScriptRecord(ARecord: Pointer);
 function  DuplicateScriptRecord(ARecord: Pointer): Pointer;
 procedure CopyScriptRecord(ASource, ADest: Pointer);
+procedure DelphiToScriptRecord(ASource, ADest: Pointer);
+procedure ScriptToDelphiRecord(ASource: Pointer; ADest: Pointer); overload;
+function  ScriptToDelphiRecord(ASource: Pointer): Pointer; overload;
 
 { Helper }
 function  GetClassMethods(AClass: Pointer): TSE2DynMethodList;
@@ -733,6 +736,60 @@ begin
     runInfo.CopyData(ADest, ASource);
 
     PtrSave.Free;
+  end;
+end;
+
+procedure DelphiToScriptRecord(ASource, ADest: Pointer);
+var PtrSave : TSE2PointerList;
+    runInfo : TSE2ClassPointerList;
+    iSize   : integer;
+begin
+  if (ASource <> nil) and (ADest <> nil) then
+  begin
+    PtrSave := TSE2PointerList.Create;
+
+    runInfo := PPointer(integer(ADest) + vmtScriptPointerList)^;
+    PtrSave.PushPointers(ADest, runInfo);
+
+    iSize := PInteger(Integer(ADest) + vmtScriptInstanceSize)^;
+    Move(ASource^, ADest^, iSize);
+
+    PtrSave.PopPointers(ADest);
+
+    PtrSave.Free;
+  end;
+end;
+
+procedure ScriptToDelphiRecord(ASource: Pointer; ADest: Pointer);
+var PtrSave : TSE2PointerList;
+    runInfo : TSE2ClassPointerList;
+    iSize   : integer;
+begin
+  if (ASource <> nil) and (ADest <> nil) then
+  begin
+    PtrSave := TSE2PointerList.Create;
+
+    runInfo := PPointer(integer(ASource) + vmtScriptPointerList)^;
+    PtrSave.PushPointers(ASource, runInfo);
+
+    iSize := PInteger(Integer(ASource) + vmtScriptInstanceSize)^;
+    Move(ASource^, ADest^, iSize);
+
+    PtrSave.PopPointers(ASource);
+
+    PtrSave.Free;
+  end;
+end;
+
+function ScriptToDelphiRecord(ASource: Pointer): Pointer; overload;
+var iSize   : integer;
+begin
+  result := nil;
+  if ASource <> nil then
+  begin
+    iSize := PInteger(Integer(ASource) + vmtScriptInstanceSize)^;
+    GetMem(result, iSize);
+    ScriptToDelphiRecord(ASource, result);
   end;
 end;
 

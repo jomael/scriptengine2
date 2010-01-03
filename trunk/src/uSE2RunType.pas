@@ -100,11 +100,11 @@ type
     property MaxCount: integer      read FMaxCount      write FMaxCount;
   end;
 
-  TSE2Stack = class(TObject)
+  TSE2Stack = class(TSE2List)
   private
     FVarHelp : TSE2VarHelper;
     FPool    : TSE2VarPool;
-    FList    : TSE2List;
+    //FList    : TSE2List;
     FSize    : integer;
 
     FMaxSize : integer;
@@ -112,17 +112,17 @@ type
   protected
     function  GetItem(index: integer): PSE2VarData;
     procedure SetItem(index: integer; value: PSE2VarData);
-    procedure Clear;
     function  GetTop: PSE2VarData;
 
     procedure ManageStack;
   public
-    constructor Create(VarHelp: TSE2VarHelper);
+    constructor Create(VarHelp: TSE2VarHelper); reintroduce;
     destructor Destroy; override;
 
     function  PushNew(AType: TSE2TypeIdent): PSE2VarData;
     procedure Push(Data: PSE2VarData);
-    
+
+    procedure Clear; override;
     procedure Pop; overload;
     //procedure Pop(index: integer); overload;
 
@@ -861,7 +861,8 @@ var i: integer;
 begin
   for i:=FSize-1 downto 0 do
     Pop;
-  FList.Clear;
+  inherited;
+  //FList.Clear;
   FSize := 0;
 end;
 
@@ -869,7 +870,7 @@ constructor TSE2Stack.Create(VarHelp: TSE2VarHelper);
 begin
   inherited Create;
   FVarHelp := VarHelp;
-  FList := TSE2List.Create;
+  //FList := TSE2List.Create;
   FPool := TSE2VarPool.Create(FVarHelp);
 
   FMaxSize := $FFFF;
@@ -881,7 +882,7 @@ end;
 destructor TSE2Stack.Destroy;
 begin
   Clear;
-  FList.Free;
+  //FList.Free;
   FPool.Free;
   inherited;
 end;
@@ -891,7 +892,7 @@ begin
   if (index < 0) or (index >= FSize) then
      result := nil
   else
-     result := FList[index];
+     result := inherited Items[index];
 end;
 
 function TSE2Stack.GetTop: PSE2VarData;
@@ -899,34 +900,34 @@ begin
   if FSize = 0 then
      result := nil
   else
-     result := FList[FSize - 1];
+     result := inherited Items[FSize - 1];
 end;
 
 procedure TSE2Stack.ManageStack;
 var newSize : integer;
 begin
-  if FList.Count < FSize then
+  if Self.Count < FSize then
   begin
     newSize := FSize + FIncSize;
     if newSize > FMaxSize then
        raise ESE2RunTimeError.Create('Script Stack Overflow');
 
-    FList.Count := newSize;
+    Self.Count := newSize;
   end else
-  if FList.Count > FSize + (FIncSize * 5) then
+  if Self.Count > FSize + (FIncSize * 5) then
   begin
     newSize := FSize + FIncSize * 2;
-    FList.Count := newSize;
+    Self.Count := newSize;
   end;
 end;
 
 procedure TSE2Stack.Pop;
 var p: PSE2VarData;
 begin
-  if FList.Count = 0 then
+  if Self.Count = 0 then
      exit;
 
-  p := FList[FSize - 1];
+  p := inherited Items[FSize - 1];
   p^.RefCounter := p^.RefCounter - 1;
 
   if p^.RefCounter = 0 then
@@ -973,28 +974,28 @@ end;  }
 procedure TSE2Stack.Push(Data: PSE2VarData);
 begin
   FSize := FSize + 1;     
-  if FList.Count <= FSize then
+  if Self.Count <= FSize then
      ManageStack;
 
-  FList[FSize - 1] := Data;
+  inherited Items[FSize - 1] := Data;
   Data^.RefCounter := Data^.RefCounter + 1;
 end;
 
 function TSE2Stack.PushNew(AType: TSE2TypeIdent): PSE2VarData;
 begin
   FSize := FSize + 1;
-  if FList.Count <= FSize then
+  if Self.Count <= FSize then
      ManageStack;
 
   result           := FPool.Pop(AType);
-  FList[FSize - 1] := result;
+  inherited Items[FSize - 1] := result;
 end;
 
 procedure TSE2Stack.SetItem(index: integer; value: PSE2VarData);
 begin
   if (index >= 0) and (index < FSize) then
   begin
-     FList[index] := value;
+     inherited Items[index] := value;
      value^.RefCounter := value^.RefCounter + 1;
   end;
 end;

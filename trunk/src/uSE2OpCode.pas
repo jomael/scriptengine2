@@ -137,7 +137,7 @@ type
 
                 // Data Pointer Movement
                 soDAT_PTR_LOAD, soDAT_PTR_SAVE,
-                soDAT_PTR_CREATE, soDAT_PTR_FREE,
+                soDAT_PTR_CREATE, soDAT_PTR_FREE,        
 
                 // Data Assign
                 soDAT_SetInt, soDAT_SetFloat, soDAT_SetPtr, soDAT_LOADRES, soDAT_CLEAR,
