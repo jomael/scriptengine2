@@ -292,10 +292,10 @@ object frmAbout: TfrmAbout
   object labelInfo: TLabel
     Left = 12
     Top = 176
-    Width = 238
+    Width = 266
     Height = 13
     Cursor = crHandPoint
-    Caption = 'Script Engine II - Copyright '#169' 2009 David Huettig'
+    Caption = 'Script Engine II - Copyright '#169' 2009-2010 David Huettig'
     Font.Charset = ANSI_CHARSET
     Font.Color = 11835278
     Font.Height = -11
