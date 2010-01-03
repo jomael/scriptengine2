@@ -140,6 +140,14 @@ var CallInfo     : PSE2NativeCallEntry;
       else
          result := Result + PointerSize(aParamType, bIsVarParam);
     end;
+
+    if Meth.ResultType = btRecord then
+    begin
+      bIsVarParam := False;
+      aParamType  := btRecord;
+      if not ((Registers < 4 - PointerSize(aParamType, bIsVarParam)) and (SupportsRegister(aParamType) or bIsVarParam)) then
+         result := result + PointerSize(aParamType, bIsVarParam);
+    end;
   end;
 
   function  GetParameterData(index: integer): pointer;
@@ -208,13 +216,76 @@ var CallInfo     : PSE2NativeCallEntry;
     end;   *)
   end;
 
-  procedure SetVariableContent(aParamType: byte; DataType: byte; Data: Pointer);
+  function  GetRecordReturnData(Index: integer): Pointer;
+  var i          : integer;
+      Start      : integer;
+      Registers  : integer;
+      StackPtr   : Pointer;
+      RegPtr     : Pointer;
+      PtrOffset  : integer;
+      aParamType : TSE2TypeIdent;
+      bIsVarParam: boolean;
+      StackParams: integer;
+  begin
+    Start     := 0;
+    Registers := 1;
+    if ScriptMethod.HasSelf then
+    begin
+      Start := 1;
+    end;
+
+    StackParams := ParamsInStack(ScriptMethod);
+
+    PtrOffset := 3;
+    if ScriptMethod.HasResult then
+      if ScriptMethod.ResultType in [btString, btUTF8String, btWideString] then
+        PtrOffset := 4;
+
+    RegPtr   := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 0);
+    StackPtr := Pointer(integer(AStackPtr) + SizeOf(Pointer) * (StackParams + PtrOffset));
+
+    result := StackPtr;
+    for i:=Start to ScriptMethod.ParamCount-1 do
+    begin
+      bIsVarParam := TSE2ParamHelper.IsVarParam(Ord(ScriptMethod.ParamDecl[i+1]));
+      aParamType  := TSE2ParamHelper.GetParamType(Ord(ScriptMethod.ParamDecl[i+1]));
+
+      if i = index then
+      begin
+        if (Registers < 4 - PointerSize(aParamType, bIsVarParam)) and (SupportsRegister(aParamType) or bIsVarParam) then
+        begin
+          if Registers = 3 then
+             result := AStackPtr
+          else
+             result := Pointer(Integer(RegPtr) + SizeOf(Pointer));
+        end else
+        begin
+           result := Pointer(Integer(StackPtr) - SizeOf(Pointer));
+        end;
+        exit;
+      end;
+
+      if (Registers < 4 - PointerSize(aParamType, bIsVarParam)) and (SupportsRegister(aParamType) or bIsVarParam) then
+      begin
+        Registers := Registers + PointerSize(aParamType, bIsVarParam);
+        RegPtr    := Pointer(integer(RegPtr) + SizeOf(Pointer) * PointerSize(aParamType, bIsVarParam));
+      end
+      else
+      begin
+        StackPtr  := Pointer(integer(StackPtr) - SizeOf(Pointer) * PointerSize(aParamType, bIsVarParam));
+      end;
+    end;
+  end;
+
+  procedure SetVariableContent(aParamType: byte; DataType: byte; Data: Pointer; ParamIndex: integer = -1);
   const 
     SParamNotCompatible = 'Parameter not compatible to script method parameter';
 
   var newEntry    : PSE2VarData;
       fSingle     : single;
       fDouble     : double;
+      index       : integer;
+      RecMeta     : TSE2MetaEntry;
   begin
     case DataType of
     vtInteger :
@@ -352,6 +423,19 @@ var CallInfo     : PSE2NativeCallEntry;
           case aParamType of
           btPointer : Pointer(newEntry.tPointer^) := PPointer(Data)^;
           btObject  : Pointer(newEntry.tPointer^) := PPointer(Data)^;
+          btRecord  :
+             begin
+               index := ScriptMethod.RTTI.FindSize(btRecord, ParamIndex);
+               if index < 0 then
+                  raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+               RecMeta := RunTime.AppCode.MetaData[index];
+               if RecMeta = nil then
+                  raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+               Pointer(newEntry.tPointer^) := uSE2SystemUnit.CreateScriptRecord(RecMeta, RunTime.AppCode);
+               uSE2SystemUnit.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^));
+             end;
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -378,14 +462,31 @@ var CallInfo     : PSE2NativeCallEntry;
   end;
 
   procedure PushParamsToStack;
+
+  const
+    SParamNotCompatible = 'Parameter not compatible to script method parameter';
   var i           : integer;
       bIsVarParam : boolean;
       aParamType  : byte;
       Parameter   : Pointer;
+      RecMeta     : TSE2MetaEntry;
   begin
     // result
     if ScriptMethod.HasResult then
        RunTime.Stack.PushNew(ScriptMethod.ResultType);
+
+    if ScriptMethod.ResultType = btRecord then
+    begin
+      i := ScriptMethod.RTTI.FindSize(btRecord, -1);
+      if i < 0 then
+         raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+      RecMeta := RunTime.AppCode.MetaData[i];
+      if RecMeta = nil then
+         raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+      Pointer(RunTime.Stack.Top.tPointer^) := uSE2SystemUnit.CreateScriptRecord(RecMeta, RunTime.AppCode);
+    end;
 
     // parameters
     for i:=0 to ScriptMethod.ParamCount-1 do
@@ -423,6 +524,8 @@ var CallInfo     : PSE2NativeCallEntry;
             SetVariableContent(aParamType, vtPointer, Parameter);
         btObject :
             SetVariableContent(aParamType, vtObject, Parameter);
+        btRecord :
+            SetVariableContent(aParamType, vtPointer, Parameter, i);
         end;
       end else
       begin
@@ -465,10 +568,10 @@ var CallInfo     : PSE2NativeCallEntry;
     for i:=ScriptMethod.ParamCount-1 downto 0 do
     begin
       bIsVarParam := TSE2ParamHelper.IsVarParam(Ord(ScriptMethod.ParamDecl[i+1]));
+      Data := RunTime.Stack.Top;
       if bIsVarParam then
       begin
         Parameter   := GetParameterData(i);
-        Data := RunTime.Stack.Top;
         case Data^.AType of
         btU8           : PbtU8(Parameter)^     := Data^.tU8^;
         btS8           : PbtS8(Parameter)^     := Data^.tS8^;
@@ -484,10 +587,14 @@ var CallInfo     : PSE2NativeCallEntry;
         btWideString   : PbtWideString(Parameter)^ := PbtWideString(Data^.tString^)^;
         btPChar        : PbtPChar(Parameter)^      := PbtPChar(Data^.tString^)^;
         btPointer,
-        btArray,
-        btRecord       : PPointer(Parameter)^    := Pointer(Data^.tPointer^);
+        btArray        : PPointer(Parameter)^    := Pointer(Data^.tPointer^);
+        btRecord       : ;
         end;
       end;
+
+      if Data^.AType = btRecord then
+        if Pointer(Data^.tPointer^) <> nil then
+          uSE2SystemUnit.DestroyScriptRecord(Pointer(Data^.tPointer^));
 
       RunTime.Stack.Pop;
     end;
@@ -546,10 +653,21 @@ var CallInfo     : PSE2NativeCallEntry;
       {
       btS64        : result := Data^.tS64^;
       }
-      btRecord,
       btArray,
       btPointer,
       btObject     : result := cardinal(Data^.tPointer^);
+
+      btRecord     :
+          begin
+            Parameter := GetRecordReturnData(ScriptMethod.ParamCount - 1);
+
+            //Parameter := @_EDX;
+            //if _EDX = nil then
+            //   Parameter := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 2);
+            uSE2SystemUnit.ScriptToDelphiRecord(Pointer(RunTime.Stack.Top^.tPointer^), Pointer(Parameter^));
+            uSE2SystemUnit.DestroyScriptRecord(Pointer(RunTime.Stack.Top^.tPointer^));
+          end;
+
       end;
       RunTime.Stack.Pop;
     end;

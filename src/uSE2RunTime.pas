@@ -269,7 +269,7 @@ begin
       ProcessOperation;
 {$ELSE}
 
-  OpCode := FAppCode.OpCodes[FCodePos];
+  OpCode := FAppCode.OpCodes.Data[FCodePos];
   if OpCode = nil then
      exit;
 
@@ -421,8 +421,8 @@ begin
             end;
         2..11   :
             begin
-              VarDat[1] := Stack.Top;
-              VarDat[0] := Stack[Stack.Size - 2];
+              VarDat[1] := FStack.Data[FStack.Size - 1]; //VarDat[1] := Stack.Top;
+              VarDat[0] := FStack.Data[FStack.Size - 2]; //VarDat[0] := Stack[Stack.Size - 2];
 
               if VarDat[0]^.RefContent then
               begin
@@ -435,6 +435,20 @@ begin
               end;
 
               case PSE2OpOP_OPERATION(OpCode).OpType of
+              2  : uSE2RunOperation.mTable_add[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper);
+              3  : uSE2RunOperation.mTable_sub[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper);
+              4  : uSE2RunOperation.mTable_mul[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper);
+              5  : uSE2RunOperation.mTable_div[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper);
+              6  : uSE2RunOperation.mTable_and[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1]);
+              7  : uSE2RunOperation.mTable_or [VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1]);
+              8  : uSE2RunOperation.mTable_xor[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1]);
+              9  : uSE2RunOperation.mTable_mod[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1]);
+              10 : uSE2RunOperation.mTable_shr[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1]);
+              11 : uSE2RunOperation.mTable_shl[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1]);
+              end;
+
+              {
+              case PSE2OpOP_OPERATION(OpCode).OpType of
               2  : FVarOperation.Addition(VarDat[0], VarDat[1]);
               3  : FVarOperation.Substract(VarDat[0], VarDat[1]);
               4  : FVarOperation.Multiply(VarDat[0], VarDat[1]);
@@ -443,9 +457,12 @@ begin
               7  : FVarOperation.BitOr(VarDat[0], VarDat[1]);
               8  : FVarOperation.BitXor(VarDat[0], VarDat[1]);
               9  : FVarOperation.DivideMod(VarDat[0], VarDat[1]);
+                   //mTable_mod[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1]);
               10 : FVarOperation.BitShr(VarDat[0], VarDat[1]);
               11 : FVarOperation.BitShl(VarDat[0], VarDat[1]);
               end;
+              }
+
               // Aritmetic
               FStack.Pop;
             end;
@@ -455,16 +472,29 @@ begin
       begin
         //QueryPerformanceFrequency(c);
         //QueryPerformanceCounter(t1);
-        VarDat[1] := FStack.Top;
-        VarDat[0] := FStack[Stack.Size - 2];
+        VarDat[1] := FStack.Data[FStack.Size - 1]; //VarDat[1] := FStack.Top;
+        VarDat[0] := FStack.Data[FStack.Size - 2]; //VarDat[0] := FStack[Stack.Size - 2];
+
+        case PSE2OpOP_COMPARE(OpCode).CompType of
+        1 : CompareInt := Ord(uSE2RunOperation.mTable_Equal[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper));
+        2 : CompareInt := Ord(uSE2RunOperation.mTable_Smaller[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper));
+        3 : CompareInt := Ord(uSE2RunOperation.mTable_Bigger[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper));
+        4 : CompareInt := Ord(uSE2RunOperation.mTable_BiggerEqual[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper));
+        5 : CompareInt := Ord(uSE2RunOperation.mTable_SmallerEqual[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper));
+        6 : CompareInt := Ord(uSE2RunOperation.mTable_UnEqual[VarDat[0].AType, VarDat[1].AType](VarDat[0], VarDat[1], FVarHelper));
+        end;
+
+        {
         case PSE2OpOP_COMPARE(OpCode).CompType of
         1 : CompareInt := Ord(FVarCompare.Equal(VarDat[0], VarDat[1]));
         2 : CompareInt := Ord(FVarCompare.Smaller(VarDat[0], VarDat[1]));
-        3 : CompareInt := Ord(FVarCompare.Bigger(VarDat[0], VarDat[1])); 
+        3 : CompareInt := Ord(FVarCompare.Bigger(VarDat[0], VarDat[1]));
         4 : CompareInt := Ord(FVarCompare.BiggerEqual(VarDat[0], VarDat[1]));
         5 : CompareInt := Ord(FVarCompare.SmallerEqual(VarDat[0], VarDat[1]));
         6 : CompareInt := Ord(FVarCompare.UnEqual(VarDat[0], VarDat[1]));
         end;
+        }
+
         FStack.Pop;
         FStack.Pop;
         FStack.PushNew(btBoolean).tu8^ := CompareInt;
@@ -476,15 +506,15 @@ begin
         CompareInt := PSE2OpDAT_COPY_TO(OpCode).Target;
 
         if PSE2OpDAT_COPY_TO(OpCode).Static then
-           VarDat[0] := FStack[CompareInt]
+           VarDat[0] := FStack.Data[CompareInt]
         else
-           VarDat[0] := FStack[FStack.Size-1 + CompareInt];
+           VarDat[0] := FStack.Data[FStack.Size-1 + CompareInt];
 
         if VarDat[0]^.RefContent then
         begin
           VarDat[1] := FVarHelper.CreateVarData(varDat[0]^.AType);
           FVarHelper.SetVarData(VarDat[0], VarDat[1]);
-                                              
+
           FVarHelper.FreeVarData(VarDat[0]);
           VarDat[0] := VarDat[1];
           if PSE2OpDAT_COPY_TO(OpCode).Static then
@@ -493,7 +523,7 @@ begin
              FStack[FStack.Size-1 + CompareInt] := VarDat[1];
         end;
 
-        FVarHelper.SetVarData(FStack.Top, VarDat[0]);
+        FVarHelper.SetVarData(FStack.Data[FStack.Size - 1], VarDat[0]);
         FStack.Pop;
       end;
   soDAT_COPY_FROM :
@@ -502,11 +532,11 @@ begin
 
         if PSE2OpDAT_COPY_FROM(OpCode).Static then
         begin
-          VarDat[0] := FStack[CompareInt];
+          VarDat[0] := FStack.Data[CompareInt];
           VarDat[1] := FStack.PushNew(VarDat[0].AType);
         end else
         begin
-          VarDat[0] := FStack[FStack.Size-1 + CompareInt];
+          VarDat[0] := FStack.Data[FStack.Size-1 + CompareInt];
           VarDat[1] := FStack.PushNew(VarDat[0].AType);
         end;
         FVarHelper.SetVarData(VarDat[0], VarDat[1]);
@@ -569,13 +599,18 @@ begin
       end;
   soDAT_SetFloat :
       begin
-        if FStack.Top.AType <> btDouble then
+        VarDat[0] := FStack.Data[FStack.Size - 1];
+        if not (VarDat[0].AType in [btSingle, btDouble]) then
         begin
           FVarHelper.FreeVarContent(FStack.Top);
           FStack.Top.AType := btDouble;
           FVarHelper.CreateVarContent(FStack.Top);
+          VarDat[0] := FStack.Data[FStack.Size - 1];
         end;
-        FStack.Top.tDouble^ := PSE2OpDAT_SetFloat(OpCode).Value;
+        case VarDat[0].AType of
+        btSingle : VarDat[0].tSingle^ := PSE2OpDAT_SetFloat(OpCode).Value;
+        btDouble : VarDat[0].tDouble^ := PSE2OpDAT_SetFloat(OpCode).Value;
+        end;
       end;
   soDAT_SetPtr :
       begin
@@ -961,7 +996,7 @@ begin
           TryBlock.ErrorPos    := FCodePos;
           TryBlock.ErrorStack  := GetCallStack;
         end;
-      end;
+      end;  
     end;
   end;
 end;
@@ -1411,13 +1446,15 @@ var MetaEntry  : TSE2MetaEntry;
     LastEntry  : PSE2VarData;
     SelfPtr    : PSE2VarData;
 
-  procedure SetVariableContent(aParamType: byte; DataType: byte; Data: Pointer);
+  procedure SetVariableContent(aParamType: byte; DataType: byte; Data: Pointer; ParamIndex: integer = -1);
   const 
     SParamNotCompatible = 'Parameter not compatible to script method parameter';
 
   var newEntry    : PSE2VarData;
       fSingle     : single;
       fDouble     : double;
+      index       : integer;
+      RecMeta     : TSE2MetaEntry;
   begin
     case DataType of
     vtInteger :
@@ -1555,6 +1592,19 @@ var MetaEntry  : TSE2MetaEntry;
           case aParamType of
           btPointer : Pointer(newEntry.tPointer^) := PPointer(Data)^;
           btObject  : Pointer(newEntry.tPointer^) := PPointer(Data)^;
+          btRecord  :
+             begin
+               index := MetaEntry.RTTI.FindSize(btRecord, ParamIndex);
+               if index < 0 then
+                  raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+               RecMeta := FAppCode.MetaData[index];
+               if RecMeta = nil then
+                  raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+               Pointer(newEntry.tPointer^) := uSE2SystemUnit.CreateScriptRecord(RecMeta, FAppCode);
+               uSE2SystemUnit.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^));
+             end;
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -1590,10 +1640,24 @@ var MetaEntry  : TSE2MetaEntry;
       bIsVarParam : boolean;
       aParamType  : byte;
       Parameter   : TVarRec;
+      RecMeta     : TSE2MetaEntry;
   begin
     // result
     if MetaEntry.HasResult then
        FStack.PushNew(MetaEntry.ResultType);
+
+    if MetaEntry.ResultType = btRecord then
+    begin                                
+      i := MetaEntry.RTTI.FindSize(btRecord, -1);
+      if i < 0 then
+         raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+      RecMeta := FAppCode.MetaData[i];
+      if RecMeta = nil then
+         raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+      Pointer(FStack.Top.tPointer^) := uSE2SystemUnit.CreateScriptRecord(RecMeta, FAppCode);
+    end;
 
     // parameters
     for i:=Low(Params) to High(Params) do
@@ -1619,7 +1683,7 @@ var MetaEntry  : TSE2MetaEntry;
         vtPChar        : SetVariableContent(aParamType, vtPChar, @Parameter.VPChar);
         vtChar         : SetVariableContent(aParamType, vtChar, @Parameter.VChar);
         vtWideString   : SetVariableContent(aParamType, vtWideString, @Parameter.VWideString);
-        vtPointer      : SetVariableContent(aParamType, vtPointer, @Parameter.VPointer);
+        vtPointer      : SetVariableContent(aParamType, vtPointer, @Parameter.VPointer, i);
         vtClass        : SetVariableContent(aParamType, vtClass, @Parameter.VClass);
         vtObject       : SetVariableContent(aParamType, vtObject, @Parameter.VObject);
         else raise ESE2CallParameterError.Create('Unsupported parameter');
@@ -1642,7 +1706,7 @@ var MetaEntry  : TSE2MetaEntry;
         btPChar :
             SetVariableContent(aParamType, vtAnsiString, Parameter.VPointer);
         btPointer, btRecord, btArray, btObject :
-            SetVariableContent(aParamType, vtPointer, Parameter.VPointer); 
+            SetVariableContent(aParamType, vtPointer, Parameter.VPointer, i);
         end;
       end;
 
@@ -1668,10 +1732,10 @@ var MetaEntry  : TSE2MetaEntry;
     for i:=High(Params) downto Low(Params) do
     begin
       bIsVarParam := TSE2ParamHelper.IsVarParam(Ord(MetaEntry.ParamDecl[i+1]));
+      Data := FStack.Top;
       if bIsVarParam then
       begin
         Parameter   := Params[i];
-        Data := FStack.Top;
         case Data^.AType of
         btU8           : PbtU8(Parameter.VPointer)^     := Data^.tU8^;
         btS8           : PbtS8(Parameter.VPointer)^     := Data^.tS8^;
@@ -1687,10 +1751,15 @@ var MetaEntry  : TSE2MetaEntry;
         btWideString   : PbtWideString(Parameter.VPointer)^ := PbtWideString(Data^.tString^)^;
         btPChar        : PbtPChar(Parameter.VPointer)^      := PbtPChar(Data^.tString^)^;
         btPointer,
-        btArray,
-        btRecord       : PPointer(Parameter.VPointer)^    := Pointer(Data^.tPointer^);
+        btArray        : PPointer(Parameter.VPointer)^    := Pointer(Data^.tPointer^);
+        btRecord       : ;
         end;
       end;
+
+      if Data^.AType = btRecord then
+        if Pointer(Data^.tPointer^) <> nil then
+          uSE2SystemUnit.DestroyScriptRecord(Pointer(Data^.tPointer^));
+
 
       FStack.Pop;
     end;
@@ -1712,10 +1781,14 @@ var MetaEntry  : TSE2MetaEntry;
       btUTF8String : result := PbtUTF8String(FStack.Top^.tString^)^;
       btWideString : result := PbtWideString(FStack.Top^.tString^)^;
       btPChar      : result := string(PbtPChar(FStack.Top^.tString^)^);
-      btRecord,
       btArray,
       btPointer,
       btObject     : result := cardinal(FStack.Top^.tPointer^);
+      btRecord     :
+          begin
+            result := cardinal(uSE2SystemUnit.ScriptToDelphiRecord(Pointer(FStack.Top^.tPointer^)));
+            uSE2SystemUnit.DestroyScriptRecord(Pointer(FStack.Top^.tPointer^));
+          end;
       end;
       FStack.Pop;
     end;

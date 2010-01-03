@@ -103,7 +103,7 @@ const
      '    class function  ReadKey: string; external;'+#13#10+
      'end;'+#13#10+
      #13#10+
-     'const'+#13#10+
+     {'const'+#13#10+
      '  clBlack      : TColor = $000000;'+#13#10+
      '  clMaroon     : TColor = $000080;'+#13#10+
      '  clGreen      : TColor = $008000;'+#13#10+
@@ -125,13 +125,35 @@ const
      '  clMoneyGreen : TColor = $C0DCC0;'+#13#10+
      '  clSkyBlue    : TColor = $F0CAA6;'+#13#10+
      '  clCream      : TColor = $F0FBFF;'+#13#10+
-     '  clMedGray    : TColor = $A4A0A0;'+#13#10+
+     '  clMedGray    : TColor = $A4A0A0;'+#13#10+ }
      #13#10+
      'type'+#13#10+
      '  Colors = class(TExternalObject)'+#13#10+
      '  public'+#13#10+
+     '    const Black      : TColor = $000000;' + #13#10 +
+     '    const Maroon     : TColor = $000080;' + #13#10 +
+     '    const Green      : TColor = $008000;' + #13#10 +
+     '    const Olive      : TColor = $008080;' + #13#10 +
+     '    const Navy       : TColor = $800000;' + #13#10 +
+     '    const Purple     : TColor = $800080;' + #13#10 +
+     '    const Teal       : TColor = $808000;' + #13#10 +
+     '    const Gray       : TColor = $808080;' + #13#10 +
+     '    const Silver     : TColor = $C0C0C0;' + #13#10 +
+     '    const Red        : TColor = $0000FF;' + #13#10 +
+     '    const Lime       : TColor = $00FF00;' + #13#10 +
+     '    const Yellow     : TColor = $00FFFF;' + #13#10 +
+     '    const Blue       : TColor = $FF0000;' + #13#10 +
+     '    const Fuchsia    : TColor = $FF00FF;' + #13#10 +
+     '    const Aqua       : TColor = $FFFF00;' + #13#10 +
+     '    const LightGray  : TColor = $C0C0C0;' + #13#10 +
+     '    const DarkGray   : TColor = $808080;' + #13#10 +
+     '    const White      : TColor = $FFFFFF;' + #13#10 +
+     '    const MoneyGreen : TColor = $C0DCC0;' + #13#10 +
+     '    const SkyBlue    : TColor = $F0CAA6;' + #13#10 +
+     '    const Cream      : TColor = $F0FBFF;' + #13#10 +
+     '    const MediumGray : TColor = $A4A0A0;' + #13#10 +
+     #13#10 +
      '    class function RGB(red, green, blue: byte): TColor; external;'+#13#10+
-
      '    class function RedValue(aColor: TColor): byte; external;'+#13#10+
      '    class function GreenValue(aColor: TColor): byte; external;'+#13#10+
      '    class function BlueValue(aColor: TColor): byte; external;'+#13#10+

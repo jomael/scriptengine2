@@ -323,6 +323,11 @@ var CodePos: integer;
     result := -1;
   end;
 
+  function GetRecordMeta(const Rec: TSE2Record): string;
+  begin
+    result := 'META_['+Rec.Name+']['+rec.AUnitName+']';
+  end;
+
   function FindRecordMeta(const MetaName: string): integer;
   var s: string;
   begin
@@ -366,6 +371,17 @@ begin
   Meta.CallType    := Method.CallConvention;
   Meta.HasSelf     := Method.HasSelfParam;
   Meta.ParamDecl   := MakeMethodParamDecl(Method);
+
+  if Method.ReturnValue <> nil then
+    if Method.ReturnValue.AType is TSE2Record then
+    begin
+      Meta.RTTI.Add(btRecord, -1, FindRecordMeta(GetRecordMeta(TSE2Record(Method.ReturnValue.AType))));
+    end;
+
+  for i:=0 to Method.Params.Count-1 do
+    if TSE2Parameter(Method.Params[i]).AType is TSE2Record then
+      Meta.RTTI.Add(btRecord, i, FindRecordMeta(GetRecordMeta(TSE2Record(TSE2Parameter(Method.Params[i]).AType))));
+
 
   PE.MetaData.Add(Meta);
   CodePos := PE.OpCodes.Count;
@@ -826,6 +842,68 @@ end.
     end;
   end;
 
+  procedure OptimizeIntValues;
+  begin
+    if OpCodes[0].OpCode.OpCode <> soSTACK_INC then
+       exit;
+
+    if PSE2OpSTACK_INC(OpCodes[0].OpCode).AType = btS64 then
+    begin
+      if OpCodes[1].OpCode.OpCode <> soDAT_SetInt then
+         exit;
+
+      if OpCodes[2].OpCode.OpCode <> soDAT_CONVERT then
+         exit;
+
+      if PSE2OpDAT_CONVERT(OpCodes[2].OpCode).NewType in [btU8, btS8, btU16, btS16, btU32, btS32] then
+      begin
+        PSE2OpSTACK_INC(OpCodes[0].OpCode).AType := PSE2OpDAT_CONVERT(OpCodes[2].OpCode).NewType;
+        // Delete the convert opcode
+        Method.OpCodes.Delete(i + 2);
+
+        // Decrease every position
+        AddOffsetPos(-1, i);
+
+        i := i - 1;
+      end else
+      if PSE2OpDAT_CONVERT(OpCodes[2].OpCode).NewType in [btSingle, btDouble] then
+      begin
+        PSE2OpSTACK_INC(OpCodes[0].OpCode).AType    := PSE2OpDAT_CONVERT(OpCodes[2].OpCode).NewType;
+        PSE2OpDAT_SetFloat(OpCodes[1].OpCode).Value := PSE2OpDAT_SetInt(OpCodes[1].OpCode).Value;
+        OpCodes[1].OpCode.OpCode := soDAT_SetFloat;
+
+
+        // Delete the convert opcode
+        Method.OpCodes.Delete(i + 2);
+
+        // Decrease every position
+        AddOffsetPos(-1, i);
+
+        i := i - 1;
+      end;
+    end else
+    if PSE2OpSTACK_INC(OpCodes[0].OpCode).AType = btDouble then
+    begin
+      if OpCodes[1].OpCode.OpCode <> soDAT_SetFloat then
+         exit;
+
+      if OpCodes[2].OpCode.OpCode <> soDAT_CONVERT then
+         exit;
+
+      if PSE2OpDAT_CONVERT(OpCodes[2].OpCode).NewType in [btSingle, btDouble] then
+      begin
+        PSE2OpSTACK_INC(OpCodes[0].OpCode).AType := PSE2OpDAT_CONVERT(OpCodes[2].OpCode).NewType;
+        // Delete the convert opcode
+        Method.OpCodes.Delete(i + 2);
+
+        // Decrease every position
+        AddOffsetPos(-1, i);
+
+        i := i - 1;
+      end
+    end;
+  end;
+
 begin
   if Method = nil then
      exit;
@@ -835,7 +913,7 @@ begin
   if Method.IsExternal then
      exit;
 
-  for Mode := 0 to 1 do
+  for Mode := 0 to 2 do
   begin
     i := 0;
     repeat
@@ -846,6 +924,7 @@ begin
       case Mode of
       0 : DeleteUselessPushPop;
       1 : InsertFastIncrement;
+      2 : OptimizeIntValues;
       end;
 
       inc(i);

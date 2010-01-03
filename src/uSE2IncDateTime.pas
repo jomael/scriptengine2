@@ -12,6 +12,9 @@ uses
 
 implementation
 
+uses
+  uSE2IncTypes;
+
 const
   C_UnitName   = 'System';
   C_UnitSource =

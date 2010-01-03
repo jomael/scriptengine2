@@ -21,6 +21,7 @@ type
   private
     FRegister    : TList;
     FStack       : TList;
+    FRecords     : TList;
 
     FMethodPos   : Pointer;
     FCallType    : TSE2CallType;
@@ -45,6 +46,7 @@ type
     procedure AddSingle(value: single);
     procedure AddDouble(const value: double);
     procedure AddPointer(value: pointer);
+    procedure AddRecord(value: pointer);
 
     procedure Call;
 
@@ -63,7 +65,7 @@ type
 implementation
 
 uses
-  uSE2RunTime;
+  uSE2RunTime, uSE2SystemUnit;
 
 function CallMethod(const ACallType : TSE2CallType; const AMethodPointer : Pointer; const AParameters : array of LongWord; const AResultPointer : LongInt; const AUseResultPointer : Boolean; var ASafecallErrorCode : LongInt; SndResultData: PInteger) : LongWord; stdcall;
   type
@@ -440,10 +442,19 @@ begin
 
   FRegister := TList.Create;
   FStack    := TList.Create;
+  FRecords  := TList.Create;
 end;
 
 destructor TSE2MethodCall.Destroy;
+var i: integer;
+    p: pointer;
 begin
+  for i:=FRecords.Count-1 downto 0 do
+  begin
+    p := FRecords[i];
+    FreeMem(p);
+  end;
+  FRecords.Free;
   FRegister.Free;
   FStack.Free;
   inherited;
@@ -522,9 +533,10 @@ begin
       begin
         case TSE2ParamHelper.GetParamType(ParamDecl) of
         btU8, btS8, btU16, btS16, btU32, btS32, btS64,
-        btSingle, btDouble, btPointer, btObject,
+        btSingle, btDouble, btPointer, btObject :
+           Caller.AddPointer(Pointer(Param.tPointer));
         btRecord :
-           Caller.AddPointer(Param.tPointer);
+           Caller.AddRecord(Pointer(Param.tPointer^));
         btString, btUTF8String, btWideString, btPChar :
            Caller.AddPointer(PPointer(Param.tString)^);
         end;
@@ -539,7 +551,8 @@ begin
         btS32         : Caller.AddS32(Param^.ts32^);
         btS64         : Caller.AddS64(Param^.ts64^);
         btSingle      : Caller.AddSingle(Param^.tSingle^);
-        btDouble      : Caller.AddDouble(Param^.tDouble^);                                               
+        btDouble      : Caller.AddDouble(Param^.tDouble^);
+        btRecord      : Caller.AddRecord(Pointer(Param^.tPointer^));
         btString,
         btWideString,
         btUTF8String,
@@ -600,6 +613,7 @@ begin
         btUTF8String,
         btPChar         : Caller.SetResultPointer(Pointer(ReturnVar.tString^));
         btProcPtr       : Caller.SetResultPointer(Pointer(ReturnVar.tPointer));
+        btRecord        : Caller.SetResultPointer(Pointer(ReturnVar.tPointer^));
         end;
       end;
 
@@ -668,6 +682,14 @@ begin
   FStack.Add(Method^.Data);
   FStack.Add(Method^.Code);
   {$ENDIF}
+end;
+
+procedure TSE2MethodCall.AddRecord(value: pointer);
+var p: Pointer;
+begin
+  p := uSE2SystemUnit.ScriptToDelphiRecord(value);
+  AddPointer(p);
+  FRecords.Add(p);
 end;
 
 initialization

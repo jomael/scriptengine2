@@ -13,6 +13,7 @@ type
   TSE2PerfMonitorEntry = record
     OpCode : TSE2OpCode;
     Time   : double;
+    Count  : integer;
   end;
 
   TSE2PerfMonitor = class(TObject)
@@ -22,6 +23,7 @@ type
     FT1   : int64;
   protected
     function  GetOpCodeTime(OpCode: TSE2OpCode): double;
+    function  GetOpCodeCount(OpCode: TSE2OpCode): integer;
     function  IndexOf(OpCode: TSE2OpCode): integer;
   public
     constructor Create;
@@ -32,6 +34,7 @@ type
     procedure Stop(OpCode: TSE2OpCode);
 
     property  Times[OpCode: TSE2OpCode]: double read GetOpCodeTime; default;
+    property  Count[OpCode: TSE2OpCode]: integer read GetOpCodeCount;
 
   end;
   
@@ -63,6 +66,16 @@ begin
   Clear;
   FList.Free;
   inherited;
+end;
+
+function TSE2PerfMonitor.GetOpCodeCount(OpCode: TSE2OpCode): integer;
+var i: integer;
+begin
+  i := IndexOf(OpCode);
+  if i < 0 then
+     result := 0
+  else
+     result := PSE2PerfMonitorEntry(FList[i])^.Count;
 end;
 
 function TSE2PerfMonitor.GetOpCodeTime(OpCode: TSE2OpCode): double;
@@ -100,11 +113,13 @@ begin
     New(p);
     p^.OpCode := OpCode;
     p^.Time   := 0;
+    p^.Count  := 0;
     FList.Add(p);
   end else
     p := FList[i];
 
   p^.Time := p^.Time + (t2 - FT1) / FFreq;
+  p^.Count := p^.Count + 1;
 end;
 
 {$ENDIF}

@@ -8,13 +8,12 @@ uses
   Classes, uSE2BaseTypes, uSE2OpCode, uSE2Consts;
 
 type
-  TSE2OpCodes = class(TSE2Object)
+  TSE2OpCodes = class(TSE2List)
   private
-    FList      : TSE2List;
+    //FList      : TSE2List;
     FPosition  : integer;
   protected
     function GetOpCode: PSE2OpDefault;
-    function GetCount: integer;
     function GetItem(index: integer): PSE2OpDefault;
 
     procedure Remove(index: integer);
@@ -25,14 +24,13 @@ type
     procedure LoadFromStream(Stream: TStream);
     procedure SaveToStream(Stream: TStream);
 
-    procedure Clear;
+    procedure Clear; override;
     procedure Add(OpCode: PSE2OpDefault);
     function  Delete(index: integer): boolean;
     procedure Reset;
     function  Next: boolean;
 
     property  Items[index: integer]: PSE2OpDefault read GetItem;  default;
-    property  Count                : integer       read GetCount;
     property  OpCode               : PSE2OpDefault read GetOpCode;
 
     property  Position             : integer       read FPosition       write FPosition;
@@ -81,6 +79,8 @@ type
 
     procedure Add(AType: TSE2TypeIdent; Offset, Size: integer);
     procedure Clear;
+
+    function  FindSize(AType: TSE2TypeIdent; Offset: integer): integer;
 
     procedure LoadFromStream(Stream: TStream);
     procedure SaveToStream(Stream: TStream);
@@ -222,7 +222,7 @@ uses SysUtils;
 const
   TSE2OpCodes_StreamVersion    = 1;
   TSE2StringList_StreamVersion = 1;
-  TSE2MetaEntry_StreamVersion  = 1;
+  TSE2MetaEntry_StreamVersion  = 2;
   TSE2MetaList_StreamVersion   = 1;
   TSE2PE_StreamVersion         = 1;
 
@@ -230,32 +230,31 @@ const
 
 procedure TSE2OpCodes.Add(OpCode: PSE2OpDefault);
 begin
-  FList.Add(OpCode);
+  inherited Add(OpCode);
 end;
 
 procedure TSE2OpCodes.Clear;
 var i: integer;
 begin
-  for i:=FList.Count-1 downto 0 do
+  for i:=Self.Count-1 downto 0 do
     Remove(i);
-  FList.Clear;
+  inherited;
   Reset;
 end;
 
 constructor TSE2OpCodes.Create;
 begin
   inherited;
-  FList := TSE2List.Create;
 end;
 
 function TSE2OpCodes.Delete(index: integer): boolean;
 begin
-  if (index < 0) or (index >= FList.Count) then
+  if (index < 0) or (index >= Self.Count) then
      result := False
   else
   begin
     Remove(index);
-    FList.Delete(index);
+    inherited Delete(index);
     result := True;
   end;
 end;
@@ -263,40 +262,34 @@ end;
 destructor TSE2OpCodes.Destroy;
 begin
   Clear;
-  FList.Free;
   inherited;
-end;
-
-function TSE2OpCodes.GetCount: integer;
-begin
-  result := FList.Count;
 end;
 
 function TSE2OpCodes.GetItem(index: integer): PSE2OpDefault;
 begin
-  if (index < 0) or (index >= FList.Count) then
+  if (index < 0) or (index >= Self.Count) then
      result := nil
   else
-     result := FList[index];
+     result := inherited Items[index];
 end;
 
 function TSE2OpCodes.GetOpCode: PSE2OpDefault;
 begin
-  if (FPosition < 0) or (FPosition >= FList.Count) then
+  if (FPosition < 0) or (FPosition >= Self.Count) then
      result := nil
   else
-     result := FList[FPosition];
+     result := inherited Items[FPosition];
 end;
 
 function TSE2OpCodes.Next: boolean;
 begin
   FPosition := FPosition + 1;
-  result := FPosition < FList.Count;
+  result := FPosition < Self.Count;
 end;
 
 procedure TSE2OpCodes.Remove(index: integer);
 begin
-  FreeMem(PSE2OpDefault(FList[index]));
+  FreeMem(PSE2OpDefault(inherited Items[index]));
 end;
 
 procedure TSE2OpCodes.Reset;
@@ -329,7 +322,7 @@ begin
         {$IFDEF FPC}
           {$HINTS ON}
         {$ENDIF}
-        FList.Count := count;
+        Self.Count := count;
         for i:=0 to count-1 do
         begin
           {$IFDEF FPC}
@@ -340,7 +333,7 @@ begin
           {$IFDEF FPC}
             {$HINTS OFF}
           {$ENDIF}
-          FList[i] := OpCode;
+          inherited Items[i] := OpCode;
         end;
       end;
   else
@@ -358,12 +351,12 @@ begin
   version := TSE2OpCodes_StreamVersion;
   Stream.Write(version, SizeOf(version));
 
-  count := FList.Count;
+  count := Self.Count;
   Stream.Write(count, SizeOf(integer));
 
   for i:=0 to count-1 do
   begin
-    OpCode := FList[i];
+    OpCode := inherited Items[i];
     Stream.Write(OpCode^, SizeOf(TSE2OpDefault));
   end;
 end;
@@ -525,11 +518,11 @@ begin
   {$ENDIF}
 
   case version of
-  1 :
+  1, 2 :
       begin
         Stream.Read(FMetaType, SizeOf(TSE2MetaType));
 
-        TSE2StreamHelper.ReadString(Stream, FName);  
+        TSE2StreamHelper.ReadString(Stream, FName);
         TSE2StreamHelper.ReadString(Stream, FUnitName);
 
         Stream.Read(FCodePos    , SizeOf(integer));
@@ -547,10 +540,14 @@ begin
 
         TSE2StreamHelper.ReadAnsiString(Stream, FParamDecl);
 
+        if version > 1 then
+           FRTTI.LoadFromStream(Stream);
+
         if FMetaType = mtClass then
         begin
-           FRTTI.LoadFromStream(Stream);
-           FDynMethods.LoadFromStream(Stream);
+          if version < 2 then   
+             FRTTI.LoadFromStream(Stream);
+          FDynMethods.LoadFromStream(Stream);
         end;
       end;
   else
@@ -585,9 +582,10 @@ begin
 
   TSE2StreamHelper.WriteAnsiString(Stream, FParamDecl);
 
+  FRTTI.SaveToStream(Stream);
+
   if FMetaType = mtClass then
   begin
-     FRTTI.SaveToStream(Stream);
      FDynMethods.SaveToStream(Stream);
   end;
 end;
@@ -858,6 +856,20 @@ begin
   Clear;
   FList.Free;
   inherited;
+end;
+
+function TSE2RTTIList.FindSize(AType: TSE2TypeIdent;
+  Offset: integer): integer;
+var p: PSE2RTTIEntry;
+begin
+  for result := FList.Count-1 downto 0 do
+  begin
+    p := FList[result];
+    if p^.AType = AType then
+      if p^.Offset = Offset then
+        exit;
+  end;
+  result := -1;
 end;
 
 function TSE2RTTIList.GetCount: integer;

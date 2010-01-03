@@ -21,6 +21,7 @@ type
     FOnGetCustomUnits : TSE2GetCustomUnits;
     FEventRaised      : boolean;
     FCanExecute       : boolean;
+    FProcessed        : TList;
   protected
     procedure CompileCallBack(Sender: TObject; CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method;
                                   Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean);
@@ -127,10 +128,12 @@ begin
   inherited Create;
   FOnAddItem := CallBack;
   FCompiler  := TSE2Compiler.Create;
+  FProcessed := TList.Create;
 end;
 
 destructor TSE2CodeCompletion.Destroy;
 begin
+  FProcessed.Free;
   FreeAndNil(FCompiler);
   inherited;
 end;
@@ -369,7 +372,11 @@ end;
 procedure TSE2CodeCompletion.DoProcessItem(Item: TSE2BaseType);
 begin
   if Pos('!', Item.Name) = 0 then
-     DoAddItem(GetDisplayStr(Item), GetInsertStr(Item));
+    if FProcessed.IndexOf(Item) < 0 then
+    begin
+      FProcessed.Add(Item);
+      DoAddItem(GetDisplayStr(Item), GetInsertStr(Item));
+    end;
 end;
 
 function TSE2CodeCompletion.GetDisplayStr(Entry: TSE2BaseType): string;
@@ -425,6 +432,7 @@ var UnitMngr : TSE2UnitCacheMngr;
 begin
   FEventRaised := False;
   FCanExecute  := True;
+  FProcessed.Clear;
 
   UnitMngr := nil;
   if Assigned(FOnGetUnitMngr) then
