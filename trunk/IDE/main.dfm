@@ -114,11 +114,11 @@ object MainForm: TMainForm
       Height = 397
       ActivePage = tabProject
       Align = alClient
-      Images = ImageList1
+      Images = ImgListProject
       TabOrder = 0
       object tabProject: TTabSheet
         Caption = 'Project'
-        ImageIndex = 13
+        ImageIndex = 3
         object tvProjectTree: TTreeView
           Left = 0
           Top = 0
@@ -142,6 +142,34 @@ object MainForm: TMainForm
           TabOrder = 0
           OnCompare = tvProjectTreeCompare
           OnDblClick = tvProjectTreeDblClick
+        end
+      end
+      object tabProjects: TTabSheet
+        Caption = 'Projects'
+        ImageIndex = 7
+        object listProjects: TListView
+          Left = 0
+          Top = 0
+          Width = 173
+          Height = 368
+          Align = alClient
+          BorderStyle = bsNone
+          Columns = <
+            item
+              Caption = 'Name'
+              Width = 100
+            end
+            item
+              Caption = 'Folder'
+            end>
+          ColumnClick = False
+          Ctl3D = False
+          ReadOnly = True
+          RowSelect = True
+          SmallImages = ImgListProject
+          TabOrder = 0
+          ViewStyle = vsReport
+          OnDblClick = listProjectsDblClick
         end
       end
     end
@@ -367,7 +395,7 @@ object MainForm: TMainForm
     Left = 78
     Top = 84
     Bitmap = {
-      494C010115001800080010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C0101150018001C0010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000006000000001002000000000000060
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1170,7 +1198,7 @@ object MainForm: TMainForm
     Left = 44
     Top = 84
     Bitmap = {
-      494C010108000900080010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C0101080009001C0010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

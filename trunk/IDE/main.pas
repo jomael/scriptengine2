@@ -77,6 +77,8 @@ type
     GenUnit_Application: TMenuItem;
     GenUnit_Package: TMenuItem;
     Project_Make: TMenuItem;
+    tabProjects: TTabSheet;
+    listProjects: TListView;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure File_CloseClick(Sender: TObject);
@@ -109,6 +111,7 @@ type
     procedure packageTreeCustomDrawItem(Sender: TCustomTreeView;
       Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure GenUnit_PackageClick(Sender: TObject);
+    procedure listProjectsDblClick(Sender: TObject);
   private
     { Private-Deklarationen }
     FUnitCache      : TSE2UnitCacheMngr;
@@ -116,6 +119,10 @@ type
     FProjectFile    : TScriptProject;
 
     FRunTime        : TSE2RunTime;
+
+    procedure ProjectsLoad;
+    procedure ProjectsSave;
+    procedure ProjectsAdd(const FileName: string);
   protected
     FDoAbort        : boolean;
     FCanContinue    : boolean;
@@ -171,7 +178,7 @@ implementation
 
 uses
   ConsoleForm, uSE2RunType, Math, uSE2RunAccess, uPackageLoader,
-  uSE2Packages, uSE2UnitManager, uSE2ScriptImporter;
+  uSE2Packages, uSE2UnitManager, uSE2ScriptImporter, uSE2IncTypes;
 
 const
   SScriptExecuting      = 'The script is still executing. Do you want to abort the execution?';
@@ -244,6 +251,8 @@ begin
   FCodeEditorMngr.Messages.AddPanel(FPackageInspector, 'Registered Packages');
 
   DoNewProject(SNewProjectName);
+  ProjectsLoad;
+  mainLeft.ActivePageIndex := 0;
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);
@@ -252,6 +261,7 @@ begin
   FUnitCache.Free;
   FProjectFile.Free;
   FCodeEditorMngr.Free;
+  ProjectsSave;
 end;
 
 procedure TMainForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -1127,10 +1137,6 @@ begin
   end;
 end;
 
-{ ************************************************
-  *               .....  .... ....               *
-  ************************************************ }
-
 procedure TMainForm.DoRunScript(Data: TSE2PE; Stepping: boolean);
 var c, t1, t2: int64;
     p        : TSE2OpCode;
@@ -1157,6 +1163,7 @@ begin
     Screen.Cursor := crDefault;
     
     FRunTime.Initialize;
+
     FRunTime.Run;
     FRunTime.Finalize;
 
@@ -1166,9 +1173,16 @@ begin
 
     for p := soNOOP to soSAFE_SJUMP do
     begin
-      {
+             {
       if FRunTime.PerfMonitor[p] > 0 then
-         FCodeEditorMngr.Messages.RunTime.Messages.Lines.Add(TSE2DebugHelper.OpCodeToStr(p) + ': '+FloatToStrF(FRunTime.PerfMonitor[p] * 1000, ffNumber, 8, 0) + ' ms');
+      begin
+        s := TSE2DebugHelper.OpCodeToStr(p) + ': '+FloatToStrF(FRunTime.PerfMonitor[p] * 1000, ffNumber, 8, 0) + ' ms';
+        s := s + ' ('+FloatToStrF(FRunTime.PerfMonitor.Count[p], ffNumber, 8, 0)+') -> ';
+        s := s + FloatToStrF(FRunTime.PerfMonitor[p] * 1000 * 1000 / FRunTime.PerfMonitor.Count[p], ffNumber, 8, 3) + ' us/op';
+
+         FCodeEditorMngr.Messages.RunTime.Messages.Lines.Add(s);
+
+      end;
       }
     end;
 
@@ -1279,7 +1293,9 @@ begin
 end;
 
 procedure TMainForm.DoOpenProject(const FileName: string);
-begin                
+begin             
+  ProjectsAdd(FileName);
+
   CloseProject;
   FProjectFile.OpenProject(FileName);
   FillProjectTree;
@@ -1615,6 +1631,104 @@ begin
     Screen.Cursor := crDefault;
     Importer.Free;
   end;
+end;
+
+procedure TMainForm.ProjectsAdd(const FileName: string);
+var i    : integer;
+    c    : integer;
+    Item : TListItem;
+begin
+  c := -1;
+  for i:=0 to listProjects.Items.Count-1 do
+  begin
+    if AnsiSameText(listProjects.Items[i].SubItems[0], FileName) then
+    begin
+      c := i;
+      break;
+    end;
+  end;
+
+  listProjects.Items.BeginUpdate;
+  try                                   
+    if c > -1 then
+       listProjects.Items.Delete(c);
+
+    Item := listProjects.Items.Insert(0);
+    Item.Caption := ExtractFileName(FileName);
+    Item.SubItems.Add(FileName);
+    Item.ImageIndex := 3;
+  finally
+    listProjects.Items.EndUpdate;
+  end;
+end;
+
+procedure TMainForm.ProjectsLoad;
+var files    : TStringList;
+    FileName : string;
+    i        : integer;
+begin
+  FileName := ExtractFilePath(ParamStr(0)) + 'projects.mru';
+  listProjects.Items.BeginUpdate;
+  try
+    listProjects.Clear;
+    if FileExists(FileName) then
+    begin
+      files := TStringList.Create;
+      try
+        files.LoadFromFile(FileName);
+
+        for i:=files.Count-1 downto 0 do
+          ProjectsAdd(files[i]);
+      finally
+        files.Free;
+      end;
+    end;
+  finally
+    listProjects.Items.EndUpdate;
+  end;
+end;
+
+procedure TMainForm.ProjectsSave;
+var files    : TStringList;
+    FileName : string;
+    i        : integer;
+begin
+  FileName := ExtractFilePath(ParamStr(0)) + 'projects.mru';
+  if FileExists(FileName) then
+     DeleteFile(FileName);
+
+  files := TStringList.Create;
+  try              
+    for i:=0 to listProjects.Items.Count-1 do
+      files.Add(listProjects.Items[i].SubItems[0]);
+
+    try
+      files.SaveToFile(FileName);
+    except
+    end;
+  finally
+    files.Free;
+  end;
+
+end;
+
+procedure TMainForm.listProjectsDblClick(Sender: TObject);
+begin
+  if listProjects.Selected = nil then
+     exit;
+     
+  if AnsiSameText(listProjects.Selected.SubItems[0], FProjectFile.ProjectFile.FileName) then
+     exit;
+
+  if Run_Stop.Enabled then
+     raise EAbort.Create('');
+
+
+  if not CheckUnsavedDocuments then
+     exit;
+
+  DoOpenProject(listProjects.Selected.SubItems[0]);
+  mainLeft.ActivePageIndex := 0;
 end;
 
 end.
