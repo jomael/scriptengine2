@@ -178,7 +178,7 @@ implementation
 
 uses
   ConsoleForm, uSE2RunType, Math, uSE2RunAccess, uPackageLoader,
-  uSE2Packages, uSE2UnitManager, uSE2ScriptImporter, uSE2IncTypes;
+  uSE2Packages, uSE2UnitManager, uSE2ScriptImporter;
 
 const
   SScriptExecuting      = 'The script is still executing. Do you want to abort the execution?';
@@ -1137,9 +1137,57 @@ begin
   end;
 end;
 
+{ ************************************************
+  *               .....  .... ....               *
+  ************************************************ }
+
+procedure TestDirectCall(Self: TObject; RunTime: TSE2RunTime);
+type
+  TTest = procedure(Sender: string; Data: TObject; Code: integer; const value: string) of object;
+var p: Pointer;
+    t: TTest;
+begin
+  p := RunTime.CodeAccess.FindMethod('TTest.MyTestFunction', '', [pmIn, pmIn, pmIn, pmIn, pmIn],
+        [btObject, btString, btObject, btS32, btString]);
+  if p <> nil then
+  begin
+    t := TTest(RunTime.ScriptAsMethod(p, nil));
+    t('Test', nil, 12345, 'Hallo');
+  end;
+end;
+
+procedure TestRecordCall(RunTime: TSE2RunTime);
+type
+  TTest  = function(Rec: TPoint): TPoint of object;
+  TTest2 = function(p1, p2, p3: Pointer): TPoint of object;
+var t, n: TPoint;
+    p: Pointer;
+    m: TTest;
+    r: TTest2;
+begin
+  p := RunTime.CodeAccess.FindMethod('RecordTest', '', [pmIn, pmResult], [btRecord, btRecord]);
+  if p <> nil then
+  begin
+    t := Point(4, 2);
+    m := TTest(RunTime.ScriptAsMethod(p, nil));
+    n := m(t);
+
+    if n.x > n.Y then
+  end;
+
+  p := RunTime.CodeAccess.FindMethod('RecordTest2', '', [pmIn, pmIn, pmIn, pmResult], [btPointer, btPointer, btPointer, btRecord]);
+  if p <> nil then
+  begin
+    r := TTest2(RunTime.ScriptAsMethod(p, nil));
+    n := r(nil, nil, nil);
+    if n.X > n.Y then
+  end;
+end;
+
 procedure TMainForm.DoRunScript(Data: TSE2PE; Stepping: boolean);
 var c, t1, t2: int64;
     p        : TSE2OpCode;
+    s        : string;
 begin
   UpdateCaption(SExecutingAction);
   Run_Run.Enabled  := Stepping;
@@ -1163,6 +1211,9 @@ begin
     Screen.Cursor := crDefault;
     
     FRunTime.Initialize;
+
+    TestRecordCall(FRunTime);
+    TestDirectCall(Self, FRunTime);
 
     FRunTime.Run;
     FRunTime.Finalize;
