@@ -129,6 +129,7 @@ type
 
                 // Aritmetic operation
                 soOP_OPERATION, soOP_COMPARE,
+                soOP_FASTCOMPARE,
 
                 // Data Movement
                 soDAT_COPY_TO, soDAT_COPY_FROM,
@@ -251,6 +252,24 @@ type
   TSE2OpOP_COMPARE = packed record
     OpCode     : TSE2OpCode;
     CompType   : byte;
+  end;
+
+  PSE2OpOP_FASTCOMPARE = ^TSE2OpOP_FASTCOMPARE;
+  TSE2OpOP_FASTCOMPARE = packed record
+    OpCode     : TSE2OpCode;
+    CompType   : byte;
+    Src1,
+    Src2       : Smallint;
+    {
+    case byte of
+    0   : (
+            iSrc1 : integer;
+          );
+    1   : (
+            iWaste : array[0..3] of byte;
+            iSrc2  : integer;
+          );
+    }
   end;
 
   PSE2OpDAT_COPY_TO = ^TSE2OpDAT_COPY_TO;
@@ -1088,6 +1107,7 @@ end;
 {$Warnings on}
 
 procedure TSE2LinkOpCode.SetPosition(index: integer);
+//var tmp: integer;
 begin
   if FOpCode = nil then
      exit;
@@ -1112,6 +1132,28 @@ begin
                          PSE2OpREC_COPY_TO(FOpCode).Target   := index;
   soINT_INCSTATIC   : PSE2OpINT_INCSTATIC(FOpCode).Offset := index;
   soINT_DECSTATIC   : PSE2OpINT_DECSTATIC(FOpCode).Offset := index;
+  soOP_FASTCOMPARE  :
+      begin
+        if PSE2OpOP_FASTCOMPARE(FOpCode).Src1 >= 0 then
+           PSE2OpOP_FASTCOMPARE(FOpCode).Src1 := index
+        else
+        if PSE2OpOP_FASTCOMPARE(FOpCode).Src2 >= 0 then
+           PSE2OpOP_FASTCOMPARE(FOpCode).Src2 := index;
+        {
+        if ((PSE2OpOP_FASTCOMPARE(FOpCode).iSrc1 shr 4) and $8000000) = 0 then // static
+        begin
+          tmp := PSE2OpOP_FASTCOMPARE(FOpCode).iSrc1;
+          tmp := ((index shl 4) and $FFFFFFF0) or ((tmp shr 28) and $F);
+          PSE2OpOP_FASTCOMPARE(FOpCode).iSrc1 := tmp;
+        end else
+        if ((PSE2OpOP_FASTCOMPARE(FOpCode).iSrc2) and $8000000) = 0 then // static
+        begin
+          tmp := PSE2OpOP_FASTCOMPARE(FOpCode).iSrc1;
+          tmp := ((tmp shl 28) and $F0000000) or (index and $FFFFFFF);
+          PSE2OpOP_FASTCOMPARE(FOpCode).iSrc2 := tmp;
+        end;
+        }
+      end;
   end;
   FPositionSet := True;
 end;
