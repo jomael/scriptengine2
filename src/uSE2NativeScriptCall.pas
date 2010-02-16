@@ -433,8 +433,8 @@ var CallInfo     : PSE2NativeCallEntry;
                if RecMeta = nil then
                   raise ESE2CallParameterError.Create(SParamNotCompatible);
 
-               Pointer(newEntry.tPointer^) := uSE2SystemUnit.CreateScriptRecord(RecMeta, RunTime.AppCode);
-               uSE2SystemUnit.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^));
+               Pointer(newEntry.tPointer^) := RunTime.RunTimeClasses.CreateScriptRecord(RecMeta, RunTime.AppCode);
+               RunTime.RunTimeClasses.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^));
              end;
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
@@ -485,7 +485,7 @@ var CallInfo     : PSE2NativeCallEntry;
       if RecMeta = nil then
          raise ESE2CallParameterError.Create(SParamNotCompatible);
 
-      Pointer(RunTime.Stack.Top.tPointer^) := uSE2SystemUnit.CreateScriptRecord(RecMeta, RunTime.AppCode);
+      Pointer(RunTime.Stack.Top.tPointer^) := RunTime.RunTimeClasses.CreateScriptRecord(RecMeta, RunTime.AppCode);
     end;
 
     // parameters
@@ -594,7 +594,7 @@ var CallInfo     : PSE2NativeCallEntry;
 
       if Data^.AType = btRecord then
         if Pointer(Data^.tPointer^) <> nil then
-          uSE2SystemUnit.DestroyScriptRecord(Pointer(Data^.tPointer^));
+          RunTime.RunTimeClasses.DestroyScriptRecord(Pointer(Data^.tPointer^));
 
       RunTime.Stack.Pop;
     end;
@@ -664,8 +664,8 @@ var CallInfo     : PSE2NativeCallEntry;
             //Parameter := @_EDX;
             //if _EDX = nil then
             //   Parameter := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 2);
-            uSE2SystemUnit.ScriptToDelphiRecord(Pointer(RunTime.Stack.Top^.tPointer^), Pointer(Parameter^));
-            uSE2SystemUnit.DestroyScriptRecord(Pointer(RunTime.Stack.Top^.tPointer^));
+            RunTime.RunTimeClasses.ScriptToDelphiRecord(Pointer(RunTime.Stack.Top^.tPointer^), Pointer(Parameter^));
+            RunTime.RunTimeClasses.DestroyScriptRecord(Pointer(RunTime.Stack.Top^.tPointer^));
           end;
 
       end;
@@ -699,7 +699,7 @@ begin
 
     if (ScriptMethod.DynIndex > -1) and (ClassPtr <> nil) then
     begin
-      Methods  := GetClassMethods(ClassPtr);
+      Methods  := RunTime.RunTimeClasses.GetClassMethods(ClassPtr);
       Index    := Methods[ScriptMethod.DynIndex];
       if Index > 0 then
       begin

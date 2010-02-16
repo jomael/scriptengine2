@@ -106,6 +106,7 @@ type
     FPool    : TSE2VarPool;
     //FList    : TSE2List;
     FSize    : integer;
+    FTop     : PSE2VarData;
 
     FMaxSize : integer;
     FIncSize : integer;
@@ -129,7 +130,7 @@ type
     //procedure PopNoDel; overload;
     //procedure PopNoDel(index: integer); overload;
 
-    property  Top: PSE2VarData     read GetTop;
+    property  Top: PSE2VarData     read FTop;
 
     property MaxSize : integer     read FMaxSize     write FMaxSize;
     property IncSize : integer     read FIncSize     write FIncSize;
@@ -896,7 +897,7 @@ begin
 end;
 
 function TSE2Stack.GetTop: PSE2VarData;
-begin        
+begin
   if FSize = 0 then
      result := nil
   else
@@ -934,6 +935,7 @@ begin
      FPool.Push(p);
 
   FSize := FSize - 1;
+  FTop  := Data[FSize - 1];
 
   //ManageStack;
 end;
@@ -979,6 +981,7 @@ begin
 
   inherited Items[FSize - 1] := Data;
   Data^.RefCounter := Data^.RefCounter + 1;
+  FTop := Data;
 end;
 
 function TSE2Stack.PushNew(AType: TSE2TypeIdent): PSE2VarData;
@@ -989,6 +992,7 @@ begin
 
   result           := FPool.Pop(AType);
   inherited Items[FSize - 1] := result;
+  FTop := result;
 end;
 
 procedure TSE2Stack.SetItem(index: integer; value: PSE2VarData);
@@ -997,6 +1001,8 @@ begin
   begin
      inherited Items[index] := value;
      value^.RefCounter := value^.RefCounter + 1;
+     if index = FSize - 1 then
+        FTop := value;
   end;
 end;
 

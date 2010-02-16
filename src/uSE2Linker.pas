@@ -48,7 +48,7 @@ type
 
     procedure PostLinkClass(PE: TSE2PE; aClass: TSE2MetaEntry);
     procedure PostLinkClasses(PE: TSE2PE);
-    procedure PostLinkRecord(PE: TSE2PE; aRecord: TSE2MetaEntry);
+    procedure PostLinkRecord(PE: TSE2PE; aRecord: TSE2MetaEntry; MetaIndex: integer);
     procedure PostLinkRecords(PE: TSE2PE);
     procedure GenCode(PE: TSE2PE; OpCode: PSE2OpDefault);
   public
@@ -799,25 +799,6 @@ var i, j    : integer;
                         end;
                     end;
 
-(*
-
-program Project1;
-
-procedure Test;
-var i, j: integer;
-begin
-  for i:=0 to 5 do
-    for j:=0 to 5 do
-      Console.WriteLine(Convert.IntToStr(i) + ' ' + Convert.IntToStr(j));
-      ;
-end;
-
-begin
-  Test;
-  Console.ReadKey;
-end.
-
-*)
 
                     PSE2OpINT_INCSTATIC(OpCodes[0].OpCode).Value  := PSE2OpDAT_SetInt(OpCodes[2].OpCode).Value;
 
@@ -904,6 +885,62 @@ end.
     end;
   end;
 
+  procedure InsertFastCompare;
+  var src1, src2: integer;
+  begin
+    if OpCodes[0].OpCode.OpCode <> soDAT_COPY_FROM then
+       exit;
+    if OpCodes[1].OpCode.OpCode <> soDAT_COPY_FROM then
+       exit;
+    if OpCodes[2].OpCode.OpCode <> soOP_COMPARE then
+       exit;
+    if PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Static and PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
+        exit;
+
+    if PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
+       OpCodes[0].CodeIndex := OpCodes[1].CodeIndex;
+
+    if PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Static then
+       src1 := 0
+    else
+    begin
+      src1 := PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Source;
+      {
+      src1 := abs(PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Source);
+      if PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Source < 0 then
+         src1 := src1 or $8000000;
+      }
+    end;
+
+    if PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
+       src2 := 0
+    else
+    begin
+      src2 := PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Source;
+      {
+      src2 := abs(PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Source);
+      if PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Source < 0 then
+         src2 := src2 or $8000000;
+      }
+    end;
+
+    OpCodes[0].OpCode.OpCode := soOP_FASTCOMPARE;
+    PSE2OpOP_FASTCOMPARE(OpCodes[0].OpCode).CompType := PSE2OpOP_COMPARE(OpCodes[2].OpCode).CompType;
+    PSE2OpOP_FASTCOMPARE(OpCodes[0].OpCode).Src1     := src2;
+    PSE2OpOP_FASTCOMPARE(OpCodes[0].OpCode).Src2     := src1;
+    {
+    PSE2OpOP_FASTCOMPARE(OpCodes[0].OpCode).iSrc1 := src2 shl 4;
+    PSE2OpOP_FASTCOMPARE(OpCodes[0].OpCode).iSrc2 := ((src2 and $F0) shl 24) or (src1 and $FFFFFFF);  //src1;
+    }
+
+    // Delete the convert opcode
+    Method.OpCodes.Delete(i + 1);
+    Method.OpCodes.Delete(i + 1);
+
+    // Decrease every position
+    AddOffsetPos(-2, i);
+  end;
+
 begin
   if Method = nil then
      exit;
@@ -913,7 +950,7 @@ begin
   if Method.IsExternal then
      exit;
 
-  for Mode := 0 to 2 do
+  for Mode := 0 to 3 do
   begin
     i := 0;
     repeat
@@ -925,6 +962,7 @@ begin
       0 : DeleteUselessPushPop;
       1 : InsertFastIncrement;
       2 : OptimizeIntValues;
+      3 : InsertFastCompare;
       end;
 
       inc(i);
@@ -1004,7 +1042,7 @@ begin
         end;
 end;
 
-procedure TSE2Linker.PostLinkRecord(PE: TSE2PE; aRecord: TSE2MetaEntry);
+procedure TSE2Linker.PostLinkRecord(PE: TSE2PE; aRecord: TSE2MetaEntry; MetaIndex: integer);
 var i: integer;
     p: TSE2MetaEntry;
 
@@ -1056,7 +1094,7 @@ begin
     end;
 
   for i:=0 to PE.MetaData.Count-1 do
-    UpdateRecordRTTI(i, aRecord.CodePos);
+    UpdateRecordRTTI(MetaIndex, aRecord.CodePos);
 
   aRecord.CodePos := -1;
 end;
@@ -1066,7 +1104,7 @@ var i: integer;
 begin
   for i:=0 to PE.MetaData.Count-1 do
     if PE.MetaData[i].MetaType = mtRecord then
-      PostLinkRecord(PE, PE.MetaData[i]);
+      PostLinkRecord(PE, PE.MetaData[i], i);
 end;
 
 function TSE2Linker.GetParentRecord(PE: TSE2PE;

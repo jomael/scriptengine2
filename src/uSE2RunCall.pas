@@ -5,7 +5,8 @@ unit uSE2RunCall;
 interface
 
 uses
-  Classes, uSE2RunType, uSE2BaseTypes, uSE2PEData, uSE2OpCode, uSE2Consts;
+  Classes, uSE2RunType, uSE2BaseTypes, uSE2PEData, uSE2OpCode, uSE2Consts,
+  uSE2RunTimeClasses;
 
 type
   TSE2CallExternalType = record
@@ -25,6 +26,7 @@ type
 
     FMethodPos   : Pointer;
     FCallType    : TSE2CallType;
+    FClasses     : TSE2RunTimeClasses;
 
     FFirstIsClass: boolean;
     FUseResPoint : boolean;
@@ -32,7 +34,7 @@ type
     FReturn2     : integer;
     FReturn3     : integer;
   public
-    constructor Create(Method: Pointer; CallType: TSE2CallType); reintroduce;
+    constructor Create(Method: Pointer; CallType: TSE2CallType; Classes: TSE2RunTimeClasses); reintroduce;
     destructor Destroy; override;
 
     procedure AddMethod(const Method: PMethod);
@@ -434,11 +436,12 @@ begin
   FReturn3 := CallMethod(FCallType, FMethodPos, Parameters, FReturn1, FUseResPoint, i, @FReturn2);
 end;
 
-constructor TSE2MethodCall.Create(Method: Pointer; CallType: TSE2CallType);
+constructor TSE2MethodCall.Create(Method: Pointer; CallType: TSE2CallType; Classes: TSE2RunTimeClasses);
 begin
   inherited Create;
   FMethodPos := Method;
   FCallType  := CallType;
+  FClasses   := Classes;
 
   FRegister := TList.Create;
   FStack    := TList.Create;
@@ -452,7 +455,7 @@ begin
   for i:=FRecords.Count-1 downto 0 do
   begin
     p := FRecords[i];
-    FreeMem(p);
+    FClasses.MM.FreeMem(p);
   end;
   FRecords.Free;
   FRegister.Free;
@@ -515,7 +518,7 @@ begin
      raise ESE2NullReferenceError.Create('External Method "'+MetaData.AUnitName+'.'+MetaData.Name+'" is not assigned');
 
   pList := nil;
-  Caller := TSE2MethodCall.Create(Method, MetaData.CallType);
+  Caller := TSE2MethodCall.Create(Method, MetaData.CallType, TSE2RunTime(RunTime).RunTimeClasses);
   try
     ReturnVar := nil;
     CanUsePtr := True;
@@ -687,7 +690,7 @@ end;
 procedure TSE2MethodCall.AddRecord(value: pointer);
 var p: Pointer;
 begin
-  p := uSE2SystemUnit.ScriptToDelphiRecord(value);
+  p := FClasses.ScriptToDelphiRecord(value);
   AddPointer(p);
   FRecords.Add(p);
 end;

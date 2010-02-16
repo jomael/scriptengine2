@@ -839,7 +839,8 @@ begin
 
   if State.CurrentOwner <> nil then
     if TSE2Type(State.CurrentOwner.InheritRoot) = TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
-       RaiseError(petError, 'External classes can not have any variables');
+      if State.Method = nil then
+         RaiseError(petError, 'External classes can not have any variables');
 
 
   while not FHasError do
@@ -3777,25 +3778,59 @@ begin
     end else
     if Variable.Parent is TSE2Class then
     begin
-      if Variable.IsStatic then
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(0, True), Variable.GenLinkerName))
-      else
+      if Variable.AType.InheritRoot is TSE2Record then
       begin
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        if Variable.IsStatic then
+        begin
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, True), Variable.GenLinkerName));
+           MakeRecordPop;
+        end else
+        begin
+           CodeIndex := -1;
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, False), ''));   
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+           MakeRecordPop;
+        end;
+        State.DecStack;
+      end else
+      begin
+        if Variable.IsStatic then
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(0, True), Variable.GenLinkerName))
+        else
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        end;
+        State.DecStack;
       end;
-      State.DecStack;
     end else
     if Variable.Parent is TSE2Record then
     begin
-      if Variable.IsStatic then
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(0, True), Variable.GenLinkerName))
-      else
+      if Variable.AType.InheritRoot is TSE2Record then
       begin
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        if Variable.IsStatic then
+        begin
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, True), Variable.GenLinkerName));
+           MakeRecordPop;
+        end else
+        begin
+           CodeIndex := -1;
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, False), ''));   
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+           MakeRecordPop;
+        end;
+        State.DecStack;
+      end else
+      begin                  
+        if Variable.IsStatic then
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(0, True), Variable.GenLinkerName))
+        else
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        end;
+        State.DecStack;
       end;
-      State.DecStack;
     end else
        RaiseError(petError, 'Internal error: variable owner not as expected');
   end;

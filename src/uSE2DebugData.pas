@@ -43,6 +43,7 @@ const
 
                 // Aritmetic operation
                 'soOP_OPERATION', 'soOP_COMPARE',
+                'soOP_FASTCOMPARE',
 
                 // Data Movement
                 'soDAT_COPY_TO', 'soDAT_COPY_FROM',
@@ -97,6 +98,7 @@ begin
   soFLOW_PUSHRET         : result := Format('PUSH RET [%d]', [PSE2OpFLOW_PUSHRET(OpCode).Position]);
   soOP_OPERATION         : result := Format('OP [%s]', [OperationToStr(PSE2OpOP_OPERATION(OpCode).OpType)]);
   soOP_COMPARE           : result := Format('CMP [%s]', [ComparisonToStr(PSE2OpOP_COMPARE(OpCode).CompType)]);
+  soOP_FASTCOMPARE       : result := Format('FCMP [%s]', [ComparisonToStr(PSE2OpOP_FASTCOMPARE(OpCode).CompType)]);
   soDAT_COPY_TO          : result := Format('POP TO [%d %s]', [PSE2OpDAT_COPY_TO(OpCode).Target, IfThen(PSE2OpDAT_COPY_TO(OpCode).Static, 'Static', 'Dynamic')]);
   soDAT_COPY_FROM        : result := Format('PUSH FROM [%d %s]', [PSE2OpDAT_COPY_FROM(OpCode).Source, IfThen(PSE2OpDAT_COPY_FROM(OpCode).Static, 'Static', 'Dynamic')]);
   soDAT_MOVE_TO          : result := Format('MOVE TO [%d %s]', [PSE2OpDAT_MOVE_TO(OpCode).Target, IfThen(PSE2OpDAT_MOVE_TO(OpCode).Static, 'Static', 'Dynamic')]);
@@ -186,7 +188,7 @@ begin
   aRun := RunTime;
   if aRun.ScriptClassList.IndexOf(Ptr) > -1 then
   begin
-    meta := uSE2SystemUnit.GetClassMeta(Ptr); // TSE2MetaEntry( Pointer(integer(Ptr) + uSE2SystemUnit.vmtScriptMetaEntry) );
+    meta := aRun.RunTimeClasses.GetClassMeta(Ptr); // TSE2MetaEntry( Pointer(integer(Ptr) + uSE2SystemUnit.vmtScriptMetaEntry) );
     try
       //result := '0x' +IntToHex(Integer(Ptr), 8);
       result := '['+meta.AUnitName + '.' + meta.Name +']';
