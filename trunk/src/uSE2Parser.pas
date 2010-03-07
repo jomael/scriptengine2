@@ -101,7 +101,8 @@ type
     function  GetOverwrittenMethod(Method: TSE2Method): TSE2Method;
     function  MethodCall(State: TSE2ParseState; Method: TSE2Method; CallMethod: TSE2Method;
                          UseBrackets: boolean = False; LastParamSetter: TSE2SetterEvent = nil;
-                         AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil): TSE2Type;
+                         AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil;
+                         NoMagicMemory: boolean = False): TSE2Type;
     function  Expression(State: TSE2ParseState; Method: TSE2Method; TargetType: TSE2Type): TSE2Type;
     function  FindMatchingMethod(State: TSE2ParseState; Method: TSE2Method; MethodList, ParamExpression: TSE2BaseTypeList; IgnoreFirst: boolean): TSE2Method;
 
@@ -127,7 +128,7 @@ type
     procedure ForStatement(State: TSE2ParseState; Method: TSE2Method);
     procedure LoopFlowStatement(State: TSE2ParseState; Method: TSE2Method);
     procedure TryStatement(State: TSE2ParseState; Method: TSE2Method);
-    procedure InheritedStatement(State: TSE2ParseState; Method: TSE2Method);
+    function  InheritedExpression(State: TSE2ParseState; Method: TSE2Method): TSE2Type;
     procedure IdentifierStatement(State: TSE2ParseState; Method: TSE2Method);
 
     procedure ValidateForwards(State: TSE2ParseState);
@@ -1222,8 +1223,16 @@ begin
         enumList.OwnsObjs := False;
 
         if not isSet then
-           newType.AType := btU32
-        else
+        begin
+          if enumList.Count > 65535 then
+            newType.AType := btU32
+          else
+          if enumList.Count > 255 then
+            newType.AType := btU16
+          else
+            newType.AType := btU8;
+
+        end else
            newType.AType := btU32;
       end;
     finally
@@ -2369,7 +2378,7 @@ begin
             if State.CurrentOwner = nil then
                RaiseError(petError, 'Normal methods can not be virtual')
             else
-            if Method.IsStatic then
+            if Method.IsStatic and (Method.MethodType <> mtConstructor) then
                RaiseError(petError, 'Static methods can not be virtual')
             else
             begin
@@ -2584,14 +2593,18 @@ begin
       end;
   sesInherited :
       begin
-        InheritedStatement(State, Method);
+        if InheritedExpression(State, Method) <> nil then
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+          State.DecStack;
+        end;
       end;
   end;
 end;        
 
 function TSE2Parser.MethodCall(State: TSE2ParseState; Method,
   CallMethod: TSE2Method; UseBrackets: boolean = False; LastParamSetter: TSE2SetterEvent = nil;
-  AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil): TSE2Type;
+  AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil; NoMagicMemory: boolean = False): TSE2Type;
 var i          : integer;
     iStart     : integer;
     iStop      : integer;
@@ -2604,6 +2617,7 @@ var i          : integer;
 
     ParamDecl  : TSE2BaseTypeList;
     wasExpr    : boolean;
+    iMarkDelPos: integer;
     //iPushPos   : integer;
 {$IFDEF FPC}
   {$WARNINGS OFF}
@@ -2706,6 +2720,7 @@ begin
     end;
 
   ResultCodeIndex := Method.OpCodes.Count;
+  iMarkDelPos := -1;
   // Add the return value as a new stack element
   if result <> nil then
   begin
@@ -2713,6 +2728,7 @@ begin
     if result is TSE2Record then
     begin
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + result.GenLinkerName));
+      iMarkDelPos := Method.OpCodes.Count;
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MARK_DEL, ''));
     end;
     State.IncStack;
@@ -2949,12 +2965,12 @@ begin
 
       if (ParentType is TSE2Class) and (CallMethod.Parent <> ParentType) then
       begin
-        if not CallMethod.IsExternal then
+        if (not CallMethod.IsExternal) and (not NoMagicMemory)  then
            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_CREATE(CallMethod.Params.Count - 1, 0), 'META_' + TSE2Class(ParentType).GenLinkerName));
         result := TSE2Class(ParentType);
       end else
       begin
-        if not CallMethod.IsExternal then
+        if (not CallMethod.IsExternal) and (not NoMagicMemory) then
            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_CREATE(CallMethod.Params.Count - 1, 0), 'META_' + TSE2Class(CallMethod.Parent).GenLinkerName ));
         result := TSE2Class(CallMethod.Parent);
       end;
@@ -2996,9 +3012,10 @@ begin
     end;
 
     if CallMethod.MethodType = mtDestructor then
-    begin
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DESTROY, ''));
-    end;
+      if not NoMagicMemory then
+      begin
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DESTROY, ''));
+      end;
 
     // Return position already deleted by OP_RET
     State.DecStack;
@@ -3027,7 +3044,20 @@ begin
       end else
       if (CallMethod.ReturnValue <> nil) and (not CallMethod.IsStatic) and (not CallMethod.IsExternal) then
       begin
+        if CallMethod.ReturnValue.AType is TSE2Record then
+        begin
+          if iMarkDelPos = -1 then
+             RaiseError(petError, 'Internal error: record deletion point not valid');
+
+          Method.OpCodes.Items[iMarkDelPOs].OpCode.OpCode := soNOOP;
+        end;
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-1, False), ''));
+
+        if CallMethod.ReturnValue.AType is TSE2Record then
+        begin                  
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MARK_DEL, ''));
+        end;
+
         State.DecStack;
       end;
       // Class must be already in stack - so no push
@@ -4851,6 +4881,12 @@ begin
            RaiseError(petError, 'Expression does not return a value');
 
       end;
+  sesInherited :
+      begin
+        result := InheritedExpression(State, Method);
+        if result = nil then
+           RaiseError(petError, 'Expression does not return a value');
+      end;
   else
       begin
         RaiseError(petError, 'Expression expected but found "'+TSE2TokenName[Tokenizer.Token.AType]+'" instead');
@@ -5733,37 +5769,92 @@ begin
   end;
 end;
 
-procedure TSE2Parser.InheritedStatement(State: TSE2ParseState;
-  Method: TSE2Method);
+function TSE2Parser.InheritedExpression(State: TSE2ParseState;
+  Method: TSE2Method): TSE2Type;
 var pOverwrite : TSE2Method;
     i          : integer;
     diff       : integer;
+    pFindType  : TSE2BaseType;
+    Meth       : TSE2Method;
 begin
+  result := nil;
   ExpectToken([sesInherited]);
-
-  if not Method.IsOverride then
-     RaiseError(petError, 'Inherited not allowed here - method must override another method');
 
   if not (Method.Parent is TSE2Class) then
      RaiseError(petError, 'Inherited not allowed here');
 
-  pOverwrite := GetOverwrittenMethod(Method);
-  if pOverwrite = nil then
-     RaiseError(petError, 'Could not find the overwritten method');
-
-  {$IFDEF SEII_SMART_LINKING}
-  Method.UsedMethods.Add(pOverwrite);
-  {$ELSE}
-  pOverwrite.Used := True;
-  {$ENDIF}
-
   ReadNextToken;
 
-  if pOverwrite.IsAbstract then
-     exit;
-  if pOverwrite.OpCodes.Count = 1 then
-    if pOverwrite.OpCodes[0].OpCode.OpCode = soFLOW_RET then
-      exit;
+
+
+  if Tokenizer.Token.AType = sesIdentifier then
+  begin
+    if TSE2Class(Method.Parent).InheritFrom = Method.Parent then
+       RaiseError(petError, 'No overwritten method available in root classes');
+
+    ExpectToken([sesIdentifier]);
+    pFindType := FindIdentifier(Method, Tokenizer.Token.Value, TSE2Class(Method.Parent).InheritFrom, '');
+
+    if pFindType = nil then
+       RaiseError(petError, 'Unkown method: ' + Tokenizer.Token.Value);
+
+    if not (pFindType is TSE2Method) then
+       RaiseError(petError, 'Only methods are allowed here');
+
+    ReadNextToken;
+    Meth := TSE2Method(pFindType);
+
+    {$IFDEF SEII_SMART_LINKING}
+    Method.UsedMethods.Add(Meth);
+    {$ELSE}
+    Meth.Used := True;
+    {$ENDIF}
+
+    diff := 0;
+    if Meth.HasSelfParam then
+    begin
+      case TSE2Parameter(Meth.Params[0]).ParameterType of
+      ptConst,
+      ptDefault : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-(Method.Params.Count + diff + Method.StackSize), False), ''));
+      ptVar     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_MOVE_FROM(-(Method.Params.Count + diff + Method.StackSize), False), ''));
+      end;
+    end;
+
+    State.IncStack;
+    result := MethodCall(State, Method, Meth, False, nil, False, nil, True);
+
+    {if Meth.HasSelfParam then
+    begin
+      case TSE2Parameter(Meth.Params[0]).ParameterType of
+      ptConst,
+      ptDefault : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+      ptVar     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC_NODEL, ''));
+      end;
+    end;               }
+    if result = nil then
+       State.DecStack;
+  end else
+  begin
+    if not Method.IsOverride then
+       RaiseError(petError, 'Inherited not allowed here - method must override another method');
+
+    pOverwrite := GetOverwrittenMethod(Method);
+    if pOverwrite = nil then
+       RaiseError(petError, 'Could not find the overwritten method');
+
+    {$IFDEF SEII_SMART_LINKING}
+    Method.UsedMethods.Add(pOverwrite);
+    {$ELSE}
+    pOverwrite.Used := True;
+    {$ENDIF}
+
+    ReadNextToken;
+
+    if pOverwrite.IsAbstract then
+       exit;
+    if pOverwrite.OpCodes.Count = 1 then
+      if pOverwrite.OpCodes[0].OpCode.OpCode = soFLOW_RET then
+        exit;
 
     diff := 0;
     if Method.ReturnValue <> nil then
@@ -5808,6 +5899,7 @@ begin
     else
     if pOverwrite.ReturnValue <> nil then
        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+  end;
 end;
 
 function TSE2Parser.GetOverwrittenMethod(Method: TSE2Method): TSE2Method;

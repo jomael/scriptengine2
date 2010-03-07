@@ -48,7 +48,7 @@ type
     procedure AddSingle(value: single);
     procedure AddDouble(const value: double);
     procedure AddPointer(value: pointer);
-    procedure AddRecord(value: pointer);
+    function  AddRecord(value: pointer): pointer;
 
     procedure Call;
 
@@ -513,10 +513,12 @@ var Caller    : TSE2MethodCall;
     CanUsePtr : boolean;
     MethPtr   : PMethod;
     pList     : TList;
+    pVarRecords: TList;
 begin
   if Method = nil then
      raise ESE2NullReferenceError.Create('External Method "'+MetaData.AUnitName+'.'+MetaData.Name+'" is not assigned');
 
+  pVarRecords := nil;
   pList := nil;
   Caller := TSE2MethodCall.Create(Method, MetaData.CallType, TSE2RunTime(RunTime).RunTimeClasses);
   try
@@ -528,7 +530,7 @@ begin
     end;
     Caller.FirstIsClass := MetaData.HasSelf;
     for i:=0 to MetaData.ParamCount-1 do
-    begin                            
+    begin
       ParamDecl := Ord(MetaData.ParamDecl[i + 1]);
       Param     := Stack [ Stack.Size-1  - MetaData.ParamCount + i];
 
@@ -539,7 +541,12 @@ begin
         btSingle, btDouble, btPointer, btObject :
            Caller.AddPointer(Pointer(Param.tPointer));
         btRecord :
-           Caller.AddRecord(Pointer(Param.tPointer^));
+           begin
+             if pVarRecords = nil then
+                pVarRecords := TList.Create;
+
+             pVarRecords.Add(Caller.AddRecord(Pointer(Param.tPointer^)));
+           end;
         btString, btUTF8String, btWideString, btPChar :
            Caller.AddPointer(PPointer(Param.tString)^);
         end;
@@ -622,6 +629,22 @@ begin
 
     Caller.Call;
 
+    if pVarRecords <> nil then
+    begin
+      for i:=MetaData.ParamCount-1 downto 0 do
+      begin
+        ParamDecl := Ord(MetaData.ParamDecl[i + 1]);
+        Param     := Stack [ Stack.Size-1  - MetaData.ParamCount + i];
+
+        if TSE2ParamHelper.IsVarParam(ParamDecl) then
+          if TSE2ParamHelper.GetParamType(ParamDecl) = btRecord then
+          begin
+            Caller.FClasses.DelphiToScriptRecord(pVarRecords.Last, Pointer(Param.tPointer^));
+            pVarRecords.Delete(pVarRecords.Count - 1);
+          end;
+      end;
+    end;
+
     if ReturnVar <> nil then
     begin
       case MetaData.ResultType of
@@ -663,6 +686,9 @@ begin
       pList.Free;
     end;
 
+    if pVarRecords <> nil then
+       pVarRecords.Free;
+
     Caller.Free;
   end;
 end;
@@ -687,12 +713,11 @@ begin
   {$ENDIF}
 end;
 
-procedure TSE2MethodCall.AddRecord(value: pointer);
-var p: Pointer;
+function TSE2MethodCall.AddRecord(value: pointer): pointer;
 begin
-  p := FClasses.ScriptToDelphiRecord(value);
-  AddPointer(p);
-  FRecords.Add(p);
+  result := FClasses.ScriptToDelphiRecord(value);
+  AddPointer(result);
+  FRecords.Add(result);
 end;
 
 initialization

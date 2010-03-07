@@ -190,6 +190,40 @@ type
     property Count                : integer           read GetCount;
   end;
 
+  TSE2StackItem = class(TObject)
+  private
+    FUnitName     : string;
+    FName         : string;
+    FHasResult    : boolean;
+    FResultValue  : string;
+
+    FParamTrace   : string;
+  public
+    property AUnitName   : string  read FUnitName     write FUnitName;
+    property Name        : string  read FName         write FName;
+    property HasResult   : boolean read FHasResult    write FHasResult;
+    property ResultValue : string  read FResultValue  write FResultValue;
+    property ParamTrace  : string  read FParamTrace   write FParamTrace;
+  end;
+
+  TSE2StackTrace = class(TObject)
+  private
+    FItems : TList;
+  protected
+    function GetItem(index: integer): TSE2StackItem;
+    function GetCount: integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    procedure Clear;
+    function  Add: TSE2StackItem;
+
+    property  Items[index: integer]: TSE2StackItem read GetItem; default;
+    property  Count                : integer       read GetCount;
+
+  end;
+
 implementation
 
 uses SysUtils, uSE2SystemUnit;
@@ -1221,6 +1255,49 @@ begin
        exit;
   end;
   result := -1;
+end;
+
+{ TSE2StackTrace }
+
+function TSE2StackTrace.Add: TSE2StackItem;
+begin
+  result := TSE2StackItem.Create;
+  FItems.Add(result);
+end;
+
+procedure TSE2StackTrace.Clear;
+var i: integer;
+begin
+  for i:=FItems.Count-1 downto 0 do
+    TSE2StackItem(FItems[i]).Free;
+  FItems.Clear;
+end;
+
+constructor TSE2StackTrace.Create;
+begin
+  inherited;
+  FItems := TList.Create;
+end;
+
+destructor TSE2StackTrace.Destroy;
+begin
+  Clear;
+  FItems.Free;
+  inherited;
+end;
+
+function TSE2StackTrace.GetCount: integer;
+begin
+  result := FItems.Count;
+end;
+
+function TSE2StackTrace.GetItem(index: integer): TSE2StackItem;
+begin
+  if (index < 0) or (index >= FItems.Count) then
+     result := nil
+  else
+     result := FItems[index];
+
 end;
 
 initialization

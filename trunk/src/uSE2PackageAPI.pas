@@ -11,6 +11,7 @@ const
   CSE2PackageGUID             = 'SE2PackageGUID';
 
   CSE2PackageSetMM            = 'SE2SetMM';
+  CSE2PackageSetMMEx          = 'SE2SetMMEx';
   CSE2PackageNumModules       = 'SE2NumModules';
 
   CSE2PackageInitModule       = 'SE2InitModule';
@@ -45,7 +46,17 @@ type
 
 
   // Memory Manager Setup
+  {$IFDEF DELPHI2005UP}
+    {$Warnings off}
+  {$ENDIF}
   TSE2PackageSetMM            = procedure(const MemoryManager: TMemoryManager); stdcall;
+  {$IFDEF DELPHI2005UP}
+    {$Warnings on}
+  {$ENDIF}
+  {$IFDEF DELPHI2005UP}
+  TSE2PackageSetMMEx          = procedure(const MemoryManager: TMemoryManagerEx); stdcall;
+  {$ENDIF}
+
   // Modules in the package
   TSE2PackageNumModules       = function: integer; stdcall;
 

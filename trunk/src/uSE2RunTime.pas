@@ -54,6 +54,7 @@ type
     procedure DoErrorEvent(Exp: ExceptClass; const Msg: string; ErrorPos: integer; const CallStack: string);
 
     function  MetaEntryToStr(Entry: TSE2MetaEntry; StackIndex: integer): string;
+    procedure MetaEntryToItem(Entry: TSE2MetaEntry; StackIndex: integer; Target: TSE2StackItem);
 
     procedure ProcessGC;
     procedure ProcessRecordGC;
@@ -70,7 +71,8 @@ type
     procedure Finalize;
 
     procedure Abort;
-    function  GetCallStack: string;
+    function  GetCallStack: string; overload;
+    procedure GetCallStack(Target: TSE2StackTrace); overload;
 
     function  CreateClass(const Meta: TSE2MetaEntry): Pointer;
     procedure FreeClass(AClass: Pointer);
@@ -1062,6 +1064,25 @@ begin
   end;
 end;
 
+procedure TSE2RunTime.GetCallStack(Target: TSE2StackTrace);
+var i     : integer;
+    Item  : TSE2StackItem;
+    index : integer;
+begin
+  for i:=FStack.Size-1 downto 0 do
+  begin
+    if FStack[i]^.AType = btReturnAddress then
+    begin
+      index := (FStack[i]^.tS64^ shr 32);
+      if index > 0 then
+      begin
+        Item := Target.Add;
+        MetaEntryToItem(FAppCode.MetaData[index - 1], i, Item);
+      end;
+    end;
+  end;
+end;
+
 function TSE2RunTime.MetaEntryToStr(Entry: TSE2MetaEntry;
   StackIndex: integer): string;
 var i: integer;
@@ -1104,6 +1125,44 @@ begin
     result := result + TSE2DebugHelper.VarContentToStr(FStack[StackIndex - 1 - Entry.ParamCount], nil, 5)
   end;
   result := result + ';';
+end;
+
+procedure TSE2RunTime.MetaEntryToItem(Entry: TSE2MetaEntry;
+  StackIndex: integer; Target: TSE2StackItem);
+var i: integer;
+    p: PSE2VarData;
+begin
+  if Entry = nil then
+     exit;
+
+  Target.HasResult := Entry.HasResult;
+  if Target.HasResult then
+  begin
+    Target.ResultValue := TSE2DebugHelper.VarContentToStr(FStack[StackIndex - 1 - Entry.ParamCount], nil, 5);
+  end;
+
+  Target.AUnitName := Entry.AUnitName;
+  Target.Name      := Entry.Name;
+  Target.ParamTrace:= '';
+
+  if Entry.ParamCount > 0 then
+  begin
+    Target.ParamTrace:= '(';
+    for i:=0 to Entry.ParamCount-1 do
+    begin
+      p := FStack[StackIndex - Entry.ParamCount + i];
+      if p = nil then
+        Target.ParamTrace := Target.ParamTrace + '???'
+      else
+      if p.tPointer = nil then
+        Target.ParamTrace := Target.ParamTrace + 'nil'
+      else
+        Target.ParamTrace := Target.ParamTrace + TSE2DebugHelper.VarContentToStr(p, nil, 5);
+      if i < Entry.ParamCount-1 then
+         Target.ParamTrace := Target.ParamTrace + ', ';
+    end;
+    Target.ParamTrace := Target.ParamTrace + ')';
+  end;
 end;
 
 procedure TSE2RunTime.DoErrorEvent(Exp: ExceptClass; const Msg: string; ErrorPos: integer;
@@ -1431,7 +1490,10 @@ var MetaEntry  : TSE2MetaEntry;
         btPChar        : PbtPChar(Parameter.VPointer)^      := PbtPChar(Data^.tString^)^;
         btPointer,
         btArray        : PPointer(Parameter.VPointer)^    := Pointer(Data^.tPointer^);
-        btRecord       : ;
+        btRecord       :
+            begin
+              Self.FRunClasses.ScriptToDelphiRecord(PPointer(Data^.tPointer)^, Parameter.VPointer);
+            end;
         end;
       end;
 
