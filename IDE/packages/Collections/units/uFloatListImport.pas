@@ -1,13 +1,9 @@
 unit uFloatListImport;
 
-{$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
-{$ENDIF}
-
 interface
 
 uses
-  uFloatList,
+  uFLoatList,
   uSE2PackageAPI;
 
 const

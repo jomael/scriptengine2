@@ -17,8 +17,7 @@ uses
   SynHighlighterSE2 in 'units\Editor\SynHighlighterSE2.pas',
   uFrmSearch in 'units\Forms\uFrmSearch.pas' {SearchDialog},
   uPackageLoader in 'units\uPackageLoader.pas',
-  uPackageInfo in 'units\IDE Controls\uPackageInfo.pas',
-  ScriptTestUnits in 'units\ScriptTests\ScriptTestUnits.pas';
+  uPackageInfo in 'units\IDE Controls\uPackageInfo.pas';
 
 {$R *.res}
 

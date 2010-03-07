@@ -1,9 +1,5 @@
 unit uFileStreamModule;
 
-{$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
-{$ENDIF}
-
 interface
 
 uses
@@ -75,10 +71,7 @@ end;
 
 function TFileStream_Create2(Self: TFileStream; AHandle: integer): TFileStream;
 begin
-  // units\uFileStreamModule.pas(74,39) Error: Wrong number of parameters specified for call to "Create"
-  {$IFNDEF FPC}
   result := TFileStream.Create(AHandle);
-  {$ENDIF}
 end;
 
 procedure CFileStreamModuleRegister(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister);

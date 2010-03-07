@@ -9,7 +9,7 @@ MAKE = $(ROOT)\bin\make.exe -$(MAKEFLAGS) -f$**
 DCC = $(ROOT)\bin\dcc32.exe $**
 BRCC = $(ROOT)\bin\brcc32.exe $**
 #------------------------------------------------------------------------------
-PROJECTS = ScriptEngineII.exe IO.dll Streams.dll Collections.dll
+PROJECTS = ScriptEngineII.exe IO.dll Streams.dll Collections.dll Database.dll
 #------------------------------------------------------------------------------
 default: $(PROJECTS)
 #------------------------------------------------------------------------------
@@ -24,6 +24,9 @@ Streams.dll: packages\Streams\Streams.dpr
   $(DCC)
 
 Collections.dll: packages\Collections\Collections.dpr
+  $(DCC)
+
+Database.dll: packages\Database\Database.dpr
   $(DCC)
 
 

@@ -1,9 +1,5 @@
 unit uBasicStreams;
 
-{$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
-{$ENDIF}
-
 interface
 
 uses
@@ -13,6 +9,7 @@ uses
 const
   CBasicStreamsName   = 'Streams';
   CBasicStreamsSource =
+
         'unit Streams;'+#13#10+
         #13#10+
         'interface'+#13#10+   

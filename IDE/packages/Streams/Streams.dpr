@@ -1,5 +1,7 @@
 library Streams;
 
+{$INCLUDE ScriptEngine.inc}
+
 
 uses
   SysUtils,
@@ -32,8 +34,13 @@ begin
 end;
 
 var
+  {$IFDEF DELPHI2005UP}
+  oldMM : TMemoryManagerEx;
+  newMM : TMemoryManagerEx;
+  {$ELSE}
   oldMM : TMemoryManager;
   newMM : TMemoryManager;
+  {$ENDIF}
   useMM : boolean;
 
 // Package Finalization
@@ -46,7 +53,7 @@ begin
   end;
 end;
 
-procedure PackageSetMM(const MemoryManager: TMemoryManager); stdcall;
+procedure PackageSetMM(const MemoryManager: {$IFDEF DELPHI2005UP} TMemoryManagerEx {$ELSE} TMemoryManager {$ENDIF}); stdcall;
 begin
   if not useMM then
   begin
@@ -152,7 +159,7 @@ exports
   PackageGetGUID name CSE2PackageGUID,
   PackageInitialize name CSE2PackageInitialize,
   PackageFinalize name CSE2PackageFinalize,
-  PackageSetMM name CSE2PackageSetMM,
+  PackageSetMM name {$IFDEF DELPHI2005UP} CSE2PackageSetMMEx {$ELSE} CSE2PackageSetMM {$ENDIF},
   PackageNumModules name CSE2PackageNumModules,
   PackageInitModule name CSE2PackageInitModule,
   PackageFinalizeModule name CSE2PackageFinalizeModule,

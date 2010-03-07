@@ -79,6 +79,8 @@ type
     Project_Make: TMenuItem;
     tabProjects: TTabSheet;
     listProjects: TListView;
+    Splitter2: TSplitter;
+    stepCallStack: TListView;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure File_CloseClick(Sender: TObject);
@@ -178,7 +180,9 @@ implementation
 
 uses
   ConsoleForm, uSE2RunType, Math, uSE2RunAccess, uPackageLoader,
-  uSE2Packages, uSE2UnitManager, uSE2ScriptImporter;
+  uSE2Packages, uSE2UnitManager, uSE2ScriptImporter,
+
+  uSE2IncHelpers;
 
 const
   SScriptExecuting      = 'The script is still executing. Do you want to abort the execution?';
@@ -1062,6 +1066,7 @@ procedure TMainForm.ClearOpCodes;
 begin
   stepDebugInstructions.Clear;
   stepDebugStack.Clear;
+  stepCallStack.Clear;
 end;
 
 procedure TMainForm.ShowOpCodes(Data: TSE2PE; DebugPanel: boolean);
@@ -1116,13 +1121,15 @@ procedure TMainForm.ShowCurrentStack(Data: TSE2RunTime);
 var i     : integer;
     entry : PSE2VarData;
     s     : string;
+    Stack : TSE2StackTrace;
+    Item  : TSE2StackItem;
 begin
   stepDebugStack.Items.BeginUpdate;
   try
     stepDebugStack.Items.Clear;
     for i:=0 to Data.Stack.Size-1 do
     begin
-      entry := Data.Stack.Items[i];    
+      entry := Data.Stack.Items[i];
       s := TSE2DebugHelper.VarContentToStr(entry, Pointer(Data));
       with stepDebugStack.Items.Add do
       begin
@@ -1134,6 +1141,38 @@ begin
     end;
   finally
     stepDebugStack.Items.EndUpdate;
+  end;
+
+  stepCallStack.Items.BeginUpdate;
+  try
+    stepCallStack.Items.Clear;
+
+    Stack := TSE2StackTrace.Create;
+    try
+      Data.GetCallStack(Stack);
+      for i:=0 to Stack.Count-1 do
+      begin
+        Item := Stack[i];
+        with stepCallStack.Items.Add do
+        begin
+          Caption := IntToStr(Stack.Count - i);
+          SubItems.Add(Item.Name);
+          SubItems.Add(Item.AUnitName);
+          SubItems.Add(Item.ParamTrace);
+        end;
+      end;
+      with stepCallStack.Items.Add do
+      begin
+        Caption := '0';
+        SubItems.Add('[entry point]');
+        SubItems.Add('');
+        SubItems.Add('');
+      end;
+    finally
+      Stack.Free;
+    end;
+  finally
+    stepCallStack.Items.EndUpdate;
   end;
 end;
 
@@ -1160,10 +1199,12 @@ procedure TestRecordCall(RunTime: TSE2RunTime);
 type
   TTest  = function(Rec: TPoint): TPoint of object;
   TTest2 = function(p1, p2, p3: Pointer): TPoint of object;
+  TTest3 = procedure(var t: TPoint) of object;
 var t, n: TPoint;
     p: Pointer;
     m: TTest;
     r: TTest2;
+    r2 : TTest3;
 begin
   p := RunTime.CodeAccess.FindMethod('RecordTest', '', [pmIn, pmResult], [btRecord, btRecord]);
   if p <> nil then
@@ -1182,12 +1223,44 @@ begin
     n := r(nil, nil, nil);
     if n.X > n.Y then
   end;
+
+  p := RunTime.CodeAccess.FindMethod('MyRecTest', '', [pmInOut], [btRecord]);
+  if p <> nil then
+  begin
+    t := Point(0, 0);
+    RunTime.Call(p, [@t]);
+
+    r2 := TTest3(RunTime.ScriptAsMethod(p, nil));
+    t := Point(0, 0);
+    r2(t);
+
+    if t.x > t.y then
+
+
+
+  end;
 end;
+
+{program Project1;
+
+uses
+  ScriptTestUnit;
+
+var t: TPoint;
+begin
+  MyRecTest2(t);
+  
+  Console.WriteLine(t.X);
+  Console.WriteLine(t.Y);
+  
+  Console.ReadKey;
+end.
+}
 
 procedure TMainForm.DoRunScript(Data: TSE2PE; Stepping: boolean);
 var c, t1, t2: int64;
     p        : TSE2OpCode;
-    s        : string;
+   // s        : string;
 begin
   UpdateCaption(SExecutingAction);
   Run_Run.Enabled  := Stepping;
@@ -1212,8 +1285,8 @@ begin
     
     FRunTime.Initialize;
 
-    TestRecordCall(FRunTime);
-    TestDirectCall(Self, FRunTime);
+    //TestRecordCall(FRunTime);
+    //TestDirectCall(Self, FRunTime);
 
     FRunTime.Run;
     FRunTime.Finalize;
