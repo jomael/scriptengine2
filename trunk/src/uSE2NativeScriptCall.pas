@@ -30,16 +30,12 @@ asm
     // move stack pointer to edx
     mov edx, esp
 
-    {$IFDEF FPC}
     push edx
-    {$endif}
 
     // call
     CALL InternalMethodHandler
-    
-    {$IFDEF FPC}
+
     pop edx
-    {$ENDIF}
 
     // save real result
     mov ecx, [edx]
