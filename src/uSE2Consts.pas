@@ -115,11 +115,21 @@ const
   C_SE2FinalizationMethod       = '!FINALIZATION';
 
 type
+  TSE2StringEncoding = (encodingAnsi, encodingUnicode);
+
+const
+  CSE2SaveStringEncoding = encodingUnicode;
+
+type
   TSE2StreamHelper = class(TObject)
   public
     class procedure ReadString(Stream: TStream; out s: string); overload;
     class function  ReadString(Stream: TStream): string; overload;
-    class procedure WriteString(Stream: TStream; const s: string);
+    class procedure WriteString(Stream: TStream; const s: string); overload;
+
+    class procedure ReadString(Stream: TStream; Encoding: TSE2StringEncoding; out s: string); overload;
+    class function  ReadString(Stream: TStream; Encoding: TSE2StringEncoding): string; overload;
+    class procedure WriteString(Stream: TStream; Encoding: TSE2StringEncoding; const s: string); overload;
 
     class procedure ReadAnsiString(Stream: TStream; out s: AnsiString); overload;
     class function  ReadAnsiString(Stream: TStream): AnsiString; overload;
@@ -151,7 +161,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 5; Build: 0);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 6; Build: 0);
   
 implementation
 
@@ -205,6 +215,47 @@ begin
   ReadAnsiString(Stream, result);
 end;
 
+class procedure TSE2StreamHelper.ReadString(Stream: TStream;
+  Encoding: TSE2StringEncoding; out s: string);
+var strAnsi : AnsiString;
+{$IFDEF Unicode}
+    strUni  : string;
+{$ELSE}
+    strUni  : WideString;
+{$ENDIF}
+    len     : cardinal;
+begin
+  s := '';
+  if Stream.Read(len, SizeOf(len)) < SizeOf(len) then
+     exit;
+
+  if len > 0 then
+  begin
+    case Encoding of
+    encodingAnsi :
+        begin
+          SetLength(strAnsi, len);
+          Stream.Read(strAnsi[1], len);
+          s := string(strAnsi);
+        end;
+    encodingUnicode :
+        begin
+          SetLength(strUni, len);
+          Stream.Read(strUni[1], len * SizeOf({$IFDEF Unicode} Char {$ELSE} WideChar {$ENDIF}));
+          s := string(strUni);
+        end;
+    else
+        raise ESE2InvalidDataStream.Create('Unsupported encoding selected');
+    end;
+  end;
+end;
+
+class function TSE2StreamHelper.ReadString(Stream: TStream;
+  Encoding: TSE2StringEncoding): string;
+begin
+  TSE2StreamHelper.ReadString(Stream, Encoding, result);
+end;
+
 class function TSE2StreamHelper.ReadString(Stream: TStream): string;
 begin
   ReadString(Stream, result);
@@ -218,6 +269,37 @@ begin
   Stream.Write(len, SizeOf(len));
   if len > 0 then
      Stream.Write(s[1], len);
+end;
+
+class procedure TSE2StreamHelper.WriteString(Stream: TStream;
+  Encoding: TSE2StringEncoding; const s: string);
+var strAnsi : AnsiString;
+{$IFDEF Unicode}
+    strUni  : string;
+{$ELSE}
+    strUni  : WideString;
+{$ENDIF}
+    len     : cardinal;
+begin
+  len := length(s);    
+  Stream.Write(len, SizeOf(len));
+  if len > 0 then
+  begin
+    case Encoding of
+    encodingAnsi :
+        begin
+          strAnsi := AnsiString(s);
+          Stream.Write(strAnsi[1], len);
+        end;
+    encodingUnicode :
+        begin
+          strUni  := s;
+          Stream.Write(strUni[1], len * SizeOf( {$IFDEF Unicode} Char {$ELSE} WideChar {$ENDIF} ));
+        end;
+    else
+        raise ESE2InvalidDataStream.Create('Unsupported encoding selected');
+    end;
+  end;
 end;
 
 class procedure TSE2StreamHelper.WriteString(Stream: TStream;
@@ -241,7 +323,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 02, 16);
+  result := EncodeDate(2010, 03, 07);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }

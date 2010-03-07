@@ -83,6 +83,7 @@ var CallInfo     : PSE2NativeCallEntry;
     OldCodePos   : integer;       
     Methods      : TSE2DynMethodList;
     Index        : integer;
+    pVarRecords  : TList;
 
   // StackPtr + Ptr * 0 = EAX = MethodPtr
   // StackPtr + Ptr * 1 = EDX = 1st parameter
@@ -277,7 +278,7 @@ var CallInfo     : PSE2NativeCallEntry;
     end;
   end;
 
-  procedure SetVariableContent(aParamType: byte; DataType: byte; Data: Pointer; ParamIndex: integer = -1);
+  procedure SetVariableContent(aParamType: byte; DataType: byte; Data: Pointer; ParamIndex: integer = -1; bAddToList: boolean = False);
   const 
     SParamNotCompatible = 'Parameter not compatible to script method parameter';
 
@@ -292,10 +293,10 @@ var CallInfo     : PSE2NativeCallEntry;
         begin
           newEntry := RunTime.Stack.PushNew(aParamType);
           case aParamType of
-          btU8      : newEntry.tu8^      := PInteger(Data)^;
-          btS8      : newEntry.ts8^      := PInteger(Data)^;
-          btU16     : newEntry.tu16^     := PInteger(Data)^;
-          btS16     : newEntry.ts16^     := PInteger(Data)^;
+          btU8      : newEntry.tu8^      := PInteger(Data)^ and $FF;
+          btS8      : newEntry.ts8^      := PInteger(Data)^ and $FF;
+          btU16     : newEntry.tu16^     := PInteger(Data)^ and $FFFF;
+          btS16     : newEntry.ts16^     := PInteger(Data)^ and $FFFF;
           btU32     : newEntry.tu32^     := PInteger(Data)^;
           btS32     : newEntry.ts32^     := PInteger(Data)^;
           btS64     : newEntry.ts64^     := PInteger(Data)^;
@@ -435,6 +436,13 @@ var CallInfo     : PSE2NativeCallEntry;
 
                Pointer(newEntry.tPointer^) := RunTime.RunTimeClasses.CreateScriptRecord(RecMeta, RunTime.AppCode);
                RunTime.RunTimeClasses.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^));
+               if bAddToList then
+               begin
+                 if pVarRecords = nil then
+                    pVarRecords := TList.Create;
+
+                 pVarRecords.Add(Pointer(newEntry.tPointer^));
+               end;
              end;
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
@@ -544,8 +552,10 @@ var CallInfo     : PSE2NativeCallEntry;
             SetVariableContent(aParamType, vtWideString, Parameter);
         btPChar :
             SetVariableContent(aParamType, vtAnsiString, Parameter);
-        btPointer, btRecord, btArray, btObject :
+        btPointer, btArray, btObject :
             SetVariableContent(aParamType, vtPointer, Parameter);
+        btRecord :
+            SetVariableContent(aParamType, vtPointer, Parameter, i, True);
         end;
       end;
     end;
@@ -588,7 +598,14 @@ var CallInfo     : PSE2NativeCallEntry;
         btPChar        : PbtPChar(Parameter)^      := PbtPChar(Data^.tString^)^;
         btPointer,
         btArray        : PPointer(Parameter)^    := Pointer(Data^.tPointer^);
-        btRecord       : ;
+        btRecord       :
+            begin
+              if pVarRecords <> nil then
+              begin
+                RunTime.RunTimeClasses.ScriptToDelphiRecord(pVarRecords.Last, PPointer(Parameter)^);
+                pVarRecords.Delete(pVarRecords.Count - 1);
+              end;
+            end;
         end;
       end;
 
@@ -687,6 +704,7 @@ begin
 
   OldStackSize := MaxInt;
   OldCodePos   := RunTime.CodePos;
+  pVarRecords  := nil;
   try
     PushParamsToStack;
 
@@ -716,6 +734,8 @@ begin
       RunTime.Stack.Pop;
     iRes := PopParamsFromStack;
     RunTime.CodePos := OldCodePos;
+    if pVarRecords <> nil then
+       pVarRecords.Free;
   end;
   PInteger(@_EDX)^ := iRes;
 end;

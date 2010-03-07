@@ -11,7 +11,7 @@ type
   TSE2OpCodes = class(TSE2List)
   private
     //FList      : TSE2List;
-    FPosition  : integer;
+    FPosition  : integer;                     
   protected
     function GetOpCode: PSE2OpDefault;
     function GetItem(index: integer): PSE2OpDefault;
@@ -221,8 +221,8 @@ uses SysUtils;
 
 const
   TSE2OpCodes_StreamVersion    = 1;
-  TSE2StringList_StreamVersion = 1;
-  TSE2MetaEntry_StreamVersion  = 2;
+  TSE2StringList_StreamVersion = 2;
+  TSE2MetaEntry_StreamVersion  = 3;
   TSE2MetaList_StreamVersion   = 1;
   TSE2PE_StreamVersion         = 1;
 
@@ -429,6 +429,7 @@ procedure TSE2StringList.LoadFromStream(Stream: TStream);
 var version : byte;
     i, count: integer;
     p       : PString;
+    encoding: TSE2StringEncoding;
 begin
   Clear;
   {$IFDEF FPC}
@@ -441,8 +442,13 @@ begin
   {$ENDIF}
 
   case version of
-  1 :
+  1, 2 :
       begin
+        if version > 1 then
+        begin
+          Stream.Read(encoding, SizeOf(encoding));
+        end;
+
         {$IFDEF FPC}
           {$HINTS OFF}
         {$ENDIF}
@@ -455,7 +461,10 @@ begin
         for i:=0 to count-1 do
         begin
           New(p);
-          p^ := TSE2StreamHelper.ReadString(Stream);
+          if version > 1 then
+            p^ := TSE2StreamHelper.ReadString(Stream, encoding)
+          else
+            p^ := TSE2StreamHelper.ReadString(Stream);
           FList[i] := p;
         end;
       end;
@@ -470,9 +479,13 @@ procedure TSE2StringList.SaveToStream(Stream: TStream);
 var version : byte;                       
     i, count: integer;
     p       : PString;
+    encoding: TSE2StringEncoding;
 begin
   version := TSE2StringList_StreamVersion;
   Stream.Write(version, SizeOf(version));
+
+  encoding := CSE2SaveStringEncoding;
+  Stream.Write(encoding, SizeOf(encoding));
 
   count := FList.Count;
   Stream.Write(count, SizeOf(integer));
@@ -480,7 +493,7 @@ begin
   for i:=0 to count-1 do
   begin
     p  := FList[i];
-    TSE2StreamHelper.WriteString(Stream, p^);
+    TSE2StreamHelper.WriteString(Stream, encoding, p^);
   end;
 end;
 
@@ -507,6 +520,7 @@ end;
 
 procedure TSE2MetaEntry.LoadFromStream(Stream: TStream);
 var version: byte;
+    encoding: TSE2StringEncoding;
 begin
   {$IFDEF FPC}
     {$HINTS OFF}
@@ -518,12 +532,22 @@ begin
   {$ENDIF}
 
   case version of
-  1, 2 :
+  1, 2, 3 :
       begin
+        if version > 2 then
+           Stream.Read(encoding, SizeOf(encoding));
+
         Stream.Read(FMetaType, SizeOf(TSE2MetaType));
 
-        TSE2StreamHelper.ReadString(Stream, FName);
-        TSE2StreamHelper.ReadString(Stream, FUnitName);
+        if version > 2 then
+        begin
+          TSE2StreamHelper.ReadString(Stream, encoding, FName);
+          TSE2StreamHelper.ReadString(Stream, encoding, FUnitName);
+        end else
+        begin
+          TSE2StreamHelper.ReadString(Stream, FName);
+          TSE2StreamHelper.ReadString(Stream, FUnitName);
+        end;
 
         Stream.Read(FCodePos    , SizeOf(integer));
         Stream.Read(FSourcePos  , SizeOf(integer));
@@ -558,15 +582,19 @@ begin
 end;
 
 procedure TSE2MetaEntry.SaveToStream(Stream: TStream);
-var version: byte;
+var version  : byte;
+    encoding : TSE2StringEncoding;
 begin
   version := TSE2MetaEntry_StreamVersion;
   Stream.Write(version, SizeOf(version));
+  
+  encoding := CSE2SaveStringEncoding;
+  Stream.Write(encoding, SizeOf(encoding));
                                          
   Stream.Write(FMetaType, SizeOf(TSE2MetaType));
 
-  TSE2StreamHelper.WriteString(Stream, FName);
-  TSE2StreamHelper.WriteString(Stream, FUnitName);
+  TSE2StreamHelper.WriteString(Stream, encoding, FName);
+  TSE2StreamHelper.WriteString(Stream, encoding, FUnitName);
                                                  
   Stream.Write(FCodePos    , SizeOf(integer));
   Stream.Write(FSourcePos  , SizeOf(integer));

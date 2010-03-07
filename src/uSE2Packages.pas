@@ -124,8 +124,10 @@ begin
 end;
 
 procedure TSE2PackageUnit.GetUnitSource(index: integer; var Target: String);
+var s: AnsiString;
 begin
-  PackageGetModuleSource(index, Target);
+  PackageGetModuleSource(index, s);
+  Target := string(s);
 end;
 
 function TSE2PackageUnit.LastChangeTime(index: integer): TDateTime;
@@ -167,12 +169,18 @@ end;
 
 function TSE2PackageUnit.InitializePackage: boolean;
 var MM             : TMemoryManager;
+    {$IFDEF DELPHI2005UP}
+    MMEx           : TMemoryManagerEx;
+    {$ENDIF}
 
     PackVers       : TSE2PackageMinVersion;
     PackGUID       : TSE2PackageGetGUID;
     PackInit       : TSE2PackageInitialize;
     PackFinit      : TSE2PackageFinalize;
     PackMM         : TSE2PackageSetMM;
+    {$IFDEF DELPHI2005UP}
+    PackMMEx       : TSE2PackageSetMMEx;
+    {$ENDIF}
     ModuleInit     : TSE2PackageInitModule;
 
     i              : integer;
@@ -247,6 +255,9 @@ begin
      exit;
 
   PackMM           := GetProcAddress(FDLLHandle, PAnsiChar(CSE2PackageSetMM));
+  {$IFDEF DELPHI2005UP}
+  PackMMEx         := GetProcAddress(FDLLHandle, PAnsiChar(CSE2PackageSetMMEx));
+  {$ENDIF}
   FGetNumModules   := GetProcAddress(FDLLHandle, PAnsiChar(CSE2PackageNumModules));
   if not Assigned(FGetNumModules) then
      exit;
@@ -273,6 +284,13 @@ begin
   if PackInit() <> 0 then
      exit;
 
+  {$IFDEF DELPHI2005UP}
+  if Assigned(PackMMEx) then
+  begin
+    GetMemoryManager(MMEx);
+    PackMMEx(MMEx);
+  end else
+  {$ENDIF}
   if Assigned(PackMM) then
   begin
     GetMemoryManager(MM);
@@ -291,8 +309,10 @@ begin
 end;
 
 function TSE2PackageUnit.GetModuleName(index: Integer): String;
+var s: AnsiString;
 begin
-  PackageGetModuleName(index, result);
+  PackageGetModuleName(index, s);
+  result := string(s);
 end;
 
 function TSE2PackageUnit.GetNameHash(index: Integer): Integer;
@@ -400,12 +420,14 @@ begin
 end;
 
 procedure TSE2PackageUnit.PackageRegisterMethods(index: integer; const Target: TSE2RunAccess);
+var sUnitName : AnsiString;
 begin
   if not FPackageLoaded then
      exit;
 
   Target.TmpObj := Self;
-  PackageGetModuleName(index, FCurrentUnitName);
+  PackageGetModuleName(index, sUnitName);
+  FCurrentUnitName := string(sUnitName);
 
   if Target.HasUnit(FCurrentUnitName) then
     if Assigned(FRegisterMethods) then
