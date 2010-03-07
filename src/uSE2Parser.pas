@@ -5848,8 +5848,6 @@ begin
     pOverwrite.Used := True;
     {$ENDIF}
 
-    ReadNextToken;
-
     if pOverwrite.IsAbstract then
        exit;
     if pOverwrite.OpCodes.Count = 1 then
