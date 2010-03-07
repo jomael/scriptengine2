@@ -32,6 +32,13 @@ You can set up the options for the ScriptEngine II here.
  special circumstances.} 
 {$define SEII_UseRunTimeCache}
 
+{This define will make the runtime cache bigger. The cache has a default size of
+ 32 KB, with this define it has 1.5 MB. Note that this size is needed for every
+ instance of TSE2RunTime. The bigger cache has the advantage, that more stack 
+ items fit into the cache and that small classes and records are stored inside 
+ the cache. This define will be ignored if SEII_UseRunTimeCache is disabled.}
+{$define SEII_BigRunTimeCache}
+
 {If you enable this define, every class of the ScriptEngine II will have
  TPersistant as the root object, otherwise TObject is used.} 
 {.$define SEII_UsePersistantAsRoot}
@@ -103,6 +110,10 @@ You can set up the options for the ScriptEngine II here.
 {$IFDEF SEII_UseRunTimeCache}
   {$DEFINE SEII_STACK_USE_CACHE}
   {$DEFINE SEII_MM_USE_CACHE}
+  
+  {$IFDEF SEII_BigRunTimeCache}
+    {$DEFINE SEII_MM_CACHE_BIG}
+  {$ENDIF}  
 {$ENDIF}
 
 {$IFDEF SEII_UsePersistantAsRoot}

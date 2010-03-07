@@ -41,10 +41,10 @@ type
 
     procedure CompleteGetUnitMngr(Sender: TObject; var UnitMngr: TSE2UnitCacheMngr);
 
-    procedure CodeCompleteExecute(Kind: TSynCompletionType;
+    procedure CodeCompleteExecute(Kind: SynCompletionType;
       Sender: TObject; var CurrentInput: String; var x, y: Integer;
       var CanExecute: Boolean);
-    procedure ParamCompleteExecute(Kind: TSynCompletionType;
+    procedure ParamCompleteExecute(Kind: SynCompletionType;
       Sender: TObject; var CurrentInput: String; var x, y: Integer;
       var CanExecute: Boolean);
 
@@ -169,7 +169,7 @@ implementation
 
 { TCodeEditor }
 
-procedure TCodeEditor.CodeCompleteExecute(Kind: TSynCompletionType;
+procedure TCodeEditor.CodeCompleteExecute(Kind: SynCompletionType;
   Sender: TObject; var CurrentInput: String; var x, y: Integer;
   var CanExecute: Boolean);
 begin
@@ -278,7 +278,7 @@ begin
   result := FEditor.Text;
 end;
 
-procedure TCodeEditor.ParamCompleteExecute(Kind: TSynCompletionType;
+procedure TCodeEditor.ParamCompleteExecute(Kind: SynCompletionType;
   Sender: TObject; var CurrentInput: String; var x, y: Integer;
   var CanExecute: Boolean);
 var index: integer;

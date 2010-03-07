@@ -1597,9 +1597,9 @@ end;
 destructor TColorConsole.Destroy;
 begin
   inherited Destroy;
-  StrDispose(Pointer(FIndexes));
+  StrDispose(PAnsiChar(FIndexes));
   FAttrList.Free;
-  StrDispose(Pointer(FCellWidths));
+  StrDispose(PAnsiChar(FCellWidths));
 end;
 
 function TColorConsole.IndexPtr(X,Y: Integer): PInteger;
@@ -1632,8 +1632,8 @@ begin
     Exchange(Pointer(FIndexes), Pointer(P));
     Exchange(Pointer(FCellWidths), P2);
   finally
-    StrDispose(Pointer(P));
-    StrDispose(P2);
+    StrDispose(PAnsiChar(P));
+    StrDispose(PAnsiChar(P2));
   end;
   FAttrList.Clear;
   A := FAttrList.Allocate(Font);

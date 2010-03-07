@@ -1,8 +1,8 @@
 object MainForm: TMainForm
   Left = 218
   Top = 123
-  Width = 664
-  Height = 478
+  Width = 725
+  Height = 432
   Caption = 'ScriptEngineII'
   Color = clBtnFace
   Font.Charset = ANSI_CHARSET
@@ -22,22 +22,22 @@ object MainForm: TMainForm
     Left = 185
     Top = 0
     Width = 7
-    Height = 401
+    Height = 355
     AutoSnap = False
   end
   object mainClient: TPanel
     Left = 192
     Top = 0
-    Width = 456
-    Height = 401
+    Width = 517
+    Height = 355
     Align = alClient
     BevelOuter = bvNone
     BorderWidth = 5
     TabOrder = 0
     object panelDebugging: TPanel
       Left = 5
-      Top = 210
-      Width = 446
+      Top = 164
+      Width = 507
       Height = 186
       Align = alBottom
       BevelOuter = bvNone
@@ -48,10 +48,16 @@ object MainForm: TMainForm
         Top = 0
         Height = 186
       end
+      object Splitter2: TSplitter
+        Left = 245
+        Top = 0
+        Height = 186
+        Align = alRight
+      end
       object stepDebugStack: TListView
         Left = 184
         Top = 0
-        Width = 262
+        Width = 61
         Height = 186
         Align = alClient
         Columns = <
@@ -89,12 +95,41 @@ object MainForm: TMainForm
         TabOrder = 1
         OnDrawItem = stepDebugInstructionsDrawItem
       end
+      object stepCallStack: TListView
+        Left = 248
+        Top = 0
+        Width = 259
+        Height = 186
+        Align = alRight
+        Columns = <
+          item
+            Caption = 'Depth'
+          end
+          item
+            Caption = 'Method'
+            Width = 120
+          end
+          item
+            Caption = 'Unit'
+            Width = 70
+          end
+          item
+            Caption = 'Parameters'
+            Width = 120
+          end>
+        ColumnClick = False
+        HideSelection = False
+        ReadOnly = True
+        RowSelect = True
+        TabOrder = 2
+        ViewStyle = vsReport
+      end
     end
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 401
-    Width = 648
+    Top = 355
+    Width = 709
     Height = 19
     Panels = <>
   end
@@ -102,7 +137,7 @@ object MainForm: TMainForm
     Left = 0
     Top = 0
     Width = 185
-    Height = 401
+    Height = 355
     Align = alLeft
     BevelOuter = bvNone
     BorderWidth = 2
@@ -111,7 +146,7 @@ object MainForm: TMainForm
       Left = 2
       Top = 2
       Width = 181
-      Height = 397
+      Height = 351
       ActivePage = tabProject
       Align = alClient
       Images = ImgListProject
@@ -123,7 +158,7 @@ object MainForm: TMainForm
           Left = 0
           Top = 0
           Width = 173
-          Height = 368
+          Height = 322
           Align = alClient
           BorderStyle = bsNone
           Color = clWhite
@@ -151,7 +186,7 @@ object MainForm: TMainForm
           Left = 0
           Top = 0
           Width = 173
-          Height = 368
+          Height = 322
           Align = alClient
           BorderStyle = bsNone
           Columns = <
@@ -395,7 +430,7 @@ object MainForm: TMainForm
     Left = 78
     Top = 84
     Bitmap = {
-      494C0101150018001C0010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010115001800280010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000006000000001002000000000000060
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1198,7 +1233,7 @@ object MainForm: TMainForm
     Left = 44
     Top = 84
     Bitmap = {
-      494C0101080009001C0010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010108000900280010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
