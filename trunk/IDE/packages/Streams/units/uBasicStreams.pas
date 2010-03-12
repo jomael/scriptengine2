@@ -1,5 +1,9 @@
 unit uBasicStreams;
 
+{$IFDEF FPC}
+{$MODE OBJFPC}{$H+}
+{$ENDIF}
+
 interface
 
 uses

@@ -1,5 +1,9 @@
 unit uFileAccess;
 
+{$IFDEF FPC}
+{$MODE OBJFPC}{$H+}
+{$ENDIF}
+
 interface
 
 uses
@@ -213,13 +217,13 @@ end;
 
 class function TFile.OpenWrite(const FileName: string): TStream;
 begin
-  result := TFileStream.Create(fmOpenWrite);
+  result := TFileStream.Create(FileName, fmOpenWrite);
 end;
 
 class function TFile.OpenWrite(const FileName: string;
   Share: integer): TStream;
 begin
-  result := TFileStream.Create(fmOpenWrite or Share);
+  result := TFileStream.Create(FileName, fmOpenWrite or Share);
 end;
 
 class function TFile.Rename(const OldName, NewName: string): boolean;

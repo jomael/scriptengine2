@@ -1,5 +1,9 @@
 unit uFloatListImport;
 
+{$IFDEF FPC}
+{$MODE OBJFPC}{$H+}
+{$ENDIF}
+
 interface
 
 uses
