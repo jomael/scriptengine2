@@ -1,5 +1,9 @@
 unit uIntegerList;
 
+{$IFDEF FPC}
+{$MODE DELPHI}
+{$ENDIF}
+
 interface
 
 uses

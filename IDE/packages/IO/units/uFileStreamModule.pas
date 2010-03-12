@@ -1,5 +1,9 @@
 unit uFileStreamModule;
 
+{$IFDEF FPC}
+{$MODE OBJFPC}{$H+}
+{$ENDIF}
+
 interface
 
 uses
@@ -71,7 +75,11 @@ end;
 
 function TFileStream_Create2(Self: TFileStream; AHandle: integer): TFileStream;
 begin
+  {$IFDEF FPC}
+    //nothing? :(
+  {$ELSE}
   result := TFileStream.Create(AHandle);
+  {$ENDIF}
 end;
 
 procedure CFileStreamModuleRegister(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister);

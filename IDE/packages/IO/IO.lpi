@@ -6,14 +6,14 @@
     <General>
       <MainUnit Value="0"/>
       <TargetFileExt Value=".exe"/>
-      <Icon Value="0"/>
       <UseXPManifest Value="True"/>
-      <ActiveEditorIndexAtStart Value="0"/>
+      <Icon Value="0"/>
+      <ActiveEditorIndexAtStart Value="1"/>
     </General>
     <VersionInfo>
-      <ProjectVersion Value=""/>
       <Language Value=""/>
       <CharSet Value=""/>
+      <StringTable Comments="" CompanyName="" FileDescription="" FileVersion="0.0.0.0" InternalName="" LegalCopyright="" LegalTrademarks="" OriginalFilename="" ProductName="" ProductVersion=""/>
     </VersionInfo>
     <PublishOptions>
       <Version Value="2"/>
@@ -35,11 +35,11 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="4">
+    <Units Count="7">
       <Unit0>
         <Filename Value="IO.lpr"/>
         <IsPartOfProject Value="True"/>
-        <CursorPos X="34" Y="15"/>
+        <CursorPos X="13" Y="11"/>
         <TopLine Value="1"/>
         <EditorIndex Value="0"/>
         <UsageCount Value="20"/>
@@ -49,9 +49,9 @@
         <Filename Value="units\uFileStreamModule.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uFileStreamModule"/>
-        <CursorPos X="1" Y="6"/>
+        <CursorPos X="10" Y="5"/>
         <TopLine Value="1"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="2"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit1>
@@ -64,14 +64,35 @@
       <Unit3>
         <Filename Value="units\uFileAccess.pas"/>
         <UnitName Value="uFileAccess"/>
-        <CursorPos X="1" Y="6"/>
+        <CursorPos X="10" Y="5"/>
         <TopLine Value="1"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="3"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit3>
+      <Unit4>
+        <Filename Value="..\..\..\..\..\fpc\2.4.0\rtl\objpas\classes\classesh.inc"/>
+        <CursorPos X="17" Y="775"/>
+        <TopLine Value="766"/>
+        <UsageCount Value="10"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="..\..\..\..\..\fpc\2.4.0\rtl\inc\objpash.inc"/>
+        <CursorPos X="23" Y="175"/>
+        <TopLine Value="166"/>
+        <UsageCount Value="10"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="units\uBasicModule.pas"/>
+        <UnitName Value="uBasicModule"/>
+        <CursorPos X="10" Y="5"/>
+        <TopLine Value="1"/>
+        <EditorIndex Value="1"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit6>
     </Units>
-    <JumpHistory Count="9" HistoryIndex="8">
+    <JumpHistory Count="17" HistoryIndex="16">
       <Position1>
         <Filename Value="units\uFileStreamModule.pas"/>
         <Caret Line="1" Column="1" TopLine="1"/>
@@ -108,6 +129,38 @@
         <Filename Value="units\uFileAccess.pas"/>
         <Caret Line="216" Column="34" TopLine="205"/>
       </Position9>
+      <Position10>
+        <Filename Value="units\uFileStreamModule.pas"/>
+        <Caret Line="6" Column="1" TopLine="1"/>
+      </Position10>
+      <Position11>
+        <Filename Value="units\uFileStreamModule.pas"/>
+        <Caret Line="74" Column="33" TopLine="65"/>
+      </Position11>
+      <Position12>
+        <Filename Value="units\uFileStreamModule.pas"/>
+        <Caret Line="76" Column="27" TopLine="63"/>
+      </Position12>
+      <Position13>
+        <Filename Value="units\uFileStreamModule.pas"/>
+        <Caret Line="75" Column="28" TopLine="66"/>
+      </Position13>
+      <Position14>
+        <Filename Value="units\uFileAccess.pas"/>
+        <Caret Line="6" Column="1" TopLine="1"/>
+      </Position14>
+      <Position15>
+        <Filename Value="units\uFileAccess.pas"/>
+        <Caret Line="216" Column="42" TopLine="207"/>
+      </Position15>
+      <Position16>
+        <Filename Value="units\uFileAccess.pas"/>
+        <Caret Line="222" Column="42" TopLine="213"/>
+      </Position16>
+      <Position17>
+        <Filename Value="IO.lpr"/>
+        <Caret Line="11" Column="13" TopLine="1"/>
+      </Position17>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
