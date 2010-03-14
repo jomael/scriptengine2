@@ -11,7 +11,7 @@ You can set up the options for the ScriptEngine II here.
 {Enable this option to suppress the generation of debug info for the
  ScriptEngine II files. This will prevent the integrated debugger from stepping
  into the ScriptEngine II Code.}
-{$define SEII_NoDebugInfo}    
+{.$define SEII_NoDebugInfo}    
 
 {This option will disable Range-Checking for the ScriptEngine II - Source. This
  allows faster execution and smaller program sizes. If you do not define this

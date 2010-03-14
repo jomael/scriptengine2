@@ -268,7 +268,7 @@ begin
        result := False;
     on E: Exception do
     begin
-      FErrorEvent(Self, petError, FUnit.AUnitName, 'Exception', Tokenizer.Reader.Position, Tokenizer.Reader.Line, Tokenizer.Reader.Data);
+      FErrorEvent(Self, petError, FUnit.AUnitName, 'Exception ['+E.ClassName+']: ' + E.Message, Tokenizer.Reader.Position, Tokenizer.Reader.Line, Tokenizer.Reader.Data);
       raise;
     end;
   end;
