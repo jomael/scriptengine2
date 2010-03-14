@@ -9,6 +9,9 @@ uses
 
 implementation
 
+uses
+  uSE2RunType;
+
 const
   C_UnitName   = 'System';
   C_UnitSource =
@@ -96,6 +99,23 @@ const
       '    class function LowerCase(const Text: WideString): WideString; external;'+#13#10+
       '  end;'+#13#10+
       #13#10+
+      '  StringEncoding = class(TExternalObject)' + #13#10 + 
+      '  public' + #13#10 +
+      '    class function ToString(const s: UTF8String): string; external; overload;' + #13#10 +
+      '    class function ToString(const s: WideString): string; external; overload;' + #13#10 +
+      '    class function ToUTF8(const s: string): UTF8String; external; overload;' + #13#10 +
+      '    class function ToUTF8(const s: WideString): UTF8String; external; overload;' + #13#10 +
+      '    class function ToUnicode(const s: string): WideString; external; overload;' + #13#10 +
+      '    class function ToUnicode(const s: UTF8string): WideString; external; overload;' + #13#10 +
+      #13#10 +
+      '    class function AsString(const s: UTF8String): string; external; overload;' + #13#10 +
+      '    class function AsString(const s: WideString): string; external; overload;' + #13#10 +
+      '    class function AsUTF8(const s: string): UTF8String; external; overload;' + #13#10 +
+      '    class function AsUTF8(const s: WideString): UTF8String; external; overload;' + #13#10 +
+      '    class function AsUnicode(const s: string): WideString; external; overload;' + #13#10 +
+      '    class function AsUnicode(const s: UTF8String): WideString; external; overload;' + #13#10 +
+      '  end;' + #13#10 +
+      #13#10 +
       'implementation'+#13#10+
       #13#10+
       'end.';
@@ -178,6 +198,85 @@ type
     class function LowerCase(const Text: WideString): WideString;
   end;
 
+
+function StringEncoding_ToString(Self: TObject; const s: UTF8String): string;
+var p1, p2: Pointer;
+begin
+  p1 := @s;
+  p2 := @result;
+  TSE2StringHelper.UTF8ToString(@p1, @p2);
+end;
+
+function StringEncoding_ToString1(Self: TObject; const s: WideString): string;
+var p1, p2: Pointer;
+begin
+  p1 := @s;
+  p2 := @result;
+  TSE2StringHelper.WideToString(@p1, @p2);
+end;
+
+function StringEncoding_ToUTF8(Self: TObject; const s: string): UTF8String;
+var p1, p2: Pointer;
+begin
+  p1 := @s;
+  p2 := @result;
+  TSE2StringHelper.StringToUTF8(@p1, @p2);
+end;
+
+function StringEncoding_ToUTF81(Self: TObject; const s: WideString): UTF8String;
+var p1, p2: Pointer;
+begin
+  p1 := @s;
+  p2 := @result;
+  TSE2StringHelper.WideToUTF8(@p1, @p2);
+end;
+
+function StringEncoding_ToUnicode(Self: TObject; const s: string): WideString;
+var p1, p2: Pointer;
+begin
+  p1 := @s;
+  p2 := @result;
+  TSE2StringHelper.StringToWide(@p1, @p2);
+end;
+
+function StringEncoding_ToUnicode1(Self: TObject; const s: UTF8String): WideString;
+var p1, p2: Pointer;
+begin
+  p1 := @s;
+  p2 := @result;
+  TSE2StringHelper.UTF8ToWide(@p1, @p2);
+end;
+
+function StringEncoding_AsString(Self: TObject; const s: Pointer): Pointer;
+begin
+  result := s;
+end;
+
+function StringEncoding_AsString1(Self: TObject; const s: Pointer): Pointer;
+begin
+  result := s;
+end;
+
+function StringEncoding_AsUTF8(Self: TObject; const s: Pointer): Pointer;
+begin
+  result := s;
+end;
+
+function StringEncoding_AsUTF81(Self: TObject; const s: Pointer): Pointer;
+begin
+  result := s;
+end;
+
+function StringEncoding_AsUnicode(Self: TObject; const s: Pointer): Pointer;
+begin
+  result := s;
+end;
+
+function StringEncoding_AsUnicode1(Self: TObject; const s: Pointer): Pointer;
+begin
+  result := s;
+end;
+
 procedure Unit_RegisterMethods(const Target: TSE2RunAccess);
 begin
   if Target.HasUnit(C_UnitName) then
@@ -249,6 +348,20 @@ begin
 
     Target.Method['WideStrings.UpperCase[0]', C_UnitName] := @WideStrings.UpperCase;
     Target.Method['WideStrings.LowerCase[0]', C_UnitName] := @WideStrings.LowerCase;
+
+    
+    Target.Method['StringEncoding.ToString[0]', C_UnitName] := @StringEncoding_ToString;
+    Target.Method['StringEncoding.ToString[1]', C_UnitName] := @StringEncoding_ToString1;
+    Target.Method['StringEncoding.ToUTF8[0]', C_UnitName] := @StringEncoding_ToUTF8;
+    Target.Method['StringEncoding.ToUTF8[1]', C_UnitName] := @StringEncoding_ToUTF81;
+    Target.Method['StringEncoding.ToUnicode[0]', C_UnitName] := @StringEncoding_ToUnicode;
+    Target.Method['StringEncoding.ToUnicode[1]', C_UnitName] := @StringEncoding_ToUnicode1;
+    Target.Method['StringEncoding.AsString[0]', C_UnitName] := @StringEncoding_AsString;
+    Target.Method['StringEncoding.AsString[1]', C_UnitName] := @StringEncoding_AsString1;
+    Target.Method['StringEncoding.AsUTF8[0]', C_UnitName] := @StringEncoding_AsUTF8;
+    Target.Method['StringEncoding.AsUTF8[1]', C_UnitName] := @StringEncoding_AsUTF81;
+    Target.Method['StringEncoding.AsUnicode[0]', C_UnitName] := @StringEncoding_AsUnicode;
+    Target.Method['StringEncoding.AsUnicode[1]', C_UnitName] := @StringEncoding_AsUnicode1;
   end;
 end;
 

@@ -14,7 +14,7 @@ type
 
   {.$DEFINE PERF_MONITOR}
 
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$UNDEF PERF_MONITOR}
   {$ENDIF}
 
@@ -24,6 +24,7 @@ type
     FStack             : TSE2Stack;
     FCodeAccess        : TSE2RunAccess;
     FNativeList        : TSE2NativeCallList;
+    FMethodCall        : TSE2MethodCall;
 
     {$IFDEF PERF_MONITOR}
     FPerfMonitor       : TSE2PerfMonitor;
@@ -126,6 +127,8 @@ begin
 
   FStack         := TSE2Stack.Create(FVarHelper);
   FSafeBlocks    := TSE2SafeBlockMngr.Create;
+
+  FMethodCall    := TSE2MethodCall.Create(Self);
 end;
 
 destructor TSE2RunTime.Destroy;
@@ -138,6 +141,7 @@ begin
   FStack.Free;
   FClassGC.Free;
   FRecordGC.Free;
+  FMethodCall.Free;
                   
   FVarHelper.Free;
   FVarOperation.Free;
@@ -314,8 +318,8 @@ begin
       end;
   soFLOW_CALLEX :
       begin
-        TSE2CallExternal.CallMethod(FStack, Pointer(PSE2OpFLOW_CALLEX(OpCode).Position),
-                                    FAppCode.MetaData[PSE2OpFLOW_CALLEX(OpCode).MetaIndex], Self);
+        FMethodCall.Clear;
+        FMethodCall.Run(Pointer(PSE2OpFLOW_CALLEX(OpCode).Position), FAppCode.MetaData[PSE2OpFLOW_CALLEX(OpCode).MetaIndex]);
       end;
   soFLOW_CALLDYN :
       begin

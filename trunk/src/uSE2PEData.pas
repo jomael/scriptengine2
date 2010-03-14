@@ -303,34 +303,34 @@ var version  : byte;
     i, count : integer;
 begin
   Clear;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
      exit;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
   case version of
   1 :
       begin
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS OFF}
         {$ENDIF}
         Stream.Read(count, SizeOf(integer));
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS ON}
         {$ENDIF}
         Self.Count := count;
         for i:=0 to count-1 do
         begin
-          {$IFDEF FPC}
+          {$IFDEF SEII_FPC}
             {$HINTS OFF}
           {$ENDIF}
           GetMem(OpCode, SizeOf(TSE2OpDefault));
           Stream.Read(OpCode^, SizeOf(TSE2OpDefault));
-          {$IFDEF FPC}
+          {$IFDEF SEII_FPC}
             {$HINTS OFF}
           {$ENDIF}
           inherited Items[i] := OpCode;
@@ -432,12 +432,12 @@ var version : byte;
     encoding: TSE2StringEncoding;
 begin
   Clear;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
      exit;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
@@ -449,11 +449,11 @@ begin
           Stream.Read(encoding, SizeOf(encoding));
         end;
 
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS OFF}
         {$ENDIF}
         Stream.Read(count, SizeOf(integer));
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS ON}
         {$ENDIF}
         FList.Count := count;
@@ -522,12 +522,12 @@ procedure TSE2MetaEntry.LoadFromStream(Stream: TStream);
 var version: byte;
     encoding: TSE2StringEncoding;
 begin
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
      exit;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
@@ -682,23 +682,23 @@ var version  : byte;
     p        : TSE2MetaEntry;
 begin
   Clear;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
      exit;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
   case version of
   1 :
       begin
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS OFF}
         {$ENDIF}
         Stream.Read(count, SizeOf(count));
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS ON}
         {$ENDIF}
         FList.Count := count;
@@ -810,12 +810,12 @@ begin
   if not CheckPEHeader(Stream) then  
      raise ESE2InvalidDataStream.Create('Unsupported data stream');
 
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
      exit;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
@@ -918,12 +918,12 @@ var version  : byte;
     i, count : integer;
     p        : PSE2RTTIEntry;
 begin
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
      exit;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
@@ -931,11 +931,11 @@ begin
   case version of
   1 :
       begin
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS OFF}
         {$ENDIF}
         Stream.Read(count, SizeOf(count));
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS ON}
         {$ENDIF}
         FList.Count := count;
@@ -1041,12 +1041,12 @@ var version  : byte;
     n        : integer;
     p        : PInteger;
 begin
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
      exit;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
@@ -1054,22 +1054,22 @@ begin
   case version of
   1 :
       begin
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS OFF}
         {$ENDIF}
         Stream.Read(count, SizeOf(count));
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS ON}
         {$ENDIF}
         FList.Count := count;
 
         for i:=0 to count-1 do
         begin
-          {$IFDEF FPC}
+          {$IFDEF SEII_FPC}
             {$HINTS OFF}
           {$ENDIF}
           Stream.Read(n, SizeOf(n));
-          {$IFDEF FPC}
+          {$IFDEF SEII_FPC}
             {$HINTS ON}
           {$ENDIF}
           New(p);

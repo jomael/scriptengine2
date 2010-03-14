@@ -8,13 +8,13 @@ uses
   Classes, uSE2RunType, uSE2BaseTypes, uSE2PEData, uSE2OpCode, uSE2Consts,
   uSE2RunTimeClasses;
 
-type
+{type
   TSE2CallExternalType = record
     CallMethod : procedure(Stack: TSE2Stack; Method: Pointer; MetaData: TSE2MetaEntry; RunTime: Pointer);
   end;
 
 var
-  TSE2CallExternal : TSE2CallExternalType;
+  TSE2CallExternal : TSE2CallExternalType;  }
 
 type
   PMethod = ^TMethod;
@@ -24,6 +24,8 @@ type
     FStack       : TList;
     FRecords     : TList;
 
+    FRunTime     : Pointer;
+    FScriptStack : TSE2Stack;
     FMethodPos   : Pointer;
     FCallType    : TSE2CallType;
     FClasses     : TSE2RunTimeClasses;
@@ -34,8 +36,14 @@ type
     FReturn2     : integer;
     FReturn3     : integer;
   public
-    constructor Create(Method: Pointer; CallType: TSE2CallType; Classes: TSE2RunTimeClasses); reintroduce;
+    //constructor Create(Method: Pointer; CallType: TSE2CallType; Classes: TSE2RunTimeClasses); reintroduce;
+    constructor Create(RunTime: Pointer); reintroduce;
     destructor Destroy; override;
+
+    property MethodPos : Pointer      read FMethodPos write FMethodPos;
+    property CallType  : TSE2CallType read FCallType  write FCallType;
+
+    procedure Clear;
 
     procedure AddMethod(const Method: PMethod);
     procedure AddU8(value: byte);
@@ -62,6 +70,8 @@ type
     function  AsString: string;
     function  EDXAsPointer: Pointer;
     procedure SetResultPointer(const ptr: pointer);
+
+    procedure Run(Method: Pointer; MetaData: TSE2MetaEntry);
   end;
 
 implementation
@@ -435,7 +445,7 @@ begin
 
   FReturn3 := CallMethod(FCallType, FMethodPos, Parameters, FReturn1, FUseResPoint, i, @FReturn2);
 end;
-
+     {
 constructor TSE2MethodCall.Create(Method: Pointer; CallType: TSE2CallType; Classes: TSE2RunTimeClasses);
 begin
   inherited Create;
@@ -447,8 +457,22 @@ begin
   FStack    := TList.Create;
   FRecords  := TList.Create;
 end;
+}
 
-destructor TSE2MethodCall.Destroy;
+constructor TSE2MethodCall.Create(RunTime: Pointer);
+begin
+  inherited Create;
+
+  FClasses      := TSE2RunTime(RunTime).RunTimeClasses;
+  FScriptStack  := TSE2RunTime(RunTime).Stack;
+  FRunTime      := RunTime;
+
+  FRegister := TList.Create;
+  FStack := TList.Create;
+  FRecords := TList.Create;
+end;
+
+procedure TSE2MethodCall.Clear;
 var i: integer;
     p: pointer;
 begin
@@ -457,6 +481,21 @@ begin
     p := FRecords[i];
     FClasses.MM.FreeMem(p);
   end;
+
+  FRegister.Clear;
+  FStack.Clear;
+  FRecords.Clear;
+
+  FFirstIsClass := False;
+  FUseResPoint := False;
+  FReturn1 := 0;
+  FReturn2 := 0;
+  FReturn3 := 0;
+end;
+
+destructor TSE2MethodCall.Destroy;
+begin
+  Clear;
   FRecords.Free;
   FRegister.Free;
   FStack.Free;
@@ -503,9 +542,8 @@ begin
   FUseResPoint := True;
 end;
 
-procedure CallMethodFunc(Stack: TSE2Stack; Method: Pointer; MetaData: TSE2MetaEntry; RunTime: Pointer);
-var Caller    : TSE2MethodCall;
-    ReturnVar : PSE2VarData;
+procedure TSE2MethodCall.Run(Method: Pointer; MetaData: TSE2MetaEntry);
+var ReturnVar : PSE2VarData;
     Param     : PSE2VarData;
     i         : integer;
     ParamDecl : byte;
@@ -518,57 +556,59 @@ begin
   if Method = nil then
      raise ESE2NullReferenceError.Create('External Method "'+MetaData.AUnitName+'.'+MetaData.Name+'" is not assigned');
 
+  Self.MethodPos := Method;
+  Self.CallType  := MetaData.CallType;
+
   pVarRecords := nil;
-  pList := nil;
-  Caller := TSE2MethodCall.Create(Method, MetaData.CallType, TSE2RunTime(RunTime).RunTimeClasses);
+  pList := nil;        
   try
     ReturnVar := nil;
     CanUsePtr := True;
     if MetaData.HasResult then
     begin
-      ReturnVar := Stack[ Stack.Size-1  - MetaData.ParamCount - 1];
+      ReturnVar := FScriptStack[ FScriptStack.Size-1  - MetaData.ParamCount - 1];
     end;
-    Caller.FirstIsClass := MetaData.HasSelf;
+    Self.FirstIsClass := MetaData.HasSelf;
     for i:=0 to MetaData.ParamCount-1 do
     begin
       ParamDecl := Ord(MetaData.ParamDecl[i + 1]);
-      Param     := Stack [ Stack.Size-1  - MetaData.ParamCount + i];
+      Param     := FScriptStack [ FScriptStack.Size-1  - MetaData.ParamCount + i];
 
       if TSE2ParamHelper.IsVarParam(ParamDecl) then
       begin
         case TSE2ParamHelper.GetParamType(ParamDecl) of
         btU8, btS8, btU16, btS16, btU32, btS32, btS64,
         btSingle, btDouble, btPointer, btObject :
-           Caller.AddPointer(Pointer(Param.tPointer));
+           Self.AddPointer(Pointer(Param.tPointer));
         btRecord :
            begin
              if pVarRecords = nil then
                 pVarRecords := TList.Create;
 
-             pVarRecords.Add(Caller.AddRecord(Pointer(Param.tPointer^)));
+             pVarRecords.Add(Self.AddRecord(Pointer(Param.tPointer^)));
            end;
         btString, btUTF8String, btWideString, btPChar :
-           Caller.AddPointer(PPointer(Param.tString)^);
+           Self.AddPointer(PPointer(Param.tString)^);
         end;
       end else
       begin
         case TSE2ParamHelper.GetParamType(ParamDecl) of
-        btU8          : Caller.AddU8(Param^.tu8^);
-        btS8          : Caller.AddS8(Param^.ts8^);
-        btU16         : Caller.AddU16(Param^.tu16^);
-        btS16         : Caller.AddS16(Param^.ts16^);
-        btU32         : Caller.AddU32(Param^.tu32^);
-        btS32         : Caller.AddS32(Param^.ts32^);
-        btS64         : Caller.AddS64(Param^.ts64^);
-        btSingle      : Caller.AddSingle(Param^.tSingle^);
-        btDouble      : Caller.AddDouble(Param^.tDouble^);
-        btRecord      : Caller.AddRecord(Pointer(Param^.tPointer^));
+        btU8          : Self.AddU8(Param^.tu8^);
+        btS8          : Self.AddS8(Param^.ts8^);
+        btU16         : Self.AddU16(Param^.tu16^);
+        btS16         : Self.AddS16(Param^.ts16^);
+        btU32         : Self.AddU32(Param^.tu32^);
+        btS32         : Self.AddS32(Param^.ts32^);
+        btS64         : Self.AddS64(Param^.ts64^);
+        btSingle      : Self.AddSingle(Param^.tSingle^);
+        btDouble      : Self.AddDouble(Param^.tDouble^);
+        btRecord      : Self.AddRecord(Pointer(Param^.tPointer^));
         btString,
         btWideString,
         btUTF8String,
-        btPChar       : Caller.AddPointer(PPointer(Param^.tString^)^);
+        btPChar       : Self.AddPointer(PPointer(Param^.tString^)^);
         btObject,
-        btPointer     : Caller.AddPointer(Pointer(Param^.tPointer^));
+        btPointer     : Self.AddPointer(Pointer(Param^.tPointer^));
         btProcPtr     :
             begin
               New(MethPtr);
@@ -578,36 +618,17 @@ begin
 
               if Pointer(Param^.tPointer^) <> nil then
               begin
-                MethPtr^ := TSE2RunTime(RunTime).ScriptAsMethod(
+                MethPtr^ := TSE2RunTime(FRunTime).ScriptAsMethod(
                             PPointer(Param^.tPointer)^,
                             PPointer( integer(Param^.tPointer) + SizeOf(Pointer) )^
                           );
-                Caller.AddMethod(MethPtr);
+                Self.AddMethod(MethPtr);
               end else
               begin
                 MethPtr.Code := nil;
                 MethPtr.Data := nil;
-                Caller.AddMethod(MethPtr);
+                Self.AddMethod(MethPtr);
               end;
-
-              (*New(MethPtr);
-              if pList = nil then
-                 pList := TList.Create;
-              pList.Add(MethPtr);
-
-              if Pointer(Param^.tPointer^) <> nil then
-              begin
-                MethPtr^ := TSE2RunTime(RunTime).ScriptAsMethod(
-                            PPointer(Param^.tPointer)^,
-                            PPointer( integer(Param^.tPointer) + SizeOf(Pointer) )^
-                          );
-                Caller.AddPointer(MethPtr);
-              end else
-              begin
-                MethPtr^.Code := nil;
-                MethPtr^.Data := nil;
-                Caller.AddPointer(MethPtr);
-              end;   *)
             end;
         end;
       end;
@@ -621,25 +642,25 @@ begin
         btString,
         btWideString,
         btUTF8String,
-        btPChar         : Caller.SetResultPointer(Pointer(ReturnVar.tString^));
-        btProcPtr       : Caller.SetResultPointer(Pointer(ReturnVar.tPointer));
-        btRecord        : Caller.SetResultPointer(Pointer(ReturnVar.tPointer^));
+        btPChar         : Self.SetResultPointer(Pointer(ReturnVar.tString^));
+        btProcPtr       : Self.SetResultPointer(Pointer(ReturnVar.tPointer));
+        btRecord        : Self.SetResultPointer(Pointer(ReturnVar.tPointer^));
         end;
       end;
 
-    Caller.Call;
+    Self.Call;
 
     if pVarRecords <> nil then
     begin
       for i:=MetaData.ParamCount-1 downto 0 do
       begin
         ParamDecl := Ord(MetaData.ParamDecl[i + 1]);
-        Param     := Stack [ Stack.Size-1  - MetaData.ParamCount + i];
+        Param     := FScriptStack [ FScriptStack.Size-1  - MetaData.ParamCount + i];
 
         if TSE2ParamHelper.IsVarParam(ParamDecl) then
           if TSE2ParamHelper.GetParamType(ParamDecl) = btRecord then
           begin
-            Caller.FClasses.DelphiToScriptRecord(pVarRecords.Last, Pointer(Param.tPointer^));
+            Self.FClasses.DelphiToScriptRecord(pVarRecords.Last, Pointer(Param.tPointer^));
             pVarRecords.Delete(pVarRecords.Count - 1);
           end;
       end;
@@ -648,32 +669,32 @@ begin
     if ReturnVar <> nil then
     begin
       case MetaData.ResultType of
-      btU8                 : ReturnVar^.tu8^  := Caller.AsU32;
-      btS8                 : ReturnVar^.ts8^  := Caller.AsU32;
-      btU16                : ReturnVar^.tu16^ := Caller.AsU32;
-      btS16                : ReturnVar^.ts16^ := Caller.AsU32;
-      btU32                : ReturnVar^.tu32^ := Caller.AsU32;
-      btS32                : ReturnVar^.ts32^ := Caller.AsU32;
-      btS64                : ReturnVar^.ts64^ := Caller.AsS64;
-      btSingle             : Caller.AsSingle(ReturnVar^.tSingle);
-      btDouble             : Caller.AsDouble(ReturnVar^.tDouble);
-      btPointer, btObject  : Pointer(ReturnVar^.tPointer^) := Caller.AsPointer;
+      btU8                 : ReturnVar^.tu8^  := Self.AsU32;
+      btS8                 : ReturnVar^.ts8^  := Self.AsU32;
+      btU16                : ReturnVar^.tu16^ := Self.AsU32;
+      btS16                : ReturnVar^.ts16^ := Self.AsU32;
+      btU32                : ReturnVar^.tu32^ := Self.AsU32;
+      btS32                : ReturnVar^.ts32^ := Self.AsU32;
+      btS64                : ReturnVar^.ts64^ := Self.AsS64;
+      btSingle             : Self.AsSingle(ReturnVar^.tSingle);
+      btDouble             : Self.AsDouble(ReturnVar^.tDouble);
+      btPointer, btObject  : Pointer(ReturnVar^.tPointer^) := Self.AsPointer;
       btProcPtr            :
           begin
             if PPointer(ReturnVar.tPointer)^ <> nil then
             begin
-              if not TSE2RunTime(RunTime).MethodAsScript(PPointer(integer(ReturnVar.tPointer) + SizeOf(Pointer))^,
+              if not TSE2RunTime(FRunTime).MethodAsScript(PPointer(integer(ReturnVar.tPointer) + SizeOf(Pointer))^,
                    PPointer(ReturnVar.tPointer),
                    PPointer(integer(ReturnVar.tPointer) + SizeOf(Pointer))
                  ) then
                  PPointer(ReturnVar.tPointer)^ := nil;
             end;
           end;
-      {$IFDEF FPC}
-      btString             : PPointer(ReturnVar^.tString^)^     := Pointer(Caller.AsPointer);
-      btUTF8String         : PPointer(ReturnVar^.tString^)^     := Pointer(Caller.AsPointer);
-      btWideString         : PPointer(ReturnVar^.tString^)^     := Pointer(Caller.AsPointer);
-      btPChar              : PPointer(ReturnVar^.tString^)^     := Pointer(Caller.AsPointer);
+      {$IFDEF SEII_FPC_STRING_EAX}
+      btString             : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
+      btUTF8String         : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
+      btWideString         : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
+      btPChar              : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
       {$ENDIF}
       end;
     end;
@@ -688,14 +709,7 @@ begin
 
     if pVarRecords <> nil then
        pVarRecords.Free;
-
-    Caller.Free;
   end;
-end;
-
-procedure RegisterCallMethod;
-begin
-  TSE2CallExternal.CallMethod := CallMethodFunc;
 end;
 
 function TSE2MethodCall.EDXAsPointer: Pointer;
@@ -705,7 +719,7 @@ end;
 
 procedure TSE2MethodCall.AddMethod(const Method: PMethod);
 begin
-  {$IFDEF FPC}      
+  {$IFDEF SEII_FPC_METHOD_AS_POINTER}      
   AddPointer(Method);
   {$ELSE}
   FStack.Add(Method^.Data);
@@ -719,8 +733,5 @@ begin
   AddPointer(result);
   FRecords.Add(result);
 end;
-
-initialization
-  RegisterCallMethod;
 
 end.

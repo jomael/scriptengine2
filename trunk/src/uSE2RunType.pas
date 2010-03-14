@@ -1084,37 +1084,37 @@ end;
 
 class procedure TSE2StringHelper.UTF8ToChar(Input, Output: Pointer);
 begin
-  PbtPChar(Output^)^ := PChar(Utf8ToAnsi(PbtUTF8String(Output^)^));
+  PbtPChar(Output^)^ := PChar(Utf8ToAnsi(PbtUTF8String(Input^)^));
 end;
 
 class procedure TSE2StringHelper.UTF8ToString(Input, Output: Pointer);
 begin
-  PbtString(Output^)^ := Utf8ToAnsi(PbtUTF8String(Output^)^);
+  PbtString(Output^)^ := Utf8ToAnsi(PbtUTF8String(Input^)^);
 end;
 
 class procedure TSE2StringHelper.UTF8ToWide(Input, Output: Pointer);
 begin
   PbtWideString(Output^)^ :=
     {$IFDEF DELPHI2009UP}
-       UTF8ToWideString( PbtUTF8String(Output^)^ );
+       UTF8ToWideString( PbtUTF8String(Input^)^ );
     {$ELSE}
-       UTF8Decode(PbtUTF8String(Output^)^);
+       UTF8Decode(PbtUTF8String(Input^)^);
     {$ENDIF}
 end;
 
 class procedure TSE2StringHelper.WideToChar(Input, Output: Pointer);
 begin
-  PbtPChar(Output^)^ := PChar(Utf8ToAnsi(UTF8Encode(PbtWideString(Output^)^)));
+  PbtPChar(Output^)^ := PChar(Utf8ToAnsi(UTF8Encode(PbtWideString(Input^)^)));
 end;
 
 class procedure TSE2StringHelper.WideToString(Input, Output: Pointer);
 begin
-  PbtString(Output^)^ := Utf8ToAnsi(UTF8Encode(PbtWideString(Output^)^));
+  PbtString(Output^)^ := Utf8ToAnsi(UTF8Encode(PbtWideString(Input^)^));
 end;
 
 class procedure TSE2StringHelper.WideToUTF8(Input, Output: Pointer);
 begin
-  PbtUTF8String(Output^)^ := UTF8Encode(PbtWideString(Output^)^);
+  PbtUTF8String(Output^)^ := UTF8Encode(PbtWideString(Input^)^);
 end;
 
 { TSE2ClassGC }

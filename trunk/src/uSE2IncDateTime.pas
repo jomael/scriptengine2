@@ -5,7 +5,7 @@ unit uSE2IncDateTime;
 interface
 
 uses
-  {$IFNDEF FPC}
+  {$IFNDEF SEII_FPC}
   Windows,
   {$ENDIF}
   Classes, SysUtils, DateUtils, uSE2Types, uSE2BaseTypes, uSE2RunAccess, uSE2UnitManager;
@@ -226,7 +226,7 @@ const
      '    class function YearSpan(const ANow, AThen: TDateTime): Double; external;'+#13#10+
      '    class function Yesterday: TDateTime; external;'+#13#10+
 
-     {$IFNDEF FPC}
+     {$IFNDEF SEII_FPC}
      '    class function DateTimeToUTCTime(DateTime: TDateTime): TDateTime; external;'+#13#10+
      '    class function UTCTimeToDateTime(UTC: TDateTime): TDateTime; external;'+#13#10+
      {$ENDIF}
@@ -450,7 +450,7 @@ type
     class function YearsBetween(const ANow, AThen: TDateTime): Integer;
     class function YearSpan(const ANow, AThen: TDateTime): Double;
     class function Yesterday: TDateTime;
-    {$IFNDEF FPC}
+    {$IFNDEF SEII_FPC}
     class function DateTimeToUTCTime(DateTime: TDateTime): TDateTime;
     class function UTCTimeToDateTime(UTCTime: TDateTime): TDateTime;
     {$ENDIF}
@@ -650,7 +650,7 @@ begin
     Target.Method['DateTime.YearSpan[0]', C_UnitName] := @                 DateTime.YearSpan;
     Target.Method['DateTime.Yesterday[0]', C_UnitName] := @                DateTime.Yesterday;
 
-    {$IFNDEF FPC}
+    {$IFNDEF SEII_FPC}
     Target.Method['DateTime.DateTimeToUTCTime[0]', C_UnitName] := @        DateTime.DateTimeToUTCTime;
     Target.Method['DateTime.UTCTimeToDateTime[0]', C_UnitName] := @        DateTime.UTCTimeToDateTime;
     {$ENDIF}
@@ -722,7 +722,7 @@ begin
   result := SysUtils.DateTimeToStr(Date);
 end;
 
-{$IFNDEF FPC}
+{$IFNDEF SEII_FPC}
 class function DateTime.DateTimeToUTCTime(DateTime: TDateTime): TDateTime;
 var Zone : TTimeZoneInformation;
 begin

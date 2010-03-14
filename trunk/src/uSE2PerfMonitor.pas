@@ -4,7 +4,7 @@ unit uSE2PerfMonitor;
 
 interface
 
-{$IFNDEF FPC}
+{$IFNDEF SEII_FPC}
 uses
   Windows, Classes, uSE2BaseTypes, uSE2OpCode;
 
@@ -42,7 +42,7 @@ type
 
 implementation
 
-{$IFNDEF FPC}
+{$IFNDEF SEII_FPC}
 
 { TSE2PerfMonitor }
 

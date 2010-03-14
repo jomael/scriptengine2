@@ -45,7 +45,7 @@ type
     procedure DecStack;
   end;
 
-{$IFDEF FPC}
+{$IFDEF SEII_FPC}
     {$HINTS OFF}
 {$ENDIF}
 
@@ -2619,11 +2619,11 @@ var i          : integer;
     wasExpr    : boolean;
     iMarkDelPos: integer;
     //iPushPos   : integer;
-{$IFDEF FPC}
+{$IFDEF SEII_FPC}
   {$WARNINGS OFF}
 {$ENDIF}
     iStackSize : integer;
-{$IFDEF FPC}
+{$IFDEF SEII_FPC}
   {$WARNINGS OFF}
 {$ENDIF}
 
@@ -3276,7 +3276,11 @@ begin
           begin
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(TSE2Constant(FindItem).AsInteger), ''));
           end;
-      btSingle, btDouble :
+      btSingle :
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetFloat(TSE2Constant(FindItem).AsFloat), ''));
+          end;
+      btDouble :
           begin
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetFloat(TSE2Constant(FindItem).AsFloat), ''));
           end;

@@ -33,7 +33,7 @@ type
 
 implementation
 
-{$IFDEF FPC}     
+{$IFDEF SEII_FPC}     
     {$HINTS OFF} 
   {$ENDIF}
 
