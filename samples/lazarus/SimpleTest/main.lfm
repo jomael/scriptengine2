@@ -1,0 +1,88 @@
+object Form1: TForm1
+  Left = 192
+  Height = 500
+  Top = 122
+  Width = 870
+  Caption = 'Form1'
+  ClientHeight = 480
+  ClientWidth = 870
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Menu = MainMenu1
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  LCLVersion = '0.9.28.2'
+  object Splitter1: TSplitter
+    Cursor = crVSplit
+    Left = 0
+    Height = 3
+    Top = 388
+    Width = 870
+    Align = alBottom
+    ResizeAnchor = akBottom
+  end
+  object Memo1: TMemo
+    Left = 0
+    Height = 388
+    Top = 0
+    Width = 870
+    Align = alClient
+    Font.CharSet = ANSI_CHARSET
+    Font.Height = -13
+    Font.Name = 'Courier New'
+    Lines.Strings = (
+      'program MyProgram;'
+      ''
+      'var i: integer;'
+      ''
+      'begin'
+      '  Console.WriteLine(''Start'');'
+      ''
+      '  for i:=0 to 5 do'
+      '    Console.WriteLine(i); '
+      ''
+      '  Console.WriteLine(Convert.IntToStr(42)); '
+      ''
+      '  Console.WriteLine(''Stop'');'
+      'end.'
+    )
+    ParentFont = False
+    ScrollBars = ssBoth
+    TabOrder = 0
+  end
+  object Memo2: TMemo
+    Left = 0
+    Height = 89
+    Top = 391
+    Width = 870
+    Align = alBottom
+    Font.CharSet = ANSI_CHARSET
+    Font.Height = -13
+    Font.Name = 'Courier New'
+    ParentFont = False
+    ScrollBars = ssBoth
+    TabOrder = 1
+  end
+  object MainMenu1: TMainMenu
+    left = 116
+    top = 20
+    object File1: TMenuItem
+      Caption = 'File'
+      object Close1: TMenuItem
+        Caption = 'Close'
+        OnClick = Close1Click
+      end
+    end
+    object Compile1: TMenuItem
+      Caption = 'Compile'
+      object Compile2: TMenuItem
+        Caption = 'Compile'
+        OnClick = Compile2Click
+      end
+      object CompileandRun1: TMenuItem
+        Caption = 'Compile and Run'
+        OnClick = CompileandRun1Click
+      end
+    end
+  end
+end
