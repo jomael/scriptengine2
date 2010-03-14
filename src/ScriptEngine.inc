@@ -37,7 +37,7 @@ You can set up the options for the ScriptEngine II here.
  instance of TSE2RunTime. The bigger cache has the advantage, that more stack 
  items fit into the cache and that small classes and records are stored inside 
  the cache. This define will be ignored if SEII_UseRunTimeCache is disabled.}
-{.$define SEII_BigRunTimeCache}
+{$define SEII_BigRunTimeCache}
 
 {If you enable this define, every class of the ScriptEngine II will have
  TPersistant as the root object, otherwise TObject is used.} 
@@ -75,6 +75,19 @@ You can set up the options for the ScriptEngine II here.
 
 {$IFDEF FPC}
   {$MODE DELPHI}
+  
+  {$DEFINE SEII_FPC}
+  
+  {$IFDEF VER2_0}
+    {$DEFINE SEII_FPC_STRING_EAX}
+  {$ENDIF}
+  
+  {$IFDEF VER2_2}
+    {$DEFINE SEII_FPC_STRING_EAX}
+  {$ENDIF}
+  
+  {$DEFINE SEII_FPC_METHOD_AS_POINTER}
+  
 {$ENDIF} 
 
 {$IFDEF SEII_NoDebugInfo}

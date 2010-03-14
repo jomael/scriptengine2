@@ -153,7 +153,7 @@ const
           '    function Minutes: integer;' + #13#10 +
           '    function Seconds: integer;' + #13#10 +
           '    function Milliseconds: integer;  ' + #13#10 +
-          {$IFNDEF FPC}
+          {$IFNDEF SEII_FPC}
           '    function DateTimeToUTCTime: TDateTime;' +#13#10+
           '    function UTCTimeToDateTime: TDateTime;' +#13#10+
           {$ENDIF}
@@ -210,7 +210,7 @@ const
           '  result := ms;' + #13#10 +
           'end;' + #13#10 +
 
-          {$IFNDEF FPC}
+          {$IFNDEF SEII_FPC}
           'function TDateTimeHelper.DateTimeToUTCTime: TDateTime;' +#13#10+
           'begin'+#13#10+
           '  result := DateTime.DateTimeToUTCTime(Self);'+#13#10+

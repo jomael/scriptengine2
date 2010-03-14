@@ -629,7 +629,7 @@ var CallInfo     : PSE2NativeCallEntry;
 
       btString     :
           begin
-            {$IFDEF FPC}
+            {$IFDEF SEII_FPC_STRING_EAX}
             result := integer(PPointer(Data^.tString^)^);
             {$ELSE}
             Parameter := pointer(integer(AStackPtr) + SizeOf(Pointer) * 0 );
@@ -638,7 +638,7 @@ var CallInfo     : PSE2NativeCallEntry;
           end;
       btUTF8String :
           begin
-            {$IFDEF FPC}
+            {$IFDEF SEII_FPC_STRING_EAX}
             result := integer(PPointer(Data^.tString^)^);
             {$ELSE}
             Parameter := pointer(integer(AStackPtr) + SizeOf(Pointer) * 0 );
@@ -647,7 +647,7 @@ var CallInfo     : PSE2NativeCallEntry;
           end;   
       btWideString :
           begin
-            {$IFDEF FPC}
+            {$IFDEF SEII_FPC_STRING_EAX}
             result := integer(PPointer(Data^.tString^)^);
             {$ELSE}
             Parameter := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 0);
@@ -656,7 +656,7 @@ var CallInfo     : PSE2NativeCallEntry;
           end;
       btPChar :
           begin    
-            {$IFDEF FPC}
+            {$IFDEF SEII_FPC_STRING_EAX}
             result := integer(PPointer(Data^.tString^)^);
             {$ELSE}
             Parameter := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 0);

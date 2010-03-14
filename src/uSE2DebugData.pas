@@ -235,7 +235,7 @@ begin
   btSingle :
       result := FloatToStrF(Data^.tSingle^, ffNumber, 8, 2);
   btDouble :
-      result := FloatToStrF(Data^.tDouble^, ffNumber, 8, 2);
+      result := FloatToStrF(Data^.tDouble^, ffNumber, 16, 8);
   btString,
   btWideString,
   btUTF8String,

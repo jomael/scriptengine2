@@ -1,5 +1,7 @@
 unit uSE2IncKeyCodes;
 
+{$INCLUDE ScriptEngine.inc}
+
 interface
 
 uses

@@ -2420,6 +2420,7 @@ end;
 
 //FVarHelp.SetContentAsDouble(p1, p1^.tu8^ + p2^.tDouble^);
 
+{$HINTS OFF}
 procedure add_u8_u8(p1, p2: PSE2VarData; FVarHelp: TSE2VarHelper);                        begin p1^.tu8^ := p1^.tu8^ + p2^.tu8^; end;
 procedure add_u8_s8(p1, p2: PSE2VarData; FVarHelp: TSE2VarHelper);                        begin p1^.tu8^ := p1^.tu8^ + p2^.ts8^; end;
 procedure add_u8_u16(p1, p2: PSE2VarData; FVarHelp: TSE2VarHelper);                       begin p1^.tu8^ := p1^.tu8^ + p2^.tu16^; end;
@@ -6475,7 +6476,7 @@ function unequal_object_widestring(p1, p2: PSE2VarData; FVarHelp: TSE2VarHelper)
 function unequal_object_pchar(p1, p2: PSE2VarData; FVarHelp: TSE2VarHelper): boolean;     begin result := False end;
 function unequal_object_pointer(p1, p2: PSE2VarData; FVarHelp: TSE2VarHelper): boolean;   begin result := PPointer(p1^.tPointer)^ <> PPointer(p2^.tPointer)^; end;
 function unequal_object_object(p1, p2: PSE2VarData; FVarHelp: TSE2VarHelper): boolean;    begin result := PPointer(p1^.tPointer)^ <> PPointer(p2^.tPointer)^; end;
-
+{$HINTS ON}
 
 procedure InitTable_add;
 begin

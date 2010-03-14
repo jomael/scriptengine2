@@ -68,12 +68,12 @@ const
   FMaxCheckCount    = (FCapacityInc div 4) * 64;
 
 type
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   PPointerList = ^TPointerList;
   TPointerList = array[0..MaxListSize - 1] of Pointer;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
@@ -165,7 +165,7 @@ end;
 
 class function TSE2Converter.FloatToStr(f: double): string;
 begin
-  result := FloatToStrF(f, ffGeneral, 8, 8);
+  result := FloatToStrF(f, ffGeneral, 16, 8);
 end;
 
 class function TSE2Converter.IntToStr(i: integer): string;
@@ -174,7 +174,7 @@ begin
 end;
 
 {$HINTS OFF}
-{$IFDEF FPC}
+{$IFDEF SEII_FPC}
   {$NOTES OFF}
 {$ENDIF}
 class function TSE2Converter.IsFloat(s: string): boolean;
@@ -192,7 +192,7 @@ begin
   Val(s, i, c);
   result := c = 0;
 end;
-{$IFDEF FPC}
+{$IFDEF SEII_FPC}
   {$NOTES ON}
 {$ENDIF}
 {$HINTS ON}
@@ -394,11 +394,11 @@ begin
   NewCapacity := mm(FCount, FCapacityInc);
   if NewCapacity < 64 then
      NewCapacity := 64;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   GetMem(NewData, NewCapacity * 4);
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
   for i := 0 to integer(FCount) -1 do

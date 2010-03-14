@@ -215,7 +215,7 @@ type
   PSE2OpFLOW_CALLEX = ^TSE2OpFLOW_CALLEX;
   TSE2OpFLOW_CALLEX = packed record
     OpCode     : TSE2OpCode;
-    Position   : {$IFDEF FPC} PtrUInt {$ELSE} cardinal {$ENDIF};
+    Position   : {$IFDEF SEII_FPC} PtrUInt {$ELSE} cardinal {$ENDIF};
     MetaIndex  : integer;
   end;
 
@@ -706,11 +706,11 @@ end;
 class function TSE2OpCodeGen.DefaultOP(OpCode: TSE2OpCode): Pointer;
 var p: PSE2OpDefault;
 begin
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   GetMem(p, SizeOf(TSE2OpDefault));
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
@@ -1162,12 +1162,12 @@ procedure TSE2LinkOpCode.LoadFromStream(Stream: TStream);
 var version  : byte;
     OpCode   : PSE2OpDefault;
 begin
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   if Stream.Read(version, SizeOf(version)) < SizeOf(version) then
      exit;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
@@ -1178,11 +1178,11 @@ begin
         Stream.Read(FCodeHash, SizeOf(FCodeHash));
         Stream.Read(FPositionSet, SizeOf(FPositionSet));
 
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS OFF}
         {$ENDIF}
         GetMem(OpCode, SizeOf(TSE2OpDefault));
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS ON}
         {$ENDIF}
         Stream.Read(OpCode^, SizeOf(TSE2OpDefault));
@@ -1287,23 +1287,23 @@ var version : byte;
     i, count: integer;
     p       : TSE2LinkOpCode;
 begin
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
   if Stream.Read(version, SizeOf(version)) < SizeOF(version) then
      exit;
-  {$IFDEF FPC}
+  {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
 
   case version of
   1 :
       begin
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS OFF}
         {$ENDIF}
         Stream.Read(count, SizeOf(count));
-        {$IFDEF FPC}
+        {$IFDEF SEII_FPC}
           {$HINTS ON}
         {$ENDIF}
         for i:=0 to count-1 do
