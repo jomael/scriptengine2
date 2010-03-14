@@ -596,7 +596,10 @@ begin
       result := result + Param.Name;
       if IsNewParamType(Param, TSE2Parameter(Entry.Params[i+1])) then
       begin
-        result := result + ': '+Param.AType.Name;
+        if Param.AType <> nil then
+           result := result + ': '+Param.AType.Name
+        else
+           result := result + ': ???';
         if i < Entry.Params.Count-1 then
            result := result + '; ';
       end else
@@ -612,7 +615,10 @@ begin
   if Entry.MethodType = mtFunction then
   begin
     if Entry.ReturnValue <> nil then
-       result := result + ': ' + Entry.ReturnValue.AType.Name
+      if Entry.ReturnValue.AType <> nil then
+         result := result + ': ' + Entry.ReturnValue.AType.Name
+      else
+         result := result + ': ???'
     else
        result := result + ': ???';
   end;
@@ -663,7 +669,10 @@ begin
       result := result + Param.Name;
       if IsNewParamType(Param, TSE2Parameter(Entry.Params[i+1])) then
       begin
-        result := result + ': '+Param.AType.Name;
+        if Param.AType <> nil then
+           result := result + ': '+Param.AType.Name
+        else
+           result := result + ': ???';
         if i < Entry.Params.Count-1 then
            result := result + '; ';
       end else
@@ -676,7 +685,15 @@ begin
     result := result + ']';
 
   end;
-  result := result + ' : ' + Entry.AType.Name;
+  result := result + ' : ';
+
+  if Entry <> nil then
+    if Entry.AType <> nil then
+      result := result + Entry.AType.Name
+    else
+      result := result + '???'
+  else
+     result := result + '???';
 end;
 
 function TSE2SynCodeCompletion.GetDisplayStrToken(

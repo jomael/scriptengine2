@@ -35,7 +35,6 @@ const
      #13#10+
      'type'+#13#10+
      '  TDateTime = double;'+#13#10+
-     '  LongWord  = cardinal;'+#13#10+
      #13#10+
      '  DateTime = class(TExternalObject)'+#13#10+
      '  public'+#13#10+

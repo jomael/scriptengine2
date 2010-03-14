@@ -622,9 +622,20 @@ var s: string;
 begin
   s := '';
   if obj <> nil then
-     s := obj.GetUniqueName();
+  begin
+    if obj.ID > 0 then
+      s := obj.GetUniqueName()
+    else
+      s := obj.GetUniqueName();
+  end;
 
-  TSE2StreamHelper.WriteString(Stream, s);
+  if (Pos('integer', s) > 0) and (Pos('[1]', s) > 0) then
+  begin
+    TSE2StreamHelper.WriteString(Stream, s);
+    if obj <> nil then
+  end
+  else
+    TSE2StreamHelper.WriteString(Stream, s);
 end;
 
 procedure RaiseIncompatibleStream;
@@ -1040,6 +1051,10 @@ var i: integer;
 
 begin
   i := 0;
+
+  if IndexOf(Entry) > -1 then
+     exit;
+
   while HasName(MakeStr(i)) do
     i := i + 1;
   Entry.ID := i;

@@ -30,6 +30,8 @@ type
 
 implementation
 
+uses SysUtils;
+
 { TSE2NameWeaver }
 
 procedure TSE2NameWeaver.Add(Name: string; Target: Pointer);
@@ -82,6 +84,7 @@ begin
   for i:=FList.Count-1 downto 0 do
   begin
     p := FList[i];
+
     if p^.NameHash = NameHash then
       if StringIdentical(p^.Name, Name) then
          Pointer(p^.Target^) := Value;
