@@ -121,7 +121,8 @@ type
                 soNOOP,
 
                 // Stack Methods
-                soSTACK_INC, soSTACK_DEC, soSTACK_DEC_NODEL,
+                soSTACK_INC, soSTACK_INC_COUNT,
+                soSTACK_DEC, soSTACK_DEC_NODEL, soSTACK_DEC_COUNT,
 
                 // Program execution flow
                 soFLOW_GOTO, soFLOW_JIZ, soFLOW_JNZ, soFLOW_CALL, soFLOW_CALLEX, soFLOW_CALLDYN, soFLOW_CALLPTR,
@@ -129,7 +130,7 @@ type
 
                 // Aritmetic operation
                 soOP_OPERATION, soOP_COMPARE,
-                soOP_FASTCOMPARE,
+                soOP_FASTCOMPARE, soOP_FASTOPERATION,
 
                 // Data Movement
                 soDAT_COPY_TO, soDAT_COPY_FROM,
@@ -178,6 +179,13 @@ type
     AType      : TSE2TypeIdent;
   end;
 
+  PSE2OpSTACK_INC_COUNT = ^TSE2OpSTACK_INC_COUNT;
+  TSE2OpSTACK_INC_COUNT = packed record
+    OpCode     : TSE2OpCode;
+    AType      : TSE2TypeIdent;
+    Count      : integer;
+  end;
+
   PSE2OpSTACK_DEC = ^TSE2OpSTACK_DEC;
   TSE2OpSTACK_DEC = packed record
     OpCode     : TSE2OpCode;
@@ -186,6 +194,12 @@ type
   PSE2OpSTACK_DEC_NODEL = ^TSE2OpSTACK_DEC_NODEL;
   TSE2OpSTACK_DEC_NODEL = packed record
     OpCode     : TSE2OpCode;
+  end;
+
+  PSE2OpSTACK_DEC_COUNT = ^TSE2OpSTACK_DEC_COUNT;
+  TSE2OpSTACK_DEC_COUNT = packed record
+    OpCode     : integer;
+    Count      : integer;
   end;
 
   PSE2OpFLOW_GOTO = ^TSE2OpFLOW_GOTO;
@@ -246,6 +260,14 @@ type
   TSE2OpOP_OPERATION = packed record
     OpCode     : TSE2OpCode;
     OpType     : byte;
+  end;
+
+  PSE2OpOP_FASTOPERATION = ^TSE2OpOP_FASTOPERATION;
+  TSE2OpOP_FASTOPERATION = packed record
+    OpCode     : TSE2OpCode;
+    OpType     : byte;
+    Src1,
+    Src2       : Smallint;
   end;
 
   PSE2OpOP_COMPARE = ^TSE2OpOP_COMPARE;
@@ -1139,20 +1161,13 @@ begin
         else
         if PSE2OpOP_FASTCOMPARE(FOpCode).Src2 >= 0 then
            PSE2OpOP_FASTCOMPARE(FOpCode).Src2 := index;
-        {
-        if ((PSE2OpOP_FASTCOMPARE(FOpCode).iSrc1 shr 4) and $8000000) = 0 then // static
-        begin
-          tmp := PSE2OpOP_FASTCOMPARE(FOpCode).iSrc1;
-          tmp := ((index shl 4) and $FFFFFFF0) or ((tmp shr 28) and $F);
-          PSE2OpOP_FASTCOMPARE(FOpCode).iSrc1 := tmp;
-        end else
-        if ((PSE2OpOP_FASTCOMPARE(FOpCode).iSrc2) and $8000000) = 0 then // static
-        begin
-          tmp := PSE2OpOP_FASTCOMPARE(FOpCode).iSrc1;
-          tmp := ((tmp shl 28) and $F0000000) or (index and $FFFFFFF);
-          PSE2OpOP_FASTCOMPARE(FOpCode).iSrc2 := tmp;
-        end;
-        }
+      end;
+  soOP_FASTOPERATION :
+      begin
+        if PSE2OpOP_FASTOPERATION(FOpCode).Src1 >= 0 then
+           PSE2OpOP_FASTOPERATION(FOpCode).Src1 := index;
+        if PSE2OpOP_FASTOPERATION(FOpCode).Src2 >= 0 then
+           PSE2OpOP_FASTOPERATION(FOpCode).Src2 := index;
       end;
   end;
   FPositionSet := True;

@@ -955,7 +955,7 @@ begin
             NewVar.Used       := IsPublic or IsExternal;
             NewVar.IsPublic   := IsPublic;
             NewVar.IsExternal := IsExternal;
-            NewVar.IsStatic   := NewVar.IsStatic or State.IsStatic;
+            NewVar.IsStatic   := NewVar.IsStatic or (State.IsStatic and (Method = nil));
 
 
             if Method <> nil then

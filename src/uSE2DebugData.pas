@@ -35,7 +35,8 @@ const
                 'soNOOP',
 
                 // Stack Methods
-                'soSTACK_INC', 'soSTACK_DEC', 'soSTACK_DEC_NODEL',
+                'soSTACK_INC', 'soSTACK_INC_COUNT',
+                'soSTACK_DEC', 'soSTACK_DEC_NODEL', 'soSTACK_DEC_COUNT',
 
                 // Program execution flow
                 'soFLOW_GOTO', 'soFLOW_JIZ', 'soFLOW_JNZ', 'soFLOW_CALL', 'soFLOW_CALLEX', 'soFLOW_CALLDYN', 'soFLOW_CALLPTR',
@@ -43,7 +44,7 @@ const
 
                 // Aritmetic operation
                 'soOP_OPERATION', 'soOP_COMPARE',
-                'soOP_FASTCOMPARE',
+                'soOP_FASTCOMPARE', 'soOP_FASTOPERATION',
 
                 // Data Movement
                 'soDAT_COPY_TO', 'soDAT_COPY_FROM',
@@ -84,8 +85,10 @@ begin
   case OpCode.OpCode of
   soNOOP                 : result := 'NOOP';
   soSTACK_INC            : result := Format('PUSH [%s]', [VarTypeToStr(PSE2OpSTACK_INC(OpCode).AType)]);
+  soSTACK_INC_COUNT      : result := Format('PUSH [%d %s]', [PSE2OpSTACK_INC_COUNT(OpCode).Count, VarTypeToStr(PSE2OpSTACK_INC_COUNT(OpCode).AType)]);
   soSTACK_DEC            : result := 'POP';
   soSTACK_DEC_NODEL      : result := 'POP [no delete]';
+  soSTACK_DEC_COUNT      : result := Format('POP [%d]', [PSE2OpSTACK_DEC_COUNT(OpCode).Count]);
   soFLOW_GOTO            : result := Format('GOTO [%d]', [PSE2OpFLOW_GOTO(OpCode).Position]);
   soFLOW_JIZ             : result := Format('JIZ [%d]', [PSE2OpFLOW_JIZ(OpCode).Position]);
   soFLOW_JNZ             : result := Format('JNZ [%d]', [PSE2OpFLOW_JNZ(OpCode).Position]);
@@ -97,6 +100,7 @@ begin
   soFLOW_RET             : result := 'RET';
   soFLOW_PUSHRET         : result := Format('PUSH RET [%d]', [PSE2OpFLOW_PUSHRET(OpCode).Position]);
   soOP_OPERATION         : result := Format('OP [%s]', [OperationToStr(PSE2OpOP_OPERATION(OpCode).OpType)]);
+  soOP_FASTOPERATION     : result := Format('FOP [%s]', [OperationToStr(PSE2OpOP_FASTOPERATION(OpCode).OpType)]);
   soOP_COMPARE           : result := Format('CMP [%s]', [ComparisonToStr(PSE2OpOP_COMPARE(OpCode).CompType)]);
   soOP_FASTCOMPARE       : result := Format('FCMP [%s]', [ComparisonToStr(PSE2OpOP_FASTCOMPARE(OpCode).CompType)]);
   soDAT_COPY_TO          : result := Format('POP TO [%d %s]', [PSE2OpDAT_COPY_TO(OpCode).Target, IfThen(PSE2OpDAT_COPY_TO(OpCode).Static, 'Static', 'Dynamic')]);
