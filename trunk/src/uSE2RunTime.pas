@@ -285,9 +285,19 @@ begin
       begin
         FStack.PushNew(PSE2OpSTACK_INC(OpCode).AType);
       end;
+  soSTACK_INC_COUNT :
+      begin
+        for CompareInt := PSE2OpSTACK_INC_COUNT(OpCode).Count-1 downto 0 do
+          FStack.PushNew(PSE2OpSTACK_INC_COUNT(OpCode).AType);
+      end;
   soSTACK_DEC :
       begin
         FStack.Pop;
+      end;
+  soSTACK_DEC_COUNT :
+      begin
+        for CompareInt := PSE2OpSTACK_DEC_COUNT(OpCode).Count-1 downto 0 do
+          FStack.Pop;
       end;
   soSTACK_DEC_NODEL :
       begin
@@ -465,6 +475,65 @@ begin
             end;
         end;
       end;
+  soOP_FASTOPERATION :
+      begin
+        case PSE2OpOP_FASTOPERATION(OpCode).OpType of
+        1, 20,
+        21      :
+            begin
+              { 1st Parameter }
+              CompareInt := PSE2OpOP_FASTOPERATION(OpCode).Src1;
+              if CompareInt >= 0 then // Static
+              begin
+                r1 := FStack.Data[CompareInt];
+                r2 := FStack.PushNew(r1.AType);
+              end else
+              begin
+                r1 := FStack.Data[FStack.Size-1 + CompareInt];
+                r2 := FStack.PushNew(r1.AType);
+              end;
+              FVarHelper.SetVarData(r1, r2);
+
+              case PSE2OpOP_OPERATION(OpCode).OpType of
+              1  : FVarOperation.Negation(FStack.Top); // negation
+              20 : FVarOperation.BitNot(FStack.Top);
+              21 : FVarOperation.BooleanNot(FStack.Top);
+              end;
+            end;
+        2..11   :
+            begin
+              { 1st Parameter }
+              CompareInt := PSE2OpOP_FASTOPERATION(OpCode).Src1;
+              if CompareInt >= 0 then  // Static
+                r2 := FStack[CompareInt]
+              else
+                r2 := FStack[FStack.Size + CompareInt];
+
+              { 2nd Parameter }
+              CompareInt := PSE2OpOP_FASTOPERATION(OpCode).Src2;
+              if CompareInt >= 0 then // Static
+                r3 := FStack[CompareInt]
+              else
+                r3 := FStack[FStack.Size - 1 + CompareInt];
+
+              r1 := FStack.PushNew(r3.AType); 
+              FVarHelper.SetVarData(r3, r1);
+
+              case PSE2OpOP_OPERATION(OpCode).OpType of
+              2  : uSE2RunOperation.mTable_add[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
+              3  : uSE2RunOperation.mTable_sub[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
+              4  : uSE2RunOperation.mTable_mul[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
+              5  : uSE2RunOperation.mTable_div[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
+              6  : uSE2RunOperation.mTable_and[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
+              7  : uSE2RunOperation.mTable_or [r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
+              8  : uSE2RunOperation.mTable_xor[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
+              9  : uSE2RunOperation.mTable_mod[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
+              10 : uSE2RunOperation.mTable_shr[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
+              11 : uSE2RunOperation.mTable_shl[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
+              end;
+            end;
+        end;
+      end;
   soOP_COMPARE :
       begin
         //QueryPerformanceFrequency(c);
@@ -501,12 +570,6 @@ begin
   soOP_FASTCOMPARE :
       begin
         { 1st Parameter }
-        {
-        CompareInt := (PSE2OpOP_FASTCOMPARE(OpCode).iSrc1 shr 4) and $FFFFFFF;
-        if (CompareInt and $8000000) = 0 then
-          CompareInt := (CompareInt and $7FFFFFF)
-        else
-          CompareInt := (CompareInt and $7FFFFFF) * -1; }
         CompareInt := PSE2OpOP_FASTCOMPARE(OpCode).Src1;
         if CompareInt >= 0 then  // Static
           r2 := FStack[CompareInt]
@@ -514,25 +577,11 @@ begin
           r2 := FStack[FStack.Size + CompareInt];
 
         { 2nd Parameter }
-        {
-        CompareInt := (PSE2OpOP_FASTCOMPARE(OpCode).iSrc2) and $FFFFFFF;
-        if (CompareInt and $8000000) = 0 then
-          CompareInt := (CompareInt and $7FFFFFF)
-        else
-          CompareInt := (CompareInt and $7FFFFFF) * -1; }
         CompareInt := PSE2OpOP_FASTCOMPARE(OpCode).Src2;
         if CompareInt >= 0 then // Static
           r1 := FStack[CompareInt]
         else
           r1 := FStack[FStack.Size - 1 + CompareInt];
-
-        if (r1 = nil) or (r2 = nil) then
-        begin
-          if (r1 = r2) then
-          begin
-
-          end;
-        end;
 
         case PSE2OpOP_FASTCOMPARE(OpCode).CompType of
         1 : CompareInt := Ord(uSE2RunOperation.mTable_Equal[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));

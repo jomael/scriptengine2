@@ -941,6 +941,108 @@ var i, j    : integer;
     AddOffsetPos(-2, i);
   end;
 
+  procedure InsertFastOperation;
+  var src1, src2: integer;
+  begin
+    if OpCodes[0].OpCode.OpCode <> soDAT_COPY_FROM then
+       exit;
+    if OpCodes[1].OpCode.OpCode <> soDAT_COPY_FROM then
+       exit;
+    if OpCodes[2].OpCode.OpCode <> soOP_OPERATION then
+       exit;
+    if PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Static and PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
+        exit;
+
+    if PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
+       OpCodes[0].CodeIndex := OpCodes[1].CodeIndex;
+
+    if PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Static then
+       src1 := 0
+    else
+    begin
+      src1 := PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Source;
+    end;
+
+    if PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
+       src2 := 0
+    else
+    begin
+      src2 := PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Source;
+    end;
+
+    OpCodes[0].OpCode.OpCode := soOP_FASTOPERATION;
+    PSE2OpOP_FASTOPERATION(OpCodes[0].OpCode).OpType   := PSE2OpOP_OPERATION(OpCodes[2].OpCode).OpType;
+    PSE2OpOP_FASTOPERATION(OpCodes[0].OpCode).Src1     := src2;
+    PSE2OpOP_FASTOPERATION(OpCodes[0].OpCode).Src2     := src1;
+
+    // Delete the convert opcode
+    Method.OpCodes.Delete(i + 1);
+    Method.OpCodes.Delete(i + 1);
+
+    // Decrease every position
+    AddOffsetPos(-2, i);
+  end;
+
+  procedure CombineMultiplePops;
+  var index, popCount : integer;
+  begin
+    popCount := 0;
+    for index:=0 to 10 do
+    begin
+      if OpCodes[index] = nil then
+         break
+      else
+      if OpCodes[index].OpCode.OpCode = soSTACK_DEC then
+         popCount := popCount + 1
+      else
+         break;
+    end;
+
+    if popCount < 2 then
+       exit;
+
+    OpCodes[0].OpCode.OpCode := soSTACK_DEC_COUNT;
+    PSE2OpSTACK_DEC_COUNT(OpCodes[0].OpCode).Count := popCount;
+
+    for index:=2 to popCount do
+      Method.OpCodes.Delete(i + 1);
+
+    AddOffsetPos(-(popCount - 1), i);
+  end;
+
+  procedure CombineMultiplePush;
+  var index, pushCount : integer;
+      aType            : integer;
+  begin
+    pushCount := 0;
+    aType     := -1;
+    for index:=0 to 10 do
+    begin
+      if OpCodes[index] = nil then
+         break
+      else
+      if (OpCodes[index].OpCode.OpCode = soSTACK_INC) and
+         (( PSE2OpSTACK_INC(OpCodes[index].OpCode).AType = aType ) or (aType = -1)) then
+      begin
+        pushCount := pushCount + 1;
+        aType     := PSE2OpSTACK_INC(OpCodes[index].OpCode).AType;
+      end else
+        break;
+    end;
+
+    if pushCount < 2 then
+       exit;
+
+    OpCodes[0].OpCode.OpCode := soSTACK_INC_COUNT;
+    PSE2OpSTACK_INC_COUNT(OpCodes[0].OpCode).Count := pushCount;
+    PSE2OpSTACK_INC_COUNT(OpCodes[0].OpCode).AType := aType;
+
+    for index:=2 to pushCount do
+      Method.OpCodes.Delete(i + 1);
+
+    AddOffsetPos(-(pushCount - 1), i);
+  end;
+
 begin
   if Method = nil then
      exit;
@@ -950,7 +1052,7 @@ begin
   if Method.IsExternal then
      exit;
 
-  for Mode := 0 to 3 do
+  for Mode := 0 to 6 do
   begin
     i := 0;
     repeat
@@ -963,6 +1065,9 @@ begin
       1 : InsertFastIncrement;
       2 : OptimizeIntValues;
       3 : InsertFastCompare;
+      4 : InsertFastOperation;
+      5 : CombineMultiplePops;
+      6 : CombineMultiplePush;
       end;
 
       inc(i);
