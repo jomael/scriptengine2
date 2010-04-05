@@ -1052,13 +1052,12 @@ begin
   if Method.IsExternal then
      exit;
 
-  for Mode := 0 to 6 do
+  for Mode := 0 to 4 do
   begin
     i := 0;
     repeat
       for j:=0 to 10 do
         OpCodes[j] := Method.OpCodes[i + j];
-
 
       case Mode of
       0 : DeleteUselessPushPop;
@@ -1066,8 +1065,8 @@ begin
       2 : OptimizeIntValues;
       3 : InsertFastCompare;
       4 : InsertFastOperation;
-      5 : CombineMultiplePops;
-      6 : CombineMultiplePush;
+      //5 : CombineMultiplePops;
+      //6 : CombineMultiplePush;
       end;
 
       inc(i);

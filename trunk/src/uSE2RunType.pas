@@ -941,7 +941,7 @@ end;
 procedure TSE2Stack.ManageStack;
 var newSize : integer;
 begin
-  if Self.Count < FSize then
+  if Self.Count < FSize + 1 then
   begin
     newSize := FSize + FIncSize;
     if newSize > FMaxSize then
@@ -949,9 +949,9 @@ begin
 
     Self.Count := newSize;
   end else
-  if Self.Count > FSize + (FIncSize * 5) then
+  if Self.Count > FSize + 1 + (FIncSize * 5) then
   begin
-    newSize := FSize + FIncSize * 2;
+    newSize := FSize + 1 + FIncSize * 2;
     Self.Count := newSize;
   end;
 end;
@@ -1009,9 +1009,9 @@ end;  }
 
 procedure TSE2Stack.Push(Data: PSE2VarData);
 begin
-  FSize := FSize + 1;     
-  if Self.Count <= FSize then
+  if Self.Count <= FSize + 1 then
      ManageStack;
+  FSize := FSize + 1;
 
   inherited Items[FSize - 1] := Data;
   Data^.RefCounter := Data^.RefCounter + 1;
@@ -1020,9 +1020,9 @@ end;
 
 function TSE2Stack.PushNew(AType: TSE2TypeIdent): PSE2VarData;
 begin
-  FSize := FSize + 1;
-  if Self.Count <= FSize then
+  if Self.Count <= FSize + 1 then
      ManageStack;
+  FSize := FSize + 1;
 
   result           := FPool.Pop(AType);
   inherited Items[FSize - 1] := result;

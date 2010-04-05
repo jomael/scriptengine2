@@ -136,13 +136,13 @@ begin
   FreeAndNil(FCodeAccess);
   FreeAndNil(FNativeList);
 
-  FAppCode.Free;   
+  FAppCode.Free;
   FSafeBlocks.Free;
   FStack.Free;
   FClassGC.Free;
   FRecordGC.Free;
   FMethodCall.Free;
-                  
+
   FVarHelper.Free;
   FVarOperation.Free;
   FVarCompare.Free;
@@ -541,25 +541,29 @@ begin
         r2 { VarDat[1] } := FStack.Top;
         r1 { VarDat[0] } := FStack.Data[FStack.Size - 2]; //r1 { VarDat[0] } := FStack[Stack.Size - 2];
 
-        case PSE2OpOP_COMPARE(OpCode).CompType of
-        1 : CompareInt := Ord(uSE2RunOperation.mTable_Equal[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        2 : CompareInt := Ord(uSE2RunOperation.mTable_Smaller[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        3 : CompareInt := Ord(uSE2RunOperation.mTable_Bigger[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        4 : CompareInt := Ord(uSE2RunOperation.mTable_BiggerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        5 : CompareInt := Ord(uSE2RunOperation.mTable_SmallerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        6 : CompareInt := Ord(uSE2RunOperation.mTable_UnEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+        if (r1.AType in [btU8..btObject]) and (r2.AType in [btU8..btObject]) then
+        begin
+          case PSE2OpOP_COMPARE(OpCode).CompType of
+          1 : CompareInt := Ord(uSE2RunOperation.mTable_Equal[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          2 : CompareInt := Ord(uSE2RunOperation.mTable_Smaller[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          3 : CompareInt := Ord(uSE2RunOperation.mTable_Bigger[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          4 : CompareInt := Ord(uSE2RunOperation.mTable_BiggerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          5 : CompareInt := Ord(uSE2RunOperation.mTable_SmallerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          6 : CompareInt := Ord(uSE2RunOperation.mTable_UnEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          end;
+        end else
+        begin
+          case PSE2OpOP_COMPARE(OpCode).CompType of
+          1 : CompareInt := Ord(FVarCompare.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          2 : CompareInt := Ord(FVarCompare.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          3 : CompareInt := Ord(FVarCompare.Bigger(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          4 : CompareInt := Ord(FVarCompare.BiggerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          5 : CompareInt := Ord(FVarCompare.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          6 : CompareInt := Ord(FVarCompare.UnEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          end;
         end;
 
-        (*
-        case PSE2OpOP_COMPARE(OpCode).CompType of
-        1 : CompareInt := Ord(FVarCompare.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        2 : CompareInt := Ord(FVarCompare.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        3 : CompareInt := Ord(FVarCompare.Bigger(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        4 : CompareInt := Ord(FVarCompare.BiggerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        5 : CompareInt := Ord(FVarCompare.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        6 : CompareInt := Ord(FVarCompare.UnEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        end;
-        *)
+
 
         FStack.Pop;
         FStack.Pop;
@@ -583,13 +587,26 @@ begin
         else
           r1 := FStack[FStack.Size - 1 + CompareInt];
 
-        case PSE2OpOP_FASTCOMPARE(OpCode).CompType of
-        1 : CompareInt := Ord(uSE2RunOperation.mTable_Equal[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        2 : CompareInt := Ord(uSE2RunOperation.mTable_Smaller[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        3 : CompareInt := Ord(uSE2RunOperation.mTable_Bigger[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        4 : CompareInt := Ord(uSE2RunOperation.mTable_BiggerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        5 : CompareInt := Ord(uSE2RunOperation.mTable_SmallerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-        6 : CompareInt := Ord(uSE2RunOperation.mTable_UnEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+        if (r1.AType in [btU8..btObject]) and (r2.AType in [btU8..btObject]) then
+        begin
+          case PSE2OpOP_FASTCOMPARE(OpCode).CompType of
+          1 : CompareInt := Ord(uSE2RunOperation.mTable_Equal[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          2 : CompareInt := Ord(uSE2RunOperation.mTable_Smaller[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          3 : CompareInt := Ord(uSE2RunOperation.mTable_Bigger[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          4 : CompareInt := Ord(uSE2RunOperation.mTable_BiggerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          5 : CompareInt := Ord(uSE2RunOperation.mTable_SmallerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          6 : CompareInt := Ord(uSE2RunOperation.mTable_UnEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
+          end;
+        end else
+        begin     
+          case PSE2OpOP_COMPARE(OpCode).CompType of
+          1 : CompareInt := Ord(FVarCompare.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          2 : CompareInt := Ord(FVarCompare.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          3 : CompareInt := Ord(FVarCompare.Bigger(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          4 : CompareInt := Ord(FVarCompare.BiggerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          5 : CompareInt := Ord(FVarCompare.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          6 : CompareInt := Ord(FVarCompare.UnEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+          end;
         end;
 
         FStack.PushNew(btBoolean).tu8^ := CompareInt;
@@ -1103,7 +1120,7 @@ begin
   sl := TStringList.Create;
   try
     for i:=FStack.Size-1 downto 0 do
-    begin
+    begin         
       if FStack[i]^.AType = btReturnAddress then
       begin
         index := (FStack[i]^.tS64^ shr 32);

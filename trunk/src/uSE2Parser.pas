@@ -22,6 +22,7 @@ type
     StackSize      : integer;
     IsInInterface  : boolean;
     IsInLoop       : boolean;
+    LoopStackSize  : integer;
     IsExpression   : boolean;
     IsAtStatement  : boolean;
     Visibility     : TSE2Visibility;
@@ -859,6 +860,14 @@ begin
         begin
           RaiseError(petError, 'Name already declared "'+Tokenizer.Token.Value+'"');
           exit;
+        end;
+        if Method <> nil then
+        begin
+          if Method.Params.FindItem(Tokenizer.Token.Value) <> nil then
+          begin
+            RaiseError(petError, 'Name already declared "'+Tokenizer.Token.Value+'"');
+            exit;
+          end;
         end;
 
         NewVar := TSE2Variable.Create;
@@ -3264,7 +3273,8 @@ begin
         State.DecStack;
       end;
       result    := TSE2Constant(FindItem).AType;
-      LastItem  := nil;
+      LastItem  := FindItem;
+      pSearchParent := result;
       State.NoStaticPointer := False;
       State.LastVariable := nil;
       if not State.IsExpression then
@@ -3316,6 +3326,8 @@ begin
 
             ExpectToken([sesCloseRound]);
             ReadNextToken;
+
+            ConvertVariableCode(State, Method, pTempType, TSE2Type(FindItem));
 
             State.TargetType := OldTarget;
             pSearchParent := FindItem;
@@ -3478,6 +3490,12 @@ begin
             begin
               DoMethodCall(TSE2Method(TSE2Property(FindItem).Getter), True);
               State.NoStaticPointer := False;
+
+              if Tokenizer.Token.AType = sesDot then
+              begin
+                ReadNextToken;
+                continue;
+              end;
             end;
           end else
           begin
@@ -4005,6 +4023,7 @@ var oldBreakList    : integer;
 
     i               : integer;
     oldIsInLoop     : boolean;
+    oldLoopStack    : integer;
     Expr            : TSE2Type;
 begin
   ExpectToken([sesRepeat]);
@@ -4015,10 +4034,19 @@ begin
 
   OpCodePos1      := Method.OpCodes.Count;
 
-  oldIsInLoop := State.IsInLoop;
-  State.IsInLoop := True;
+  { Push old }
+  oldIsInLoop         := State.IsInLoop;
+  oldLoopStack        := State.LoopStackSize;
+
+  { New values }
+  State.IsInLoop      := True;
+  State.LoopStackSize := State.StackSize;
+
   StatementSquence(State, Method);
-  State.IsInLoop := oldIsInLoop;
+
+  { Pop old }
+  State.IsInLoop      := oldIsInLoop;
+  State.LoopStackSize := oldLoopStack;
 
   ExpectToken([sesUntil]);
   ReadNextToken;
@@ -4058,6 +4086,7 @@ var oldBreakList    : integer;
 
     i               : integer;
     oldIsInLoop     : boolean;
+    oldLoopStack    : integer;
     Expr            : TSE2Type;
 begin
   ExpectToken([sesWhile]);
@@ -4080,11 +4109,20 @@ begin
   OpCodePos1  := Method.OpCodes.Count;
   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
   State.DecStack;
-  
-  oldIsInLoop := State.IsInLoop;
-  State.IsInLoop := True;
+
+  { Push old }
+  oldIsInLoop    := State.IsInLoop;
+  oldLoopStack   := State.LoopStackSize;
+
+  { New values }
+  State.IsInLoop      := True;
+  State.LoopStackSize := State.StackSize;
+
   Statement(State, Method);
-  State.IsInLoop := oldIsInLoop;
+
+  { Pop old }
+  State.IsInLoop      := oldIsInLoop;
+  State.LoopStackSize := oldLoopStack;
 
   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(OpCodePos2), ''));
 
@@ -4112,7 +4150,9 @@ var oldBreakList    : integer;
     opCodePos2      : integer;
 
     loopIncrease    : boolean;
-    wasInLoop       : boolean;
+
+    oldIsInLoop     : boolean;
+    oldLoopStack    : integer;
 
     i               : integer;
     oldVar          : TSE2Variable;
@@ -4168,10 +4208,19 @@ begin
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
     State.DecStack;
 
-    wasInLoop := State.IsInLoop;
-    State.IsInLoop := True;
+    { Push old }
+    oldIsInLoop      := State.IsInLoop;
+    oldLoopStack     := State.StackSize;
+
+    { New values }
+    State.IsInLoop      := True;
+    State.LoopStackSize := State.StackSize;
+
     Statement(State, Method);
-    State.IsInLoop := wasInLoop;
+
+    { Pop old }
+    State.IsInLoop      := oldIsInLoop;
+    State.LoopStackSize := oldLoopStack;
 
     for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
       PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode)^.Position := Method.OpCodes.Count;
@@ -4216,6 +4265,9 @@ begin
         if not State.IsInLoop then
            RaiseError(petError, 'Continue not allowed here');
 
+        for i:=State.StackSize-1 downto State.LoopStackSize do
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+
         Method.Lists.ContinueList.Add(Method.OpCodes.Count);
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
         ReadNextToken;
@@ -4224,6 +4276,9 @@ begin
       begin
         if not State.IsInLoop then
            RaiseError(petError, 'Break not allowed here');
+
+        for i:=State.StackSize-1 downto State.LoopStackSize do
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
 
         Method.Lists.BreakList.Add(Method.OpCodes.Count);
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
@@ -4520,9 +4575,9 @@ begin
   CanConvert := False;
   case NewType of
   btU8, btS8, btU16, btS16, btU32, btS32 :
-      CanConvert := CurrentType in [btS64];
+      CanConvert := CurrentType in [btS64, btPointer, btU8, btS8, btU16, btS16, btU32, btS32];
   btS64 :
-      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32];
+      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btPointer];
   btSingle :                     
       CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btDouble];
   btDouble :
@@ -4537,6 +4592,8 @@ begin
       CanConvert := CurrentType in [btString, btUTF8String, btWideString];
   btProcPtr :
       CanConvert := CurrentType in [btPointer];
+  btObject :
+      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64];
   end;
 
   if CanConvert then
