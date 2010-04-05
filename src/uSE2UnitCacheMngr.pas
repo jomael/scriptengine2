@@ -8,14 +8,19 @@ uses
   Classes, uSE2BaseTypes, uSE2Types, uSE2UnitCache, uSE2NameWeaver;
 
 type
+  TSE2GetCacheStream = procedure(Sender: TObject; const aUnitName: string; var Cache: TStream) of object;
+
   TSE2UnitCacheMngr = class(TSE2Object)
   private
     FList : TList;
+    FOnGetCacheStream : TSE2GetCacheStream;
   protected
     procedure PublishEntry(Entry: TSE2BaseType; Weaver: TSE2NameWeaver);
     procedure PublishUnit(AUnit: TSE2Unit; Weaver: TSE2NameWeaver);
     procedure PublishUnits(UnitList: TSE2BaseTypeList; Weaver: TSE2NameWeaver);
     function  IndexOf(const Name: string): integer;
+
+    function  DoGetCacheStream(const aUnitName: string): TStream;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -27,6 +32,8 @@ type
     function  HasUnit(const Name: string): boolean;
     function  GetUnit(const Name: string; UnitList: TSE2BaseTypeList): TSE2Unit; overload;
     function  GetUnit(Cache: TSE2UnitCache; UnitList: TSE2BaseTypeList): TSE2Unit; overload;
+
+    property  OnGetCacheStream : TSE2GetCacheStream read FOnGetCacheStream write FOnGetCacheStream;
   end;
 
 implementation
@@ -42,10 +49,21 @@ begin
   if IndexOf(aUnit.AUnitName) > -1 then
      ClearCache(aUnit.Name);
 
-  Cache := TSE2UnitCache.Create(TMemoryStream.Create);
+  Cache := TSE2UnitCache.Create( DoGetCacheStream(aUnit.Name) );
   Cache.StoreUnit(aUnit);
   Cache.AUnitName := aUnit.Name;
   FList.Add(Cache);
+end;
+
+function TSE2UnitCacheMngr.DoGetCacheStream(
+  const aUnitName: string): TStream;
+begin
+  result := nil;
+  if Assigned(FOnGetCacheStream) then
+     FOnGetCacheStream(Self, aUnitName, result);
+
+  if result = nil then
+     result := TMemoryStream.Create;
 end;
 
 procedure TSE2UnitCacheMngr.Clear;

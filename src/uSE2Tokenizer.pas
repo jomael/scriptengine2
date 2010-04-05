@@ -10,8 +10,8 @@ uses
 type       
   TSE2Tokenizer = class(TSE2Object)
   private
-    FReader : TSE2Reader;
-    FToken  : TSE2Token;
+    FReader     : TSE2Reader;
+    FToken      : TSE2Token;
   protected
     procedure SetReader(const value: TSE2Reader);
     procedure StepSpaces;
@@ -93,6 +93,7 @@ begin
           FReader.NextChar;
         end;
 
+             
         for TokenType := sesNone to sesLastToken do
           if TSE2TokenString[TokenType] <> '' then
             if StringIdentical(TSE2TokenString[TokenType], Token.Value) then
