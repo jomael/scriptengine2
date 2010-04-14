@@ -1243,6 +1243,12 @@ begin
 
         end else
            newType.AType := btU32;
+
+        case newType.AType of
+        btU32  : newType.DataSize := 4;
+        btU16  : newType.DataSize := 2;
+        btU8   : newType.DataSize := 1;
+        end;
       end;
     finally
       enumList.Free;
@@ -2878,11 +2884,16 @@ begin
                 State.ParamIndex  := i - iStart + 1;
                 State.ParamMethod := CallMethod;
 
+                if State.LastVariable <> nil then
+                  if State.LastVariable.Parent <> nil then
+                     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_UNREF, ''));
+
                 if not IsCompatible(TSE2Parameter(CallMethod.Params[i]).AType, TSE2Type(aType), sesNone, False, Self) then
                 begin
                   RaiseError(petError, 'Expression is not compatible to the parameter "'+CallMethod.Params[i].Name+'"');
                   exit;
                 end;
+
                 ConvertVariableCode(State, Method, TSE2Type(aType), TSE2Parameter(CallMethod.Params[i]).AType);
               end;
           ptVar :
@@ -4973,6 +4984,9 @@ procedure TSE2Parser.MethodBodyDeclaration(State: TSE2ParseState;
 var oldExitList : integer;
     i           : integer;
 begin
+  if Method.IsVirtual or Method.IsOverride then
+     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DEBUG_META(0), Method.GenLinkerName));
+
   while not FHasError do
   begin
     case Tokenizer.Token.AType of
@@ -4995,7 +5009,10 @@ begin
   if FHasError then
      exit;
 
+
   ExpectToken([sesBegin]);
+
+
   oldExitList := Method.Lists.ExitList.Count;
   Method.Lists.ExitTableList.Add(State.StackSize);
   ReadNextToken;
@@ -5023,8 +5040,6 @@ begin
   ReadNextToken;
   ExpectToken([sesSemiColon]);
   ReadNextToken;
-
-  
 
   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
 
@@ -5270,6 +5285,15 @@ type
         Method.OpCodes[param.CodePos - 1 + CodeOffset].OpCode.OpCode := soDAT_MOVE_FROM;
       end else
       begin
+        if param.Variable <> nil then
+          if param.Parent <> nil then
+          begin
+            OpCode := TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_UNREF, '');
+            Method.OpCodes.Insert(param.CodePos + CodeOffset, OpCode);
+            AddOffsets(Method, param.CodePos + CodeOffset - 1, 1);
+            CodeOffset := CodeOffset + 1;
+          end;
+          
         OpCode := ConvertVariableCode(State, Method, param.AType, TSE2Parameter(CallMethod.Params[i]).AType, False);
         if OpCode <> nil then
         begin
