@@ -158,7 +158,10 @@ type
                 soINT_DECSTATIC, soINT_DECSTACK,
 
                 // Safe-Blocks
-                soSAFE_TRYFIN, soSAFE_TRYEX, soSAFE_BLOCK, soSAFE_TRYEND, soSAFE_SJUMP
+                soSAFE_TRYFIN, soSAFE_TRYEX, soSAFE_BLOCK, soSAFE_TRYEND, soSAFE_SJUMP,
+
+                // special runtime data
+                soDEBUG_META, soFINIT_STACK
                 );
 
 type
@@ -282,16 +285,6 @@ type
     CompType   : byte;
     Src1,
     Src2       : Smallint;
-    {
-    case byte of
-    0   : (
-            iSrc1 : integer;
-          );
-    1   : (
-            iWaste : array[0..3] of byte;
-            iSrc2  : integer;
-          );
-    }
   end;
 
   PSE2OpDAT_COPY_TO = ^TSE2OpDAT_COPY_TO;
@@ -514,6 +507,18 @@ type
     ExitTo     : cardinal;
   end;
 
+  PSE2OpDEBUG_META = ^TSE2OpDEBUG_META;
+  TSE2OpDEBUG_META = packed record
+    OpCode     : TSE2OpCode;
+    MetaIndex  : cardinal;
+  end;
+
+  PSE2OpFINIT_STACK = ^TSE2OpFINIT_STACK;
+  TSE2OpFINIT_STACK = packed record
+    OpCode     : TSE2OpCode;
+    StackSize  : integer;
+  end;
+
   TSE2OpCodeList = class(TSE2Object)
   private
     FList : TList;
@@ -635,6 +640,9 @@ type
     class function SAFE_BLOCK(SkipPoint: cardinal): PSE2OpDefault;
     class function SAFE_TRYEND: PSE2OpDefault;
     class function SAFE_SJUMP(Target, ExitTo: cardinal): PSE2OpDefault;
+
+    class function DEBUG_META(index: cardinal): PSE2OpDefault;
+    class function FINIT_STACK(stackSize: integer): PSE2OpDefault;
   end;
 
   TSE2ParamHelper = class(TSE2Object)
@@ -976,6 +984,19 @@ begin
   result := DefaultOP(soSPEC_GetProcPtr);
   PSE2OpSPEC_GetProcPtr(result)^.MetaIndex := MetaIndex;
   PSE2OpSPEC_GetProcPtr(result)^.HasSelf   := HasSelf;
+end;
+
+class function TSE2OpCodeGen.DEBUG_META(index: cardinal): PSE2OpDefault;
+begin
+  result := DefaultOP(soDEBUG_META);
+  PSE2OpDEBUG_META(result)^.MetaIndex := index;
+end;
+
+class function TSE2OpCodeGen.FINIT_STACK(
+  stackSize: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soFINIT_STACK);
+  PSE2OpFINIT_STACK(result)^.StackSize := stackSize;
 end;
 
 { TSE2OpCodeList }

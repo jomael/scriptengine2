@@ -254,9 +254,14 @@ begin
 end;
 
 procedure TSE2RunTime.Process;
+
+type
+  PPosArray = ^TPosArray;
+  TPosArray = array[0..1] of integer;
+
 var OpCode        : PSE2OpDefault;
     CompareInt    : integer;
-    Pos           : array[0..1] of integer;
+    Pos           : TPosArray;
     r1, r2, r3, r4: PSE2VarData;
     //VarDat        : array[0..3] of PSE2VarData;
     Meta          : TSE2MetaEntry;
@@ -391,6 +396,22 @@ begin
 
         //if FRecordGC.Count > 0 then
         //   ProcessRecordGC;
+      end;
+  soFINIT_STACK :
+      begin
+        CompareInt := PSE2OpFINIT_STACK(OpCode).StackSize;
+        while Stack.Size > CompareInt do
+          FStack.Pop;
+      end;
+  soDEBUG_META :
+      begin
+        r1 := FStack.Top;
+        if r1.AType = btReturnAddress then
+        begin
+          Pos := PPosArray(r1.ts64)^;
+          Pos[1] := PSE2OpDEBUG_META(OpCode).MetaIndex;
+          r1.ts64^ := PInt64(@(Pos[0]))^;
+        end;
       end;
   soFLOW_PUSHRET :
       begin

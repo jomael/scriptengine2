@@ -466,6 +466,7 @@ var i, j     : integer;
       if Method.OpCodes[c].CodeHash = NameHash then
         if AnsiSameText(Method.OpCodes[c].CodeIndex, ElemName) then
           if Method.OpCodes[c].OpCode <> nil then
+          begin
             if Method.OpCodes[c].OpCode.OpCode in [soFLOW_CALL, soFLOW_CALLEX] then
             begin
               if Method.OpCodes[c-1] <> nil then
@@ -481,7 +482,12 @@ var i, j     : integer;
             if Method.OpCodes[c].OpCode.OpCode in [soSPEC_GetProcPtr] then
             begin
               PSE2OpSPEC_GetProcPtr(Method.OpCodes[c].OpCode).MetaIndex := DebugPos;
+            end else
+            if Method.OpCodes[c].OpCode.OpCode in [soDEBUG_META] then
+            begin
+              PSE2OpDEBUG_META(Method.OpCodes[c].OpCode).MetaIndex := DebugPos + 1;
             end;
+          end;
   end;
 
 begin
@@ -602,6 +608,15 @@ var i, j: integer;
 begin
   PE.FinalizationPoint := PE.OpCodes.Count;
 
+  numStatic := 0;
+  for i:=0 to FUnitList.Count-1 do
+    for j:=0 to TSE2Unit(FUnitList[i]).ElemList.Count-1 do
+      if TSE2Unit(FUnitList[i]).ElemList[j] is TSE2Variable then
+        if TSE2Variable(TSE2Unit(FUnitList[i]).ElemList[j]).IsStatic then
+          numStatic := numStatic + 1;
+
+  GenCode(PE, TSE2OpCodeGen.FINIT_STACK(numStatic));
+
   for i:=0 to FUnitList.Count-1 do
     if TSE2Unit(FUnitList[i]).AFinalization <> nil then
       for j:=0 to TSE2Unit(FUnitList[i]).AFinalization.Count-1 do
@@ -611,12 +626,6 @@ begin
           GenCode(PE, TSE2OpCodeGen.FLOW_CALL(TSE2Method(TSE2Unit(FUnitList[i]).AFinalization[j]).CodePos));
         end;
 
-  numStatic := 0;
-  for i:=0 to FUnitList.Count-1 do
-    for j:=0 to TSE2Unit(FUnitList[i]).ElemList.Count-1 do
-      if TSE2Unit(FUnitList[i]).ElemList[j] is TSE2Variable then
-        if TSE2Variable(TSE2Unit(FUnitList[i]).ElemList[j]).IsStatic then
-          numStatic := numStatic + 1;
 
   // unlink global records
   for i:=0 to FUnitList.Count-1 do
