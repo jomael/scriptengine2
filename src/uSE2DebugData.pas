@@ -129,7 +129,7 @@ begin
   soREC_FREE             : result := Format('REC.FREE [%d]', [PSE2OpREC_FREE(OpCode).Offset]);
   soREC_COPY_TO          : result := Format('REC.POP TO [%d %s]', [PSE2OpREC_COPY_TO(OpCode).Target, IfThen(PSE2OpREC_COPY_TO(OpCode).Static, 'Static', 'Dynamic')]);
   soREC_MARK_DEL         : result := 'REC.UNUSE';
-  soREC_DEL_RECS         : result := 'REC.GC';
+  soREC_DEL_RECS         : result := Format('REC.GC [%d]', [PSE2OpREC_DEL_RECS(OpCode).MaxRecords]);
 
 
 
