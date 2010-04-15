@@ -63,7 +63,7 @@ const
                 'soSPEC_GetRef', 'soSPEC_GetProcPtr',
 
                 // Record Data
-                'soREC_MAKE', 'soREC_FREE', 'soREC_COPY_TO', 'soREC_MARK_DEL',
+                'soREC_MAKE', 'soREC_FREE', 'soREC_COPY_TO', 'soREC_MARK_DEL', 'soREC_DEL_RECS',
 
                 // integer increment
                 'soINT_INCSTATIC', 'soINT_INCSTACK',
@@ -129,6 +129,7 @@ begin
   soREC_FREE             : result := Format('REC.FREE [%d]', [PSE2OpREC_FREE(OpCode).Offset]);
   soREC_COPY_TO          : result := Format('REC.POP TO [%d %s]', [PSE2OpREC_COPY_TO(OpCode).Target, IfThen(PSE2OpREC_COPY_TO(OpCode).Static, 'Static', 'Dynamic')]);
   soREC_MARK_DEL         : result := 'REC.UNUSE';
+  soREC_DEL_RECS         : result := 'REC.GC';
 
 
 
@@ -226,7 +227,9 @@ begin
         if Pointer(Data^.tPointer^) = nil then
            result := 'nil'
         else
-           result := '0x' + IntToHex(Integer(Data^.tPointer^), 8);
+        begin
+          result := '0x' + IntToHex(Integer(Data^.tPointer^), 8);
+        end;
       end;
   btPointer, btObject :
       begin

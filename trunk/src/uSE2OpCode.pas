@@ -149,7 +149,7 @@ type
                 soSPEC_GetRef, soSPEC_GetProcPtr,
 
                 // Record Data
-                soREC_MAKE, soREC_FREE, soREC_COPY_TO, soREC_MARK_DEL,
+                soREC_MAKE, soREC_FREE, soREC_COPY_TO, soREC_MARK_DEL, soREC_DEL_RECS,
 
                 // integer increment
                 soINT_INCSTATIC, soINT_INCSTACK,
@@ -435,6 +435,12 @@ type
     Offset     : integer;
   end;
 
+  PSE2OpREC_DEL_RECS = ^TSE2OpREC_DEL_RECS;
+  TSE2OpREC_DEL_RECS = packed record
+    OpCode     : TSE2OpCode;
+    MaxRecords : integer;
+  end;
+
   PSE2OpREC_COPY_TO = ^TSE2OpREC_COPY_TO;
   TSE2OpREC_COPY_TO = packed record
     OpCode     : TSE2OpCode;
@@ -634,6 +640,7 @@ type
     class function REC_FREE(Offset: integer): PSE2OpDefault;
     class function REC_COPY_TO(Target: integer; Static: boolean): PSE2OpDefault;   
     class function REC_MARK_DEL: PSE2OpDefault;
+    class function REC_DEL_RECS(MaxRecords: integer): PSE2OpDefault;
 
     class function SAFE_TRYFIN(SavePos, LeavePos: integer): PSE2OpDefault;
     class function SAFE_TRYEX(SavePos, LeavePos: integer): PSE2OpDefault;
@@ -997,6 +1004,12 @@ class function TSE2OpCodeGen.FINIT_STACK(
 begin
   result := DefaultOP(soFINIT_STACK);
   PSE2OpFINIT_STACK(result)^.StackSize := stackSize;
+end;
+
+class function TSE2OpCodeGen.REC_DEL_RECS(MaxRecords: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soREC_DEL_RECS);
+  PSE2OpREC_DEL_RECS(result)^.MaxRecords := MaxRecords;
 end;
 
 { TSE2OpCodeList }

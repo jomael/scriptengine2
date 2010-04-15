@@ -615,7 +615,7 @@ begin
         btRecord      :
             begin
               //if @FOnRecordDelete <> nil then
-              FOnRecordDelete(Data);
+              //FOnRecordDelete(Data);
             end;
         btArray       : ;
         btObject      : ;

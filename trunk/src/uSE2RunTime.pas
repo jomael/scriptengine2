@@ -60,6 +60,7 @@ type
     procedure ProcessGC;
     procedure ProcessRecordGC;
     procedure RecordDeleteEvent(Data: PSE2VarData);
+    procedure RemoveUnusedRecords(numRecords: integer);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -154,7 +155,7 @@ begin
   inherited;
 end;
 
-procedure TSE2RunTime.ProcessRecordGC; 
+procedure TSE2RunTime.ProcessRecordGC;
 var i: integer;
 begin
   for i:=FRecordGC.Count-1 downto 0 do
@@ -250,6 +251,21 @@ begin
   begin
     FRecordGC.Delete(i);
     FRunClasses.DestroyScriptRecord(p);
+  end;
+end;
+
+procedure TSE2RunTime.RemoveUnusedRecords(numRecords: integer);
+var i: integer;
+    p: PSE2RecordGCEntry;
+begin
+  for i:=FRecordGC.Count-1 downto FRecordGC.Count-1-numRecords do
+  begin
+    p := FRecordGC.Items[i];
+    if p^.StackSize >= FStack.Size then
+    begin
+      FRunClasses.DestroyScriptRecord(p^.Ptr);
+      FRecordGC.Delete(i);
+    end;
   end;
 end;
 
@@ -843,7 +859,7 @@ begin
       begin
         r1 { VarDat[0] } := Pointer(FStack.Top.tPointer^);
         r1 { VarDat[0] } := Pointer(integer(r1 { VarDat[0] }) + PSE2OpSPEC_INCP(OpCode).Offset);
-        Stack.Pop;
+        FStack.Pop;
 
         r2 { VarDat[1] } := FStack.PushNew($FF);
         //r2 { VarDat[1] } := FVarHelper.CreateVarData($FF);
@@ -974,6 +990,21 @@ begin
         if r1 { VarDat[0] }.AType = btRecord then
            FRecordGC.Add(PPointer(r1 { VarDat[0] }.tPointer)^, Stack.Size - 1);
       end;
+  soREC_DEL_RECS  :
+      begin
+        RemoveUnusedRecords(PSE2OpREC_DEL_RECS(OpCode).MaxRecords);
+      end;
+  {
+program Project1;
+
+uses
+  ScriptTestUnit;
+
+var i: integer;
+begin
+  i := TPoint.Point(4, 2).X; // t.Add(TPoint.Point(4, 2).Add(10, 10).Add(TPoint.Point(4, 4))).X;
+end.
+  }
   soINT_INCSTATIC :
       begin
         r1 { VarDat[0] } := FStack[PSE2OpINT_INCSTATIC(OpCode).Offset];
