@@ -35,6 +35,7 @@ type
     IsStatic       : boolean;
     WasFunction    : boolean;
     NoStaticPointer: boolean;
+    RecordsCreated : integer;
 
     TargetType     : TSE2Type;
     Method         : TSE2Method;
@@ -2013,7 +2014,11 @@ var Method       : TSE2Method;
               )  and
               (Meth1.MethodType = Meth2.MethodType) and
               (Meth1.IsStatic = Meth2.IsStatic) and
-              (Meth1.IsVirtual = Meth2.IsVirtual) and
+              (
+                (Meth1.IsVirtual = Meth2.IsVirtual) or
+                (Meth1.IsOverload) or
+                (Meth2.IsOverload)
+              ) and
               (Meth1.IsOverride = Meth2.IsOverride) and
               (Meth1.IsOverload = Meth2.IsOverload);
     if not result then
@@ -2538,19 +2543,33 @@ end;
 
 procedure TSE2Parser.StatementSquence(State: TSE2ParseState; Method: TSE2Method);
 var oldStackSize : integer;
+    oldRecords   : integer;
 begin
   State.Method     := Method;
   State.AParent    := nil;
   State.TargetType := nil;
   State.LastSetVariable := nil;
 
+  oldRecords   := State.RecordsCreated;
   oldStackSize := State.StackSize;
   Statement(State, Method);
   while (Tokenizer.Token.AType = sesSemiColon) and (not FHasError) do
   begin
+    if oldRecords < State.RecordsCreated then
+    begin
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_DEL_RECS(State.RecordsCreated - oldRecords), ''));
+    end;
+    State.RecordsCreated := oldRecords;
+
     ReadNextToken;
     Statement(State, Method);
   end;
+
+  if oldRecords < State.RecordsCreated then
+  begin
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_DEL_RECS(State.RecordsCreated - oldRecords), ''));
+  end;
+  State.RecordsCreated := oldRecords;
 
   if not FHasError then
     if oldStackSize <> State.StackSize then
@@ -2632,7 +2651,6 @@ var i          : integer;
 
     ParamDecl  : TSE2BaseTypeList;
     wasExpr    : boolean;
-    iMarkDelPos: integer;
     //iPushPos   : integer;
 {$IFDEF SEII_FPC}
   {$WARNINGS OFF}
@@ -2735,15 +2753,14 @@ begin
     end;
 
   ResultCodeIndex := Method.OpCodes.Count;
-  iMarkDelPos := -1;
   // Add the return value as a new stack element
   if result <> nil then
   begin
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(TSE2Type(result.InheritRoot).AType), ''));
     if result is TSE2Record then
     begin
+      State.RecordsCreated := State.RecordsCreated + 1;
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + result.GenLinkerName));
-      iMarkDelPos := Method.OpCodes.Count;
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MARK_DEL, ''));
     end;
     State.IncStack;
@@ -3064,20 +3081,7 @@ begin
       end else
       if (CallMethod.ReturnValue <> nil) and (not CallMethod.IsStatic) and (not CallMethod.IsExternal) then
       begin
-        if CallMethod.ReturnValue.AType is TSE2Record then
-        begin
-          if iMarkDelPos = -1 then
-             RaiseError(petError, 'Internal error: record deletion point not valid');
-
-          Method.OpCodes.Items[iMarkDelPOs].OpCode.OpCode := soNOOP;
-        end;
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-1, False), ''));
-
-        if CallMethod.ReturnValue.AType is TSE2Record then
-        begin                  
-          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MARK_DEL, ''));
-        end;
-
         State.DecStack;
       end;
       // Class must be already in stack - so no push
@@ -5085,7 +5089,10 @@ begin
     TSE2Variable(Method.Variables[i]).CodePos := i;
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(TSE2Type(TSE2Variable(Method.Variables[i]).AType.InheritRoot).AType), ''));
     if TSE2Variable(Method.Variables[i]).AType is TSE2Record then
-       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + TSE2Record(TSE2Variable(Method.Variables[i]).AType).GenLinkerName));
+    begin
+      State.RecordsCreated := State.RecordsCreated + 1;
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + TSE2Record(TSE2Variable(Method.Variables[i]).AType).GenLinkerName));
+    end;
   end;
 
   Method.StackSize := Method.Variables.Count;

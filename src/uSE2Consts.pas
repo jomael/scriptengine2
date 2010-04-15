@@ -161,7 +161,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 8; Build: 0);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 8; Build: 1);
   
 implementation
 
@@ -323,7 +323,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 04, 14);
+  result := EncodeDate(2010, 04, 15);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
