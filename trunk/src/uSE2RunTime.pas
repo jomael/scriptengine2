@@ -257,8 +257,12 @@ end;
 procedure TSE2RunTime.RemoveUnusedRecords(numRecords: integer);
 var i: integer;
     p: PSE2RecordGCEntry;
+    m: integer;
 begin
-  for i:=FRecordGC.Count-1 downto FRecordGC.Count-1-numRecords do
+  m := FRecordGC.Count-1-numRecords;
+  if m < 0 then
+     m := 0;
+  for i:=FRecordGC.Count-1 downto m do
   begin
     p := FRecordGC.Items[i];
     if p^.StackSize >= FStack.Size then
@@ -477,21 +481,7 @@ begin
 
                 Stack[Stack.Size - 2] := r3 { VarDat[2] };
               end;
-
-              case PSE2OpOP_OPERATION(OpCode).OpType of
-              2  : uSE2RunOperation.mTable_add[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
-              3  : uSE2RunOperation.mTable_sub[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
-              4  : uSE2RunOperation.mTable_mul[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
-              5  : uSE2RunOperation.mTable_div[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
-              6  : uSE2RunOperation.mTable_and[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              7  : uSE2RunOperation.mTable_or [r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              8  : uSE2RunOperation.mTable_xor[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              9  : uSE2RunOperation.mTable_mod[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              10 : uSE2RunOperation.mTable_shr[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              11 : uSE2RunOperation.mTable_shl[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              end;
-
-              (*
+              
               case PSE2OpOP_OPERATION(OpCode).OpType of
               2  : FVarOperation.Addition(r1 { VarDat[0] }, r2 { VarDat[1] });
               3  : FVarOperation.Substract(r1 { VarDat[0] }, r2 { VarDat[1] });
@@ -505,7 +495,7 @@ begin
               10 : FVarOperation.BitShr(r1 { VarDat[0] }, r2 { VarDat[1] });
               11 : FVarOperation.BitShl(r1 { VarDat[0] }, r2 { VarDat[1] });
               end;
-              *)
+
 
               // Aritmetic
               FStack.Pop;
@@ -555,18 +545,20 @@ begin
 
               r1 := FStack.PushNew(r3.AType); 
               FVarHelper.SetVarData(r3, r1);
+                        
 
               case PSE2OpOP_OPERATION(OpCode).OpType of
-              2  : uSE2RunOperation.mTable_add[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
-              3  : uSE2RunOperation.mTable_sub[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
-              4  : uSE2RunOperation.mTable_mul[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
-              5  : uSE2RunOperation.mTable_div[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper);
-              6  : uSE2RunOperation.mTable_and[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              7  : uSE2RunOperation.mTable_or [r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              8  : uSE2RunOperation.mTable_xor[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              9  : uSE2RunOperation.mTable_mod[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              10 : uSE2RunOperation.mTable_shr[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
-              11 : uSE2RunOperation.mTable_shl[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
+              2  : FVarOperation.Addition(r1 { VarDat[0] }, r2 { VarDat[1] });
+              3  : FVarOperation.Substract(r1 { VarDat[0] }, r2 { VarDat[1] });
+              4  : FVarOperation.Multiply(r1 { VarDat[0] }, r2 { VarDat[1] });
+              5  : FVarOperation.Divide(r1 { VarDat[0] }, r2 { VarDat[1] });
+              6  : FVarOperation.BitAnd(r1 { VarDat[0] }, r2 { VarDat[1] });
+              7  : FVarOperation.BitOr(r1 { VarDat[0] }, r2 { VarDat[1] });
+              8  : FVarOperation.BitXor(r1 { VarDat[0] }, r2 { VarDat[1] });
+              9  : FVarOperation.DivideMod(r1 { VarDat[0] }, r2 { VarDat[1] });
+                   //mTable_mod[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] });
+              10 : FVarOperation.BitShr(r1 { VarDat[0] }, r2 { VarDat[1] });
+              11 : FVarOperation.BitShl(r1 { VarDat[0] }, r2 { VarDat[1] });
               end;
             end;
         end;
@@ -578,28 +570,14 @@ begin
         r2 { VarDat[1] } := FStack.Top;
         r1 { VarDat[0] } := FStack.Data[FStack.Size - 2]; //r1 { VarDat[0] } := FStack[Stack.Size - 2];
 
-        if (r1.AType in [btU8..btObject]) and (r2.AType in [btU8..btObject]) then
-        begin
-          case PSE2OpOP_COMPARE(OpCode).CompType of
-          1 : CompareInt := Ord(uSE2RunOperation.mTable_Equal[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          2 : CompareInt := Ord(uSE2RunOperation.mTable_Smaller[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          3 : CompareInt := Ord(uSE2RunOperation.mTable_Bigger[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          4 : CompareInt := Ord(uSE2RunOperation.mTable_BiggerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          5 : CompareInt := Ord(uSE2RunOperation.mTable_SmallerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          6 : CompareInt := Ord(uSE2RunOperation.mTable_UnEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          end;
-        end else
-        begin
-          case PSE2OpOP_COMPARE(OpCode).CompType of
-          1 : CompareInt := Ord(FVarCompare.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          2 : CompareInt := Ord(FVarCompare.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          3 : CompareInt := Ord(FVarCompare.Bigger(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          4 : CompareInt := Ord(FVarCompare.BiggerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          5 : CompareInt := Ord(FVarCompare.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          6 : CompareInt := Ord(FVarCompare.UnEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          end;
+        case PSE2OpOP_COMPARE(OpCode).CompType of
+        1 : CompareInt := Ord(FVarCompare.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        2 : CompareInt := Ord(FVarCompare.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        3 : CompareInt := Ord(FVarCompare.Bigger(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        4 : CompareInt := Ord(FVarCompare.BiggerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        5 : CompareInt := Ord(FVarCompare.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        6 : CompareInt := Ord(FVarCompare.UnEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
         end;
-
 
 
         FStack.Pop;
@@ -624,26 +602,13 @@ begin
         else
           r1 := FStack[FStack.Size - 1 + CompareInt];
 
-        if (r1.AType in [btU8..btObject]) and (r2.AType in [btU8..btObject]) then
-        begin
-          case PSE2OpOP_FASTCOMPARE(OpCode).CompType of
-          1 : CompareInt := Ord(uSE2RunOperation.mTable_Equal[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          2 : CompareInt := Ord(uSE2RunOperation.mTable_Smaller[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          3 : CompareInt := Ord(uSE2RunOperation.mTable_Bigger[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          4 : CompareInt := Ord(uSE2RunOperation.mTable_BiggerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          5 : CompareInt := Ord(uSE2RunOperation.mTable_SmallerEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          6 : CompareInt := Ord(uSE2RunOperation.mTable_UnEqual[r1 { VarDat[0] }.AType, r2 { VarDat[1] }.AType](r1 { VarDat[0] }, r2 { VarDat[1] }, FVarHelper));
-          end;
-        end else
-        begin     
-          case PSE2OpOP_COMPARE(OpCode).CompType of
-          1 : CompareInt := Ord(FVarCompare.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          2 : CompareInt := Ord(FVarCompare.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          3 : CompareInt := Ord(FVarCompare.Bigger(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          4 : CompareInt := Ord(FVarCompare.BiggerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          5 : CompareInt := Ord(FVarCompare.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          6 : CompareInt := Ord(FVarCompare.UnEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-          end;
+        case PSE2OpOP_COMPARE(OpCode).CompType of
+        1 : CompareInt := Ord(FVarCompare.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        2 : CompareInt := Ord(FVarCompare.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        3 : CompareInt := Ord(FVarCompare.Bigger(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        4 : CompareInt := Ord(FVarCompare.BiggerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        5 : CompareInt := Ord(FVarCompare.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        6 : CompareInt := Ord(FVarCompare.UnEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
         end;
 
         FStack.PushNew(btBoolean).tu8^ := CompareInt;
