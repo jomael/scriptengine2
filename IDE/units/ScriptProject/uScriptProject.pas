@@ -8,10 +8,10 @@ uses
 type
   TScriptUnit = class(TObject)
   private
-    FSource   : string;
-    FFileName : string;
-    FCompiled : boolean;
-    FUnitName : string;
+    FSource      : string;
+    FFileName    : string;
+    FCompiled    : boolean;
+    FUnitName    : string;
   public
     constructor Create;
     destructor Destroy; override;
@@ -67,6 +67,8 @@ type
     function DoLoadUnit(aPath: string; const UnitName: string): TScriptUnit;
     function GetUnitN(UnitName: string): TScriptUnit;
     function GetUnitF(FileName: string): TScriptUnit;
+    function GetUnitI(i: integer): TScriptUnit;
+    function GetCount: integer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -82,6 +84,8 @@ type
     property  AProgram               : TScriptUnit        read FProgram;
     property  Files[FileName: string]: TScriptUnit        read GetUnitF;
     property  Units[UnitName: string]: TScriptUnit        read GetUnitN;
+    property  Items[index: integer]  : TScriptUnit        read GetUnitI;
+    property  Count                  : integer            read GetCount;
     property  ProjectFile            : TScriptProjectFile read FProjectFile;
 
     property  OnCloseUnit            : TUnitEvent         read FOnCloseUnit   write FOnCloseUnit;
@@ -298,6 +302,11 @@ begin
   result.LoadFromFile(aPath);
 end;
 
+function TScriptProject.GetCount: integer;
+begin
+  result := FUnitList.Count;
+end;
+
 function TScriptProject.GetUnitF(FileName: string): TScriptUnit;
 var i: integer;
 begin
@@ -316,6 +325,14 @@ begin
     if result <> nil then
        FUnitList.Add(result);
   end;
+end;
+
+function TScriptProject.GetUnitI(i: integer): TScriptUnit;
+begin
+  if (i < 0) or (i >= FUnitList.Count) then
+     result := nil
+  else
+     result := FUnitList[i];
 end;
 
 function TScriptProject.GetUnitN(UnitName: string): TScriptUnit;

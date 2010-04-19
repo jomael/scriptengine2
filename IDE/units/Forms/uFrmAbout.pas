@@ -9,7 +9,6 @@ uses
 type
   TfrmAbout = class(TForm)
     imgAbout: TImage;
-    labelInfo: TLabel;
     procedure FormMouseUp(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
     procedure FormKeyUp(Sender: TObject; var Key: Word;

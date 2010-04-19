@@ -36,11 +36,15 @@ type
     procedure packageTreeDblClick(Sender: TObject);             
     procedure packageTreeKeyPress(Sender: TObject; var Key: Char); 
     procedure buttonToggleInfoClick(Sender: TObject);
+
+    procedure ItemCompare(Sender: TObject; Node1, Node2: TTreeNode;
+                Data: Integer; var Compare: Integer);
   public
     constructor Create(AOwner: TComponent); override;
     procedure CreateComponents(TreeImages: TImageList);
     procedure FillTree;
-
+                 
+    property Tree            : TTreeView  read FTree;
     property Editor          : TSynEdit   read FPackageSource;
     property Highlighter     : TSynSE2Syn read FSourceHighlight;
 
@@ -118,6 +122,7 @@ begin
   FTree.OnCustomDrawItem := packageTreeCustomDrawItem;
   FTree.OnDblClick := packageTreeDblClick;
   FTree.OnKeyPress := packageTreeKeyPress;
+  FTree.OnCompare  := ItemCompare;
 
   FClientPanel := TPanel.Create(Self);
   FClientPanel.Parent := Self;
@@ -270,15 +275,60 @@ begin
 
         for j:=0 to Item.Modules-1 do
         begin
-          Child := FTree.Items.AddChild(Root, Format('[%d] %s', [j + 1, Item.UnitNames[j]]) );
+          Child := FTree.Items.AddChild(Root, Format('[%d] %s', [ IfThen(Item is TSE2PackageUnit, j + 1, Root.Count + 1), Item.UnitNames[j]]) );
           Child.ImageIndex := IfThen(Item is TSE2PackageUnit, 6, 4);
           Child.SelectedIndex := Child.ImageIndex;
           Child.Data := Item;
         end;
       end;
+
+      FTree.CustomSort(nil, 0, False);
   finally
     FTree.Items.EndUpdate;
   end;
+end;
+
+procedure TIDEPackageInspector.ItemCompare(Sender: TObject; Node1,
+  Node2: TTreeNode; Data: Integer; var Compare: Integer);
+var Item1, Item2: TSE2ManagedUnit;
+
+  function GetPackageName(const Input: string): string;
+  begin
+    result := ExtractFileName(Input);
+    result := Copy(result, 1, length(result) - length(ExtractFileExt(result)));
+  end;
+
+begin
+  Item1 := Node1.Data;
+  Item2 := Node2.Data;
+
+  Compare := 0;
+  if (Node1.Level > 0) or (Node2.Level > 0) then
+     exit;
+
+
+  if Item1 <> nil then
+  begin
+    if Item2 <> nil then
+       Compare := AnsiCompareText(Node1.Text, Node2.Text)
+    else
+       Compare := 1;
+  end else
+  begin
+    if Item2 <> nil then
+       Compare := -1
+    else
+    begin
+      if AnsiSameText(Node1.Text, 'System') then
+         Compare := -1
+      else
+      if AnsiSameText(Node2.Text, 'System') then
+         Compare := 1
+      else
+         Compare := AnsiCompareText(Node1.Text, Node2.Text)
+    end;
+  end;
+
 end;
 
 procedure TIDEPackageInspector.packageTreeCustomDrawItem(
