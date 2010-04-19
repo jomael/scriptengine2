@@ -11,10 +11,13 @@ type
   TSE2UnitCache = class(TSE2Object)
   private
     FUnitName  : string;
+    FNameHash  : integer;
     FDependsOn : TStringList;
     FStream    : TStream;
     FWeaver    : TSE2NameWeaver;
     FCacheTime : TDateTime;
+  protected
+    procedure SetUnitName(const value: string);
   public
     constructor Create(aStream: TStream); reintroduce;
     destructor Destroy; override;
@@ -26,7 +29,8 @@ type
     property DependsOn : TStringList    read FDependsOn;
     property Stream    : TStream        read FStream;
     property Weaver    : TSE2NameWeaver read FWeaver;
-    property AUnitName : string         read FUnitName    write FUnitName;
+    property NameHash  : integer        read FNameHash;
+    property AUnitName : string         read FUnitName    write SetUnitName;
   end;
 
 procedure RegisterComponent(aClass: TClass);
@@ -38,17 +42,18 @@ implementation
 type
   PSE2BaseTypeClassEntry = ^TSE2BaseTypeClassEntry;
   TSE2BaseTypeClassEntry = record
-    Name   : string;
-    AClass : TClass;
+    Name     : string;
+    NameHash : integer;
+    AClass   : TClass;
   end;
 
   TSE2BaseTypeClassList = class
   private
     FList : TList;
   protected
-    function IndexOf(Name: string): integer; overload;
+    function IndexOf(const Name: string): integer; overload;
     function IndexOf(AClass: TClass): integer; overload;
-    function GetItem(Name: string): TClass;
+    function GetItem(const Name: string): TClass;
     function GetName(AClass: TClass): string;
   public
     constructor Create;
@@ -58,7 +63,7 @@ type
     procedure RegisterClass(aClass: TClass);
     property Names[index: TClass]: string read GetName;
 
-    property Items[index: string]: TClass read GetItem;
+    property Items[const index: string]: TClass read GetItem;
   end;
 
 var
@@ -122,8 +127,9 @@ begin
   for i:=FList.Count-1 downto 0 do
   begin
     p := FList[i];
-    p^.Name   := '';
-    p^.AClass := nil;
+    p^.Name     := '';
+    p^.NameHash := 0;
+    p^.AClass   := nil;
     Dispose(p);
   end;
   FList.Clear;
@@ -142,7 +148,7 @@ begin
   inherited;
 end;
 
-function TSE2BaseTypeClassList.GetItem(Name: string): TClass;
+function TSE2BaseTypeClassList.GetItem(const Name: string): TClass;
 var i: integer;
 begin
   result := nil;
@@ -172,11 +178,14 @@ begin
   result := -1;
 end;
 
-function TSE2BaseTypeClassList.IndexOf(Name: string): integer;
+function TSE2BaseTypeClassList.IndexOf(const Name: string): integer;
+var nameHash: integer;
 begin
+  nameHash := MakeHash(Name);
   for result:=FList.Count-1 downto 0 do
-    if StringIdentical(PSE2BaseTypeClassEntry(FList[result])^.Name, Name) then
-      exit;
+    if PSe2BaseTypeClassEntry(FList[result])^.NameHash = nameHash then
+      if StringIdentical(PSE2BaseTypeClassEntry(FList[result])^.Name, Name) then
+        exit;
   result := -1;
 end;
 
@@ -188,6 +197,7 @@ begin
 
   New(p);
   p^.Name   := aClass.ClassName;
+  p^.NameHash := MakeHash(p^.Name);
   p^.AClass := aClass;
   FList.Add(p);
 end;
@@ -218,6 +228,12 @@ begin
   TSE2StreamHelper.ReadString(Stream);
   Target := TSE2Unit.Create;
   Target.LoadFromStream(Stream, FWeaver);
+end;
+
+procedure TSE2UnitCache.SetUnitName(const value: string);
+begin
+  FUnitName := value;
+  FNameHash := MakeHash(value);
 end;
 
 procedure TSE2UnitCache.StoreUnit(aUnit: TSE2Unit);

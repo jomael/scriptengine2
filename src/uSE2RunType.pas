@@ -908,7 +908,7 @@ begin
   //FList := TSE2List.Create;
   FPool := TSE2VarPool.Create(FVarHelp);
 
-  FMaxSize := $FFFF;
+  FMaxSize := $FFFFF;
   FIncSize := $30;
 
   ManageStack;

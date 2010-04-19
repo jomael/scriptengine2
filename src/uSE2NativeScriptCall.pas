@@ -557,7 +557,9 @@ var CallInfo     : PSE2NativeCallEntry;
     end;
 
     // return address
-    RunTime.Stack.PushNew(btReturnAddress)^.ts64^ := int64($FFFFFFFF00000000);
+
+
+    RunTime.Stack.PushNew(btReturnAddress)^.ts64^ := int64((Int64(ScriptMethod.Index) shl 32) and int64($00000000));
   end;
 
   function PopParamsFromStack: integer;

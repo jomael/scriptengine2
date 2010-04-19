@@ -35,6 +35,7 @@ const
           '    function EndsWith(const value: string; CaseSensitive: boolean): boolean; overload;' + #13#10 +
           '    function StartsWith(const value: string): boolean; overload;' + #13#10 +
           '    function StartsWith(const value: string; CaseSensitive: boolean): boolean; overload;' + #13#10 +
+          '    function LastIndexOf(const value: string): integer;'+#13#10+
           '    property Chars[index: integer]: string read GetChar;' + #13#10 +
           '  end;' + #13#10 +
           '  TWideStringHelper = helper for WideString' + #13#10 +
@@ -345,7 +346,18 @@ const
           '  else' + #13#10 +
           '     result := Strings.SameText(s, value);' + #13#10 +
           'end;' + #13#10 +
-
+          'function TStringHelper.LastIndexOf(const value: string): integer;' + #13#10 +
+          'var iSearchStart, iPos: integer;' + #13#10 +
+          'begin' + #13#10 +
+          '  result       := 0;' + #13#10 +
+          '  iSearchStart := 0;' + #13#10 +
+          '  repeat' + #13#10 +
+          '    iPos := Strings.PosEx(value, Self, iSearchStart);' + #13#10 +
+          '    if iPos > 0 then' + #13#10 +
+          '       result := iPos;' + #13#10 +
+          '    iSearchStart := iPos + 1;' + #13#10 +
+          '  until iPos = 0;' + #13#10 +
+          'end;' + #13#10 +
           'function TWideStringHelper.Insert(Position: integer; value: WideString): WideString;' + #13#10 +
           'begin' + #13#10 +
           '  WideStrings.Insert(value, Self, Position);' + #13#10 +

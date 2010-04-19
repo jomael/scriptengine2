@@ -148,10 +148,13 @@ begin
 end;
 
 function TSE2UnitCacheMngr.IndexOf(const Name: string): integer;
+var nameHash: integer;
 begin
+  nameHash := MakeHash(name);
   for result:=FList.Count-1 downto 0 do
-    if StringIdentical(TSE2UnitCache(FList[result]).AUnitName, Name) then
-       exit;
+    if TSE2UnitCache(FList[result]).NameHash = nameHash then
+      if StringIdentical(TSE2UnitCache(FList[result]).AUnitName, Name) then
+         exit;
 
   result := -1;
 end;

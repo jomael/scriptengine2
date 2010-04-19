@@ -433,6 +433,31 @@ begin
           r1.ts64^ := PInt64(@(Pos[0]))^;
         end;
       end;
+  soMETA_PUSH    :
+      begin
+        FStack.PushNew(btS32).ts32^ := PSE2OpMETA_PUSH(OpCode).MetaIndex;
+      end;
+  soMETA_SHARE   :
+      begin
+        r1 := FStack.Top;
+
+        if (not (r1.AType in [btPointer, btObject])) then
+           raise ESE2RunTimeError.Create('['+IntToStr(FCodePos)+']: is-comparison not possible');
+
+        if PPointer(r1.tPointer)^ = nil then
+           CompareInt := 0
+        else
+        begin
+          CompareInt := Ord(FCodeAccess.IsChildOfClass(
+                             FAppCode.MetaData.Items[PSE2OpMETA_SHARE(OpCode).MetaIndex],
+                             FRunClasses.GetClassMeta(PPointer(r1.tPointer)^),
+                             True)
+                           );
+        end;
+
+        Stack.Pop;
+        Stack.PushNew(btBoolean).tu8^ := CompareInt;
+      end;
   soFLOW_PUSHRET :
       begin
         Pos[1] := PSE2OpFLOW_PUSHRET(OpCode).DebugData;
@@ -1541,7 +1566,7 @@ var MetaEntry  : TSE2MetaEntry;
     end;
 
     // return address
-    FStack.PushNew(btReturnAddress)^.ts64^ := int64($FFFFFFFF00000000);
+    FStack.PushNew(btReturnAddress)^.ts64^ := int64((Int64(MetaEntry.Index) shl 32) and int64($00000000));
   end;
 
   procedure PopParamsFromStack;

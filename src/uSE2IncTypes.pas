@@ -50,9 +50,11 @@ const
         '  public' + #13#10 + 
         '    class function Rect(Left, Top, Right, Bottom: integer): TRect; overload;' + #13#10 + 
         '    class function Rect(LeftTop, RightBottom: TPoint): TRect; overload;' + #13#10 + 
-        #13#10 + 
+        #13#10 +
         '    function IsPointWithin(const Point: TPoint): boolean;' + #13#10 + 
-        '    function IsRectWithin(const Rect: TRect): boolean;' + #13#10 + 
+        '    function IsRectWithin(const Rect: TRect): boolean;' + #13#10 +
+        '    function Translate(x, y: integer): TRect; overload;'+#13#10+
+        '    function Translate(Point: TPoint): TRect; overload;'+#13#10+
         #13#10 + 
         '    property TopLeft     : TPoint  read GetTopLeft     write SetTopLeft;' + #13#10 + 
         '    property BottomRight : TPoint  read GetBottomRight write SetBottomRight;' + #13#10 + 
@@ -170,7 +172,23 @@ const
         '    (Self.Left <= Point.X) and (Self.Right >= Point.X) and' + #13#10 + 
         '    (Self.Top  <= Point.Y) and (Self.Bottom >= Point.Y);' + #13#10 + 
         'end;' + #13#10 + 
-        #13#10 + 
+        #13#10 +
+        'function TRect.Translate(x, y: integer): TRect;'+#13#10+
+        'begin' + #13#10 +
+        '  result.Left   := Self.Left + x;'+#13#10+
+        '  result.Top    := Self.Top + y;'+#13#10+
+        '  result.Right  := Self.Right + x;'+#13#10+
+        '  result.Bottom := Self.Bottom + y;'+#13#10+
+        'end;'+#13#10+
+        #13#10 +   
+        'function TRect.Translate(Point: TPoint): TRect;'+#13#10+
+        'begin' + #13#10 +
+        '  result.Left   := Self.Left + Point.X;'+#13#10+
+        '  result.Top    := Self.Top + Point.Y;'+#13#10+
+        '  result.Right  := Self.Right + Point.X;'+#13#10+
+        '  result.Bottom := Self.Bottom + Point.Y;'+#13#10+
+        'end;'+#13#10+
+        #13#10 +
         'function TRect.IsRectWithin(const Rect: TRect): boolean;' + #13#10 + 
         'begin' + #13#10 + 
         '  result :=' + #13#10 + 

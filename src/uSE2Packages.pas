@@ -70,6 +70,9 @@ type
 
 implementation
 
+uses
+  uSE2DLLMemoryManager;
+
 { TSE2PackageUnit }
 
 constructor TSE2PackageUnit.Create(PackageName: TFileName);
@@ -77,7 +80,7 @@ begin
   inherited Create;
 
   FFileName  := PackageName;
-  FDLLHandle := SafeLoadLibrary(PackageName);
+  FDLLHandle := SE2SafeLoadLibrary(PackageName); // SafeLoadLibrary(PackageName);
 
   if FDLLHandle = 0 then
      raise ESE2PackageError.CreateFmt('Failed to load package "%s". %s', [PackageName, {$IFDEF MSWINDOWS}SysErrorMessage(GetLastError){$ELSE}''{$ENDIF}] );
@@ -108,12 +111,15 @@ begin
   if FDLLHandle <> 0 then
     if FOwnsHandle then
     begin
-      {$IFDEF MSWINDOWS}
-        FreeLibrary(FDLLHandle);
-      {$ENDIF}
-      {$IFDEF LINUX}
-        dlclose(Pointer(FDLLHandle));
-      {$ENDIF}
+      try
+        {$IFDEF MSWINDOWS}
+          FreeLibrary(FDLLHandle);
+        {$ENDIF}
+        {$IFDEF LINUX}
+          dlclose(Pointer(FDLLHandle));
+        {$ENDIF}
+      except
+      end;
     end;
   inherited;
 end;      

@@ -116,6 +116,7 @@ type
   private
     FName       : string;
     FUnitName   : string;
+    FIndex      : integer;
 
     FSourcePos  : integer;
     FSourceLine : integer;
@@ -152,6 +153,7 @@ type
     property SourceLine : integer    read FSourceLine   write FSourceLine;
     property CodePos    : integer    read FCodePos      write FCodePos;
     property HasSelf    : boolean    read FHasSelf      write FHasSelf;
+    property Index      : integer    read FIndex        write FIndex;
 
     property ParamCount : integer    read FParamCount   write FParamCount;
     property HasResult  : boolean    read GetHasResult;
@@ -622,6 +624,7 @@ end;
 
 procedure TSE2MetaList.Add(Item: TSE2MetaEntry);
 begin
+  Item.FIndex := FList.Count;
   FList.Add(Item);
 end;
 
@@ -669,7 +672,7 @@ begin
      result := nil
   else
      result := FList[index];
-end;        
+end;
 
 procedure TSE2MetaList.Remove(index: integer);
 begin
@@ -707,6 +710,7 @@ begin
         begin
           p := TSE2MetaEntry.Create;
           p.LoadFromStream(Stream);
+          p.FIndex := i;
           FList[i] := p;
         end;
       end;
@@ -718,7 +722,7 @@ begin
 end;
 
 procedure TSE2MetaList.SaveToStream(Stream: TStream);
-var version  : byte;        
+var version  : byte;
     i, count : integer;
     p        : TSE2MetaEntry;
 begin

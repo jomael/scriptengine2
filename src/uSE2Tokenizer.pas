@@ -12,11 +12,16 @@ type
   private
     FReader     : TSE2Reader;
     FToken      : TSE2Token;
+    FTokenCache : array[0..255] of Char;
+    FCachePos   : integer;
   protected
     procedure SetReader(const value: TSE2Reader);
     procedure StepSpaces;
 
+    procedure CacheToToken;
+    procedure AppendCache;
     function  CompilerConditions: boolean;
+    function  GetReservedToken(const value: string): TSE2TokenType;
   public
     constructor Create(const Reader: TSE2Reader); reintroduce;
     destructor Destroy; override;
@@ -45,6 +50,16 @@ begin
   {$ENDIF}
 end;
 
+procedure TSE2Tokenizer.CacheToToken;
+begin
+  Token.Value := Copy(string(FTokenCache), 1, FCachePos);
+end;
+
+procedure TSE2Tokenizer.AppendCache;
+begin
+  Token.Value := Token.Value + Copy(string(FTokenCache), 1, FCachePos);
+end;
+
 function TSE2Tokenizer.CompilerConditions: boolean;
 begin
   while not CharInSet(FReader.NextChar(False), [#0, '}']) do
@@ -69,6 +84,37 @@ begin
   inherited;
 end;
 
+var
+  TokenHash : array[TSE2TokenType] of integer;
+  HashBuilt : boolean = False;
+
+procedure BuildTokenHash;
+var t: TSE2TokenType;
+begin
+  for t := sesNone to sesLastToken do
+    TokenHash[t] := MakeHash(TSE2TokenString[t]);
+
+
+  HashBuilt := True;
+end;
+
+function TSE2Tokenizer.GetReservedToken(
+  const value: string): TSE2TokenType;
+var iHash: integer;
+begin
+  if not HashBuilt then
+     BuildTokenHash;
+
+  iHash := MakeHash(value);
+  for result := sesNone to sesLastToken do
+    if TokenHash[result] = iHash then
+      if TSE2TokenString[result] <> '' then
+        if StringIdentical(TSE2TokenString[result], Value) then
+          exit;
+
+  result := sesUnknown;
+end;
+
 function TSE2Tokenizer.NextToken: boolean;
 var TokenType : TSE2TokenType;
     tempChar  : char;
@@ -85,26 +131,32 @@ begin
   case FReader.Symbol of
   'a'..'z', 'A'..'Z', '_' :
       begin
+        Token.Value := '';
+        FCachePos := 0;
         while True do
         begin
-          Token.Value := Token.Value + FReader.Symbol;
+          FTokenCache[FCachePos] := FReader.Symbol;
+          FCachePos := FCachePos + 1;
+          //Token.Value := Token.Value + FReader.Symbol;
           if not CharInSet(FReader.NextChar(True), ['a'..'z', 'A'..'Z', '0'..'9', '_']) then
              break;
           FReader.NextChar;
+
+          if FCachePos > High(FTokenCache) then
+          begin
+            AppendCache;
+            FCachePos := 0;
+          end;
         end;
 
-             
-        for TokenType := sesNone to sesLastToken do
-          if TSE2TokenString[TokenType] <> '' then
-            if StringIdentical(TSE2TokenString[TokenType], Token.Value) then
-            begin
-              Token.AType := TokenType;
-              result      := True;
-              exit;
-            end;
-
-        Token.AType   := sesIdentifier;
-        result        := True;
+        if FCachePos > 0 then
+           AppendCache;
+        result := True;
+        TokenType := GetReservedToken(Token.Value);
+        if TokenType = sesUnknown then
+           Token.AType := sesIdentifier
+        else
+           Token.AType := TokenType;
         exit;
       end;
   { One - Char - Symbols }
@@ -153,9 +205,8 @@ begin
           if TempChar = '=' then
           begin
             FReader.NextChar();
-            for TokenType := sesNone to sesLastToken do
-              if TSE2TokenString[TokenType] <> '' then
-                if TSE2TokenString[TokenType] = tempStr + TempChar then
+            TokenType := GetReservedToken(tempStr + tempChar);
+            if TokenType <> sesUnknown then
                 begin
                   Token.Value   := FReader.Symbol + TempChar;
                   Token.AType   := TokenType;
@@ -166,20 +217,18 @@ begin
           if (FReader.Symbol = '<') and (TempChar = '>') then
           begin
             FReader.NextChar();
-            for TokenType := sesNone to sesLastToken do
-              if TSE2TokenString[TokenType] <> '' then
-                if TSE2TokenString[TokenType] = '<>' then
+            TokenType := sesUnEqual;
+            //TokenType := GetReservedToken('<>');
                 begin
-                  Token.Value   := FReader.Symbol + TempChar;
+                  Token.Value   := '<>';
                   Token.AType   := TokenType;
                   result        := True;
                   exit;
                 end;
           end;
         end;
-        for TokenType := sesNone to sesLastToken do
-          if TSE2TokenString[TokenType] <> '' then
-            if TSE2TokenString[TokenType] = FReader.Symbol then
+        TokenType := GetReservedToken(FReader.Symbol);
+        if TokenType <> sesUnknown then
             begin
               Token.Value   := FReader.Symbol;
               Token.AType   := TokenType;
@@ -214,24 +263,43 @@ begin
       end;
   #39 :
       begin
+        Token.Value := '';
+        FCachePos   := 0;
         repeat
           FReader.NextChar();
           if FReader.Symbol = #0 then
              break;
 
           if (FReader.Symbol <> #39) then
-             Token.Value := Token.Value + FReader.Symbol
-          else
+          begin
+             // Token.Value := Token.Value + FReader.Symbol
+             FTokenCache[FCachePos] := FReader.Symbol;
+             FCachePos := FCachePos + 1;
+             if FCachePos > High(FTokenCache) then
+             begin
+               AppendCache;
+               FCachePos := 0;
+             end;
+          end else
           begin
             TempChar := FReader.NextChar(True);
             if TempChar = #39 then
             begin
-              Token.Value := Token.Value + #39;
+              FTokenCache[FCachePos] := #39;
               FReader.NextChar();
               FReader.Symbol := #1;
+
+              FCachePos := FCachePos + 1;
+              if FCachePos > High(FTokenCache) then
+              begin
+                AppendCache;
+                FCachePos := 0;
+              end;
             end;
           end;
         until (FReader.Symbol = #39) or (FReader.Symbol = #0);
+        if FCachePos > 0 then
+           AppendCache;
         Token.AType   := sesString;
         result        := True;
         exit;
@@ -243,9 +311,9 @@ begin
         if TempChar = '=' then
         begin
           FReader.NextChar();
-          for TokenType := sesNone to sesLastToken do
-            if TSE2TokenString[TokenType] <> '' then
-              if TSE2TokenString[TokenType] = ':=' then
+          //TokenType := GetReservedToken(':=');
+          TokenType := sesBecomes;
+          //if TokenType <> sesUnknown then
               begin
                 Token.Value   := ':=';
                 Token.AType   := TokenType;
@@ -254,9 +322,9 @@ begin
               end;
         end else
         begin
-          for TokenType := sesNone to sesLastToken do
-            if TSE2TokenString[TokenType] <> '' then
-              if TSE2TokenString[TokenType] = ':' then
+          //TokenType := GetReservedToken(':');
+          TokenType := sesDoublePoint;
+          //if TokenType <> sesUnknown then
               begin
                 Token.Value   := ':';
                 Token.AType   := TokenType;
@@ -271,16 +339,20 @@ begin
   { Numbers }
   '0'..'9', '$' :
       begin
+        FCachePos := 0;
         if FReader.Symbol = '$' then
         begin
           while True do
           begin
-            Token.Value  := Token.Value  + FReader.Symbol;
+            FTokenCache[FCachePos] := FReader.Symbol;
+            FCachePos := FCachePos + 1;
+            //Token.Value  := Token.Value  + FReader.Symbol;
             if not CharInSet(FReader.NextChar(True), ['0'..'9', 'a'..'f', 'A'..'F']) then
                break;
             FReader.NextChar();
           end;
           result := True;
+          CacheToToken;
           if TSE2Converter.IsInteger(Token.Value) then
              Token.AType := sesInteger
           else
@@ -290,12 +362,15 @@ begin
         begin
           Token.AType   := sesInteger;
           repeat
-            Token.Value  := Token.Value  + FReader.Symbol;
+            //Token.Value  := Token.Value  + FReader.Symbol;
+            FTokenCache[FCachePos] := FReader.Symbol;
+            FCachePos := FCachePos + 1;
             FReader.NextChar();
             if (FReader.Symbol = '.') or (FReader.Symbol = 'E') or (FReader.Symbol = 'e') then
             begin
               if (FReader.Symbol = '.') and (not CharInSet(FReader.NextChar(True), ['0'..'9'])) then
               begin
+                CacheToToken;
                 if not TSE2Converter.IsInteger(Token.Value) then
                    Token.AType := sesUnknown;
                 exit;
@@ -313,7 +388,9 @@ begin
                   end;
                   if CharInSet(TempChar, ['-']) then
                   begin
-                    Token.Value  := Token.Value + 'E-';
+                    FTokenCache[FCachePos] := 'E';
+                    FTokenCache[FCachePos + 1] := '-';
+                    FCachePos := FCachePos + 2;
                     FReader.NextChar();
                     FReader.NextChar();
                   end;
@@ -323,6 +400,7 @@ begin
           until not CharInSet(FReader.Symbol, ['0'..'9', '.', 'e', 'E']);
           FReader.Position := FReader.Position - 1;
           result := True;
+          CacheToToken;
           if Token.AType = sesInteger then
           begin
             if not TSE2Converter.IsInteger(Token.Value) then

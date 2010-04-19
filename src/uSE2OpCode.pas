@@ -7,9 +7,9 @@ interface
 uses
   Classes, uSE2BaseTypes, uSE2Consts;
 
-type                           
+type
   TSE2ParamMode = (pmIn, pmInOut, pmResult);
-  
+
   TSE2TypeIdent   = byte;
 
   TbtU8           = byte;
@@ -161,7 +161,10 @@ type
                 soSAFE_TRYFIN, soSAFE_TRYEX, soSAFE_BLOCK, soSAFE_TRYEND, soSAFE_SJUMP,
 
                 // special runtime data
-                soDEBUG_META, soFINIT_STACK
+                soDEBUG_META, soFINIT_STACK,
+
+                // Meta
+                soMETA_PUSH, soMETA_SHARE
                 );
 
 type
@@ -525,6 +528,18 @@ type
     StackSize  : integer;
   end;
 
+  PSE2OpMETA_PUSH = ^TSE2OpMETA_PUSH;
+  TSE2OpMETA_PUSH = packed record
+    OpCode     : TSE2OpCode;
+    MetaIndex  : integer;
+  end;
+
+  PSE2OpMETA_SHARE = ^TSE2OpMETA_SHARE;
+  TSE2OpMETA_SHARE = packed record
+    OpCode     : TSE2OpCode;
+    MetaIndex  : integer;
+  end;
+
   TSE2OpCodeList = class(TSE2Object)
   private
     FList : TList;
@@ -650,6 +665,9 @@ type
 
     class function DEBUG_META(index: cardinal): PSE2OpDefault;
     class function FINIT_STACK(stackSize: integer): PSE2OpDefault;
+
+    class function META_PUSH(index: integer): PSE2OpDefault;
+    class function META_SHARE(index: integer): PSE2OpDefault;
   end;
 
   TSE2ParamHelper = class(TSE2Object)
@@ -1010,6 +1028,18 @@ class function TSE2OpCodeGen.REC_DEL_RECS(MaxRecords: integer): PSE2OpDefault;
 begin
   result := DefaultOP(soREC_DEL_RECS);
   PSE2OpREC_DEL_RECS(result)^.MaxRecords := MaxRecords;
+end;
+
+class function TSE2OpCodeGen.META_PUSH(index: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soMETA_PUSH);
+  PSE2OpMETA_PUSH(result)^.MetaIndex := index;
+end;
+
+class function TSE2OpCodeGen.META_SHARE(index: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soMETA_SHARE);
+  PSE2OpMETA_SHARE(result)^.MetaIndex := index;
 end;
 
 { TSE2OpCodeList }

@@ -182,6 +182,9 @@ begin
     if not result then
       if TSE2Type(TSE2Property(Item).AType.InheritRoot).AType = btObject then
          result := True;
+
+    if not result then
+       result := TSE2Parser.HasHelper(ResType, TSE2Property(Item).AType, FCompiler.UnitList, Opr);
   end else
   if Item is TSE2Variable then
   begin
@@ -189,6 +192,9 @@ begin
     if not result then
        if TSE2Type(TSE2Variable(Item).AType.InheritRoot).AType = btObject then
          result := True;
+
+    if not result then
+       result := TSE2Parser.HasHelper(ResType, TSE2Variable(Item).AType, FCompiler.UnitList, Opr);
   end else
   if Item is TSE2Constant then
   begin
@@ -197,11 +203,17 @@ begin
   if Item is TSE2Method then
   begin
     result := False;
-    if TSE2Method(Item).ReturnValue <> nil then
-       result := TSE2Parser.IsCompatible(ResType, TSE2Method(Item).ReturnValue.AType, Opr);
 
     if ResType is TSE2MethodVariable then
        result := True;
+
+    if not result then
+      if TSE2Method(Item).ReturnValue <> nil then
+      begin
+        result := TSE2Parser.IsCompatible(ResType, TSE2Method(Item).ReturnValue.AType, Opr);
+        if not result then
+           result := TSE2Parser.HasHelper(ResType, TSE2Method(Item).ReturnValue.AType, FCompiler.UnitList, Opr);
+      end;
   end;
 end;
 
@@ -465,7 +477,7 @@ end;
 procedure TSE2CodeCompletion.ProcessUnits(Compiler: TSE2Compiler;
   Parser: TSE2Parser; ParentObj: TSE2BaseType;
   Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean);
-var i          : integer;
+var i, j       : integer;
     IgnoreUnit : TSE2Unit;
     vis        : TSE2Visibilities;
     unitList   : TStringList;
@@ -510,7 +522,10 @@ begin
            unitList.Add(Compiler.UnitList[i].Name);
 
       for i:=0 to TSE2UnitManager.Instance.Count-1 do
-        unitList.Add(TSE2UnitManager.Instance[i].UnitName);
+        for j:=0 to TSE2UnitManager.Instance[i].Modules-1 do
+        begin
+          unitList.Add(TSE2UnitManager.Instance[i].UnitNames[j]);
+        end;
 
       for i:=0 to unitList.Count-1 do
         DoAddItem(GetDisplayStrUnit(unitList[i]), GetInsertStrUnit(unitList[i])); 
