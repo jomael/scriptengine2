@@ -81,6 +81,10 @@ type
     listProjects: TListView;
     Splitter2: TSplitter;
     stepCallStack: TListView;
+    panelStackInfo: TPanel;
+    panelStackInfoOptions: TPanel;
+    checkReverseStackDisplay: TCheckBox;
+    GenUnit_Generic: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure File_CloseClick(Sender: TObject);
@@ -114,6 +118,7 @@ type
       Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure GenUnit_PackageClick(Sender: TObject);
     procedure listProjectsDblClick(Sender: TObject);
+    procedure checkReverseStackDisplayClick(Sender: TObject);
   private
     { Private-Deklarationen }
     FUnitCache      : TSE2UnitCacheMngr;
@@ -125,6 +130,9 @@ type
     procedure ProjectsLoad;
     procedure ProjectsSave;
     procedure ProjectsAdd(const FileName: string);
+
+    procedure CodeEditorTabChanged(Sender: TObject; const Editor: TCodeEditorPanel);
+    procedure GetCacheStream(Sender: TObject; const aUnitName: string; var Cache: TStream);
   protected
     FDoAbort        : boolean;
     FCanContinue    : boolean;
@@ -180,7 +188,7 @@ implementation
 
 uses
   ConsoleForm, uSE2RunType, Math, uSE2RunAccess, uPackageLoader,
-  uSE2Packages, uSE2UnitManager, uSE2ScriptImporter,
+  uSE2Packages, uSE2UnitManager, uSE2ScriptImporter, uSE2Tokenizer,
 
   uSE2IncHelpers;
 
@@ -227,6 +235,7 @@ const
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
   FUnitCache := TSE2UnitCacheMngr.Create;
+  FUnitCache.OnGetCacheStream := GetCacheStream;
   LoadPackages(ExtractFilePath(Application.ExeName) + 'packages\', '.dll');
 
 
@@ -248,6 +257,7 @@ begin
   FCodeEditorMngr.Editor.OnGetCustomUnits := EditorGetCustomUnits;
   FCodeEditorMngr.Editor.OnRequireSave := EditorRequireSave;
   FCodeEditorMngr.Editor.OnRequireUnit := EditorRequireUnit;
+  FCodeEditorMngr.Editor.OnUnitChanged := CodeEditorTabChanged;
 
   FProjectFile := TScriptProject.Create;
   FProjectFile.OnCloseUnit := Project_NeedCloseUnit;
@@ -904,10 +914,25 @@ end;
 
 procedure TMainForm.CompilerGetReader(Sender: TObject; const Name: string;
   const Readers: TList);
-var i      : integer;
-    Item   : TScriptUnit;
-    Editor : TCodeEditorPanel;
+var i        : integer;
+    Item     : TScriptUnit;
+    Editor   : TCodeEditorPanel;
+    bChanged : boolean;
 begin
+  // First Check if none of the required units are marked as
+  // changed
+  bChanged := False;
+  for i:=0 to FProjectFile.ProjectFile.UnitList.Count-1 do
+    if SameText(FProjectFile.ProjectFile.UnitList[i], Name) then
+      if not FProjectFile.Files[FProjectFile.ProjectFile.UnitPath[i]].Compiled then
+      begin
+        bChanged := True;
+        break;
+      end;
+
+  if not bChanged then
+     exit;
+
   for i:=0 to FProjectFile.ProjectFile.UnitList.Count-1 do
   begin
     if SameText(FProjectFile.ProjectFile.UnitList[i], Name) then
@@ -918,7 +943,6 @@ begin
       if Editor <> nil then
          Readers.Add(TSE2StringReader.Create(Editor.Editor.Source, Editor.Data))
       else
-      if not Item.Compiled then
          Readers.Add(TSE2StringReader.Create(Item.Source, Item));
 
     end;
@@ -965,6 +989,11 @@ begin
   ShowCurrentStack(run);
   while (not FCanContinue) and (not FDoAbort) do
   begin
+    if checkReverseStackDisplay.Tag = 1 then
+    begin
+       ShowCurrentStack(run);
+       checkReverseStackDisplay.Tag := 0;
+    end;
     Application.ProcessMessages;
     Sleep(1);
   end;
@@ -1054,6 +1083,11 @@ begin
         SubItems.Add('');
         SubItems.Add(Format(SCompiledSize, [FloatToStrF(result.FinalStreamSize / 1024, ffNumber, 8, 1)]));
       end;
+
+      for i:=0 to FProjectFile.Count-1 do
+      begin
+        FProjectFile.Items[i].Compiled := True;
+      end;
     end;
   finally
     Screen.Cursor := crDefault;
@@ -1123,15 +1157,21 @@ var i     : integer;
     s     : string;
     Stack : TSE2StackTrace;
     Item  : TSE2StackItem;
+    ListItem : TListItem;
 begin
   stepDebugStack.Items.BeginUpdate;
   try
     stepDebugStack.Items.Clear;
+
     for i:=0 to Data.Stack.Size-1 do
     begin
       entry := Data.Stack.Items[i];
       s := TSE2DebugHelper.VarContentToStr(entry, Pointer(Data));
-      with stepDebugStack.Items.Add do
+      if checkReverseStackDisplay.Checked then
+        ListItem := stepDebugStack.Items.Insert(0)
+      else
+        ListItem := stepDebugStack.Items.Add;
+      with ListItem do
       begin
         Caption := IntToStr(i);
         SubItems.Add(TSE2DebugHelper.VarTypeToStr(entry.AType));
@@ -1716,6 +1756,7 @@ begin
   case TMenuItem(Sender).Tag of
   1 : Importer := TSE2ScriptImporterAppPascal.Create;
   2 : Importer := TSE2ScriptImporterPackagePascal.Create;
+  3 : Importer := TSE2ScriptImporterAppConnPackagePascal.Create;
   end;
 
   if Importer = nil then
@@ -1853,6 +1894,35 @@ begin
 
   DoOpenProject(listProjects.Selected.SubItems[0]);
   mainLeft.ActivePageIndex := 0;
+end;
+
+procedure TMainForm.checkReverseStackDisplayClick(Sender: TObject);
+begin
+  checkReverseStackDisplay.Tag := 1;
+end;
+
+procedure TMainForm.GetCacheStream(Sender: TObject; const aUnitName: string;
+  var Cache: TStream);
+//var basePath : string;
+begin
+  {basePath := ExtractFilePath(Application.ExeName) + 'cache\';
+  ForceDirectories(basePath);
+
+  try
+    Cache := TFileStream.Create(basePath + aUnitName + '.cache', fmCreate);
+  except
+    Cache := nil;
+  end;
+   }
+  //
+end;
+
+procedure TMainForm.CodeEditorTabChanged(Sender: TObject;
+  const Editor: TCodeEditorPanel);
+begin
+  if Editor <> nil then
+    if Editor.Data is TScriptUnit then
+       TScriptUnit(Editor.Data).Compiled := False;
 end;
 
 end.

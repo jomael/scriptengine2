@@ -54,6 +54,44 @@ object ConsoleWindow: TConsoleWindow
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  DesignSize = (
+    659
+    302)
   PixelsPerInch = 96
   TextHeight = 13
+  object panelTop: TPanel
+    Left = 0
+    Top = 277
+    Width = 659
+    Height = 25
+    Anchors = [akTop, akRight, akBottom]
+    BevelOuter = bvNone
+    Color = 1315860
+    ParentBackground = False
+    TabOrder = 0
+    DesignSize = (
+      659
+      25)
+    object editInput: TEdit
+      Left = 4
+      Top = 2
+      Width = 649
+      Height = 22
+      Anchors = [akLeft, akTop, akRight]
+      BevelInner = bvNone
+      BevelOuter = bvNone
+      Color = 1315860
+      Ctl3D = False
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWhite
+      Font.Height = -13
+      Font.Name = 'Courier New'
+      Font.Style = []
+      ParentCtl3D = False
+      ParentFont = False
+      TabOrder = 0
+      OnKeyDown = editInputKeyDown
+      OnKeyPress = editInputKeyPress
+    end
+  end
 end

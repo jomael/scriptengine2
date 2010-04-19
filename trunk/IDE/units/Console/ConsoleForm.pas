@@ -6,22 +6,40 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs,
 
-  Console;
+  Console, StdCtrls, ExtCtrls;
 
 type
   TConsoleWindow = class(TForm)
+    panelTop: TPanel;
+    editInput: TEdit;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure editInputKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure editInputKeyPress(Sender: TObject; var Key: Char);
   private
     { Private-Deklarationen }
     FTerminal : TColorConsole;
+
+    FDoAbort   : boolean;
+    FInput     : string;
+    FInputDone : boolean;
+    FSingleKey : boolean;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
+
+    procedure MakeEditVisible;
+    procedure HideEdit;
+
+    function  EditRead(FullLine: boolean): string;
   public
     { Public-Deklarationen } 
     property Terminal : TColorConsole  read FTerminal;
   end;
+
+var
+  CONSOLE_UseEditInput : boolean = False;
 
 procedure CloseConsole;
 
@@ -70,14 +88,22 @@ end;
 function Console_DoReadLn: string;
 var len : integer;
 begin
-  SetLength(result, 8196);
-  len := Console.Terminal.ReadBuf(PChar(result), 8196);
-  result := Copy(result, 1, len - 2);
+  if CONSOLE_UseEditInput then
+     result := Console.EditRead(True)
+  else
+  begin
+    SetLength(result, 8196);
+    len := Console.Terminal.ReadBuf(PChar(result), 8196);
+    result := Copy(result, 1, len - 2);
+  end;
 end;
 
 function Console_DoReadKey: string;
 begin
-  result := Console.Terminal.ReadKey;
+  if CONSOLE_UseEditInput then
+     result := Console.EditRead(False)
+  else
+     result := Console.Terminal.ReadKey;
 end;
 
 procedure Console_DoClearLine;
@@ -171,10 +197,14 @@ begin
   FTerminal.Rows         := 150;
   FTerminal.Cols         := 80;
   FTerminal.ClrScr;
+
+  panelTop.Top := ClientHeight + 1;
+  FInputDone := True;
 end;
 
 procedure TConsoleWindow.FormDestroy(Sender: TObject);
 begin
+  FDoAbort := True;
   FTerminal.Free;
   ConsoleWindow := nil;
 end;
@@ -183,7 +213,80 @@ procedure TConsoleWindow.FormCloseQuery(Sender: TObject;
   var CanClose: Boolean);
 begin
   CanClose := True;
-  Self.FTerminal.DoAbort := True; 
+  FDoAbort := True;
+  Self.FTerminal.DoAbort := True;
+end;
+
+procedure TConsoleWindow.HideEdit;
+begin   
+  while panelTop.Top <= ClientHeight do
+  begin
+    panelTop.Top := panelTop.Top + 1;
+    Application.ProcessMessages;
+    Sleep(10);
+  end;
+end;
+
+procedure TConsoleWindow.MakeEditVisible;
+begin
+  while panelTop.Top > ClientHeight - panelTop.Height do
+  begin
+    panelTop.Top := panelTop.Top - 1;
+    Application.ProcessMessages;
+    Sleep(10);
+  end;
+end;
+
+function TConsoleWindow.EditRead(FullLine: boolean): string;
+begin
+  panelTop.BringToFront;
+  editInput.Text := '';
+  MakeEditVisible;
+
+  FInputDone := False;
+  FSingleKey := not FullLine;
+
+  editInput.SetFocus;
+  while not FInputDone do
+  begin
+    Application.HandleMessage;
+    Sleep(1);
+    if FDoAbort then
+       Abort;
+  end;
+
+  result := FInput;
+
+  HideEdit;
+end;
+
+procedure TConsoleWindow.editInputKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin        
+  if FSingleKey then
+  begin
+    FInput := Chr(Key);
+    FInputDone := True;
+    Key := 0;
+  end;
+end;
+
+procedure TConsoleWindow.editInputKeyPress(Sender: TObject; var Key: Char);
+begin
+  if FInputDone then
+  begin
+    Key := #0;
+    exit;
+  end;
+
+  if Key = #13 then
+  begin
+    Key := #0;
+    FInput := editInput.Text;
+    FInputDone := True;
+
+    Console_DoWrite(FInput + #13#10);
+  end;
 end;
 
 initialization

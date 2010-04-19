@@ -1,7 +1,7 @@
 object MainForm: TMainForm
-  Left = 218
-  Top = 123
-  Width = 725
+  Left = 376
+  Top = 233
+  Width = 640
   Height = 432
   Caption = 'ScriptEngineII'
   Color = clBtnFace
@@ -28,7 +28,7 @@ object MainForm: TMainForm
   object mainClient: TPanel
     Left = 192
     Top = 0
-    Width = 517
+    Width = 432
     Height = 355
     Align = alClient
     BevelOuter = bvNone
@@ -37,7 +37,7 @@ object MainForm: TMainForm
     object panelDebugging: TPanel
       Left = 5
       Top = 164
-      Width = 507
+      Width = 422
       Height = 186
       Align = alBottom
       BevelOuter = bvNone
@@ -49,40 +49,10 @@ object MainForm: TMainForm
         Height = 186
       end
       object Splitter2: TSplitter
-        Left = 245
+        Left = 140
         Top = 0
         Height = 186
         Align = alRight
-      end
-      object stepDebugStack: TListView
-        Left = 184
-        Top = 0
-        Width = 61
-        Height = 186
-        Align = alClient
-        Columns = <
-          item
-            Caption = 'Address'
-            Width = 90
-          end
-          item
-            Caption = 'Type'
-            Width = 90
-          end
-          item
-            Caption = '@Value'
-            Width = 90
-          end
-          item
-            Caption = 'Value'
-            Width = 300
-          end>
-        ColumnClick = False
-        HideSelection = False
-        ReadOnly = True
-        RowSelect = True
-        TabOrder = 0
-        ViewStyle = vsReport
       end
       object stepDebugInstructions: TListBox
         Left = 0
@@ -92,13 +62,13 @@ object MainForm: TMainForm
         Style = lbOwnerDrawFixed
         Align = alLeft
         ItemHeight = 16
-        TabOrder = 1
+        TabOrder = 0
         OnDrawItem = stepDebugInstructionsDrawItem
       end
       object stepCallStack: TListView
-        Left = 248
+        Left = 143
         Top = 0
-        Width = 259
+        Width = 279
         Height = 186
         Align = alRight
         Columns = <
@@ -121,15 +91,73 @@ object MainForm: TMainForm
         HideSelection = False
         ReadOnly = True
         RowSelect = True
-        TabOrder = 2
+        TabOrder = 1
         ViewStyle = vsReport
+      end
+      object panelStackInfo: TPanel
+        Left = 184
+        Top = 0
+        Width = 41
+        Height = 186
+        Align = alClient
+        BevelOuter = bvNone
+        TabOrder = 2
+        object stepDebugStack: TListView
+          Left = 0
+          Top = 0
+          Width = 41
+          Height = 160
+          Align = alClient
+          Columns = <
+            item
+              Caption = 'Address'
+              Width = 90
+            end
+            item
+              Caption = 'Type'
+              Width = 90
+            end
+            item
+              Caption = '@Value'
+              Width = 90
+            end
+            item
+              Caption = 'Value'
+              Width = 300
+            end>
+          ColumnClick = False
+          HideSelection = False
+          ReadOnly = True
+          RowSelect = True
+          TabOrder = 0
+          ViewStyle = vsReport
+        end
+        object panelStackInfoOptions: TPanel
+          Left = 0
+          Top = 160
+          Width = 41
+          Height = 26
+          Align = alBottom
+          TabOrder = 1
+          object checkReverseStackDisplay: TCheckBox
+            Left = 4
+            Top = 4
+            Width = 133
+            Height = 17
+            Caption = 'Reverse Stack Display'
+            Checked = True
+            State = cbChecked
+            TabOrder = 0
+            OnClick = checkReverseStackDisplayClick
+          end
+        end
       end
     end
   end
   object StatusBar1: TStatusBar
     Left = 0
     Top = 355
-    Width = 709
+    Width = 624
     Height = 19
     Panels = <>
   end
@@ -392,6 +420,11 @@ object MainForm: TMainForm
           Caption = 'Package Unit'
           OnClick = GenUnit_PackageClick
         end
+        object GenUnit_Generic: TMenuItem
+          Tag = 3
+          Caption = 'Generic Unit'
+          OnClick = GenUnit_PackageClick
+        end
       end
     end
     object MainMenu_Run: TMenuItem
@@ -430,7 +463,7 @@ object MainForm: TMainForm
     Left = 78
     Top = 84
     Bitmap = {
-      494C010115001800280010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010115001800400010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000006000000001002000000000000060
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1233,7 +1266,7 @@ object MainForm: TMainForm
     Left = 44
     Top = 84
     Bitmap = {
-      494C010108000900280010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010108000900400010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

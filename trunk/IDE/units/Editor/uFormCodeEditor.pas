@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Classes, Types, SysUtils, Controls, Dialogs, Graphics, StdCtrls, ExtCtrls,
-  Menus,
+  Menus, Forms,
 
   uFormCompileMessages,
 
@@ -75,6 +75,7 @@ type
     FOnGetUnit     : TSE2GetFileReader;
     FOnGetUnitMngr : TSE2GetUnitMngr;
     FOnGetCustomUnits : TEditorGetCustomUnits;
+    FOnChanged     : TNotifyEvent;
   protected
     function  GetCaption: string;
     procedure SetCaption(const value: string);
@@ -97,10 +98,13 @@ type
     property  FileName   : string         read FFileName     write FFileName;
     property  Caption    : string         read GetCaption    write SetCaption;
     property  Data       : TObject        read FData         write FData;
+
+    property  OnChanged  : TNotifyEvent   read FOnChanged    write FOnChanged;
   end;
 
   TRequireSaveEvent = procedure(Sender: TObject; CodeTab: TCodeEditorPanel; var CanClose: boolean) of object;
   TRequireUnitEvent = procedure(Sender: TObject; Data: TObject) of object;
+  TCodeEditorEvent  = procedure(Sender: TObject; const Editor: TCodeEditorPanel) of object;
 
   TScriptEditor = class(TPanel)
   private
@@ -110,6 +114,7 @@ type
     FOnGetCustomUnits : TEditorGetCustomUnits;
     FOnRequireSave  : TRequireSaveEvent;
     FOnRequireUnit  : TRequireUnitEvent;
+    FOnUnitChanged  : TCodeEditorEvent;
   protected
     procedure CodeTabClosing(Sender: TObject; Item: TJvTabBarItem; var AllowClose: boolean);
     procedure CodeTabSelected(Sender: TObject; Item: TJvTabBarItem);
@@ -124,6 +129,8 @@ type
 
     function  GetItem(index: integer): TCodeEditorPanel;
     function  GetCount: integer;
+
+    procedure CodeEditorChanged(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -145,6 +152,7 @@ type
     property  OnGetCustomUnits     : TEditorGetCustomUnits read FOnGetCustomUnits write FOnGetCustomUnits;
     property  OnRequireSave        : TRequireSaveEvent    read FOnRequireSave  write FOnRequireSave;
     property  OnRequireUnit        : TRequireUnitEvent    read FOnRequireUnit  write FOnRequireUnit;
+    property  OnUnitChanged        : TCodeEditorEvent     read FOnUnitChanged  write FOnUnitChanged;
   end;
 
   TScriptEditorMngr = class(TPanel)
@@ -283,18 +291,22 @@ procedure TCodeEditor.ParamCompleteExecute(Kind: SynCompletionType;
   var CanExecute: Boolean);
 var index: integer;
 begin
-  FParamComplete.ClearList;
+  if (FParamComplete.ItemList.Count = 0) or (not TWinControl(FParamComplete.Form).Visible) or
+     (CurrentInput = '') or (Pos('(', CurrentInput) > 0) or (Pos(')', CurrentInput) > 0) then
+  begin
+    FParamComplete.ClearList;
 
-  with TSE2SynParamCompletion.Create(ParamCompleteInsert) do
-  try
-    OnGetUnitMngr      := CompleteGetUnitMngr;
-    Compiler.OnGetFile := FOnGetUnit;
-    CanExecute := GetParamCompletion(Source, FEditor.SelStart, index);
-    if TWinControl(FParamComplete.Form).Visible then
-       CanExecute := True;
-    FParamComplete.Form.CurrentIndex := index;
-  finally
-    Free;
+    with TSE2SynParamCompletion.Create(ParamCompleteInsert) do
+    try
+      OnGetUnitMngr      := CompleteGetUnitMngr;
+      Compiler.OnGetFile := FOnGetUnit;
+      CanExecute := GetParamCompletion(Source, FEditor.SelStart, index);
+      if TWinControl(FParamComplete.Form).Visible then
+         CanExecute := True;
+      FParamComplete.Form.CurrentIndex := index;
+    finally
+      Free;
+    end;
   end;
 end;
 
@@ -380,6 +392,9 @@ procedure TCodeEditorPanel.EditorChanged(Sender: TObject);
 begin
   Modified := True;
   FEditor.ErrorLine := -1;
+
+  if Assigned(FOnChanged) then
+     FOnChanged(Self);
 end;
 
 procedure TCodeEditorPanel.EditorGetCustomUnits(Sender: TObject;
@@ -432,6 +447,7 @@ begin
   result.FOnGetUnit    := EditorGetUnit;
   result.FOnGetUnitMngr := CompleteGetUnitMngr;
   result.FOnGetCustomUnits := EditorGetCustomUnits;
+  result.OnChanged         := CodeEditorChanged;
 end;
 
 procedure TScriptEditor.Clear;
@@ -449,6 +465,12 @@ begin
     begin
       FCodeTabs.Tabs.Delete(i);
     end;
+end;
+
+procedure TScriptEditor.CodeEditorChanged(Sender: TObject);
+begin
+  if Assigned(FOnUnitChanged) then
+     FOnUnitChanged(Self, TCodeEditorPanel(Sender));
 end;
 
 procedure TScriptEditor.CodeTabClosed(Sender: TObject;
