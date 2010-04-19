@@ -63,13 +63,25 @@ type
     procedure AddImplementation(AUnit: TSE2Unit); override;
   end;
 
-  TSE2ScriptImporterPackagePascal = class(TSE2ScriptImporterPascal)    
+  TSE2ScriptImporterPackagePascal = class(TSE2ScriptImporterPascal)
   protected
     procedure AddInterface(AUnit: TSE2Unit); override;
     procedure FormatImport(index: Integer; Target: TStrings); override;
-    procedure AddImportMethod(AUnit: TSE2Unit); override;               
+    procedure AddImportMethod(AUnit: TSE2Unit); override;
     procedure AddUnitImporterGenerator(AUnit: TSE2Unit); override;
   end;
+
+  TSE2ScriptImporterAppConnPackagePascal = class(TSE2ScriptImporterPascal)
+  private
+    FPackageMode : boolean;
+  protected
+    procedure AddInterface(AUnit: TSE2Unit); override;
+    procedure FormatImport(index: Integer; Target: TStrings); override;
+    procedure AddImportMethod(AUnit: TSE2Unit); override;
+    procedure AddUnitImporterGenerator(AUnit: TSE2Unit); override;
+    procedure AddEnd(AUnit: TSE2Unit); override;
+  end;
+
 
 implementation
 
@@ -553,6 +565,134 @@ begin
   inherited;
 
   s := '  CallBack(Module, Data, @'+TMyStringObj(FImportedMethods.Objects[index]).Value + ', '#39 + FImportedMethods[index] + #39');';
+  Output.Add(s);
+end;
+
+{ TSE2ScriptImporterAppConnPackagePascal }
+
+procedure TSE2ScriptImporterAppConnPackagePascal.AddEnd(AUnit: TSE2Unit);
+begin
+
+  Output.Add('{$IFNDEF SE2_IMPORT_AS_PACKAGE}');
+  Output.Add('initialization');
+  Output.Add('  RegisterUnit();');
+  Output.Add('{$ENDIF}');
+  Output.Add('');
+  inherited;
+end;
+
+procedure TSE2ScriptImporterAppConnPackagePascal.AddImportMethod(
+  AUnit: TSE2Unit);
+var i: integer;
+begin
+  inherited;
+
+  Output.Add('{$IFNDEF SE2_IMPORT_AS_PACKAGE}');
+  Output.Add('procedure Unit_GetSource(var Target: string);');
+  Output.Add('begin');
+  Output.Add('  {$IFNDEF SE2_ONLY_REGISTER_METHODS}');
+  Output.Add('  Target := C_UnitSource;');
+  Output.Add('  {$ELSE}');
+  Output.Add('  Target := '''';');
+  Output.Add('  {$ENDIF}');
+  Output.Add('end;');
+  Output.Add('{$ENDIF}');
+  Output.Add('');
+
+  Output.Add('{$IFNDEF SE2_IMPORT_AS_PACKAGE}');
+  Output.Add('procedure Unit_RegisterMethods(const Target: TSE2RunAccess);');
+  Output.Add('begin');
+  Output.Add('  if Target.HasUnit(C_UnitName) then');
+  Output.Add('  begin');
+
+  FPackageMode := False;
+  for i:=0 to FImportedMethods.Count-1 do
+    FormatImport(i, Output);
+
+  Output.Add('  end');
+  Output.Add('end;');
+  Output.Add('{$ELSE}');
+  Output.Add('procedure RegisterMethods(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister);');
+  Output.Add('begin');
+
+  FPackageMode := True;
+  for i:=0 to FImportedMethods.Count-1 do
+    FormatImport(i, Output);
+
+  Output.Add('end;');
+  Output.Add('{$ENDIF}');
+  Output.Add('');
+end;
+
+procedure TSE2ScriptImporterAppConnPackagePascal.AddInterface(
+  AUnit: TSE2Unit);
+begin
+  inherited;
+
+  Output.Add('// To use the package mode, uncomment the following define');
+  Output.Add('{.$DEFINE SE2_IMPORT_AS_PACKAGE}');
+  Output.Add('');
+  Output.Add('// If you only want to register the method pointers to');
+  Output.Add('// the script engine (e.g. for a release without');
+  Output.Add('// the posibility to recompile scripts), uncomment the');
+  Output.Add('// following define');
+  Output.Add('{.$DEFINE SE2_ONLY_REGISTER_METHODS}');
+  Output.Add('');
+  Output.Add('interface');
+  Output.Add('');         
+  Output.Add('uses');
+  Output.Add('{$IFDEF SE2_IMPORT_AS_PACKAGE}');
+  Output.Add('  uSE2PackageAPI;');
+  Output.Add('{$ELSE}');     
+  Output.Add('  uSE2RunAccess, uSE2UnitManager, uSE2Consts;');
+  Output.Add('{$ENDIF}');
+  Output.Add('');
+
+  Output.Add('{$IFDEF SE2_ONLY_REGISTER_METHODS}');     
+  Output.Add('const');
+  Output.Add('  C_UnitName   = ''' + AUnit.Name + ''';');
+  Output.Add('{$ELSE}');    
+  if FImportSource then
+     AddUnitSource(AUnit);
+  Output.Add('{$ENDIF}');
+
+  Output.Add('');     
+  Output.Add('{$IFDEF SE2_IMPORT_AS_PACKAGE}');
+  Output.Add('procedure RegisterMethods(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister);');
+  Output.Add('{$ENDIF}');
+  Output.Add('');
+end;
+
+procedure TSE2ScriptImporterAppConnPackagePascal.AddUnitImporterGenerator(
+  AUnit: TSE2Unit);
+begin
+  inherited;
+
+  Output.Add('');
+  Output.Add('{$IFNDEF SE2_IMPORT_AS_PACKAGE}');
+  Output.Add('procedure RegisterUnit();');
+  Output.Add('var p: TSE2MethodUnit;');
+  Output.Add('begin');
+  Output.Add('  p := TSE2MethodUnit.Create;');
+  Output.Add('  p.DoRegisterMethods := Unit_RegisterMethods;');
+  Output.Add('  p.DoGetUnitSource   := Unit_GetSource;');
+  Output.Add('  p.UnitName          := C_UnitName;');
+  Output.Add('  TSE2UnitManager.RegisterUnit(p);');
+  Output.Add('end;');
+  Output.Add('{$ENDIF}');
+  Output.Add('');
+end;
+
+procedure TSE2ScriptImporterAppConnPackagePascal.FormatImport(
+  index: Integer; Target: TStrings);
+var s: string;
+begin
+  inherited;
+
+  if FPackageMode then
+     s := '  CallBack(Module, Data, @'+TMyStringObj(FImportedMethods.Objects[index]).Value + ', '#39 + FImportedMethods[index] + #39');'
+  else
+     s := '    Target.Method['#39 + FImportedMethods[index] + #39', C_UnitName] := @' + TMyStringObj(FImportedMethods.Objects[index]).Value + ';';
   Output.Add(s);
 end;
 

@@ -143,6 +143,7 @@ type
     procedure GenCode(Method: TSE2Method; OpCodeData: TSE2LinkOpCode; Index: integer = -1; Replace: boolean = False);
     function  MakeCallExOptionMask(Method: TSE2Method): integer;
     function  FindIdentifier(Method: TSE2Method; const IdentName: string; Parent: TSE2BaseType; const UnitName: string = ''; const ClassTypes: TSE2BaseTypeFilter = nil; AcceptSetType: boolean = False): TSE2BaseType;
+    function  TypeExpression(Method: TSE2Method): TSE2Type;
 
     function  ConvertIntToSingle(State: TSE2ParseState; Method: TSE2Method; aType1, aType2: TSE2Type): TSE2Type;
     function  ConvertVariableCode(State: TSE2ParseState; Method: TSE2Method; aCurrentType, aNewType: TSE2Type; DoAdd: boolean = True): TSE2LinkOpCode;
@@ -152,6 +153,7 @@ type
     function  GetDoubleType: TSE2Type;
     function  GetStringType: TSE2Type;
     function  GetPointerType: TSE2Type;
+    function  GetExternalObjectType: TSE2Type;
     procedure DeclareType(State: TSE2ParseState; const aType: TSE2BaseType; const Name: string; UnitName: string = '');
     procedure ReadNextToken;
     function  ExpectToken(Symbol : TSE2TokenTypes): boolean;
@@ -163,6 +165,7 @@ type
                                        
     procedure GetOverloadedMethods(State: TSE2ParseState; Method: TSE2Method; out Target: TSE2BaseTypeList);
     class function IsCompatible(TargetType, CurrentType: TSE2Type; Operation: TSE2TokenType = sesNone; StrictInt: boolean = False; AInstance: TSE2Parser = nil): boolean;
+    class function HasHelper(TargetType, CurrentType: TSE2Type; UnitList: TSE2BaseTypeList; Operation: TSE2TokenType = sesNone): boolean;
 
     procedure RegisterCallBack(TargetPos: integer; Event: TSE2CompileCallBack);
     function Compile: boolean;
@@ -202,16 +205,30 @@ end;
 { TSE2Parser }  
 
 function TSE2Parser.CompileUnitName: string;
+var fName: string;
 begin
   result := '';
   ExpectToken([sesIdentifier]);
+  while Tokenizer.Token.AType in [sesIdentifier] do
+  begin
+    fName := fName + Tokenizer.Token.Value;
+    ReadNextToken;
+    if Tokenizer.Token.AType in [sesDot] then
+    begin
+      fName := fName + '.';
+      ReadNextToken;
+      ExpectToken([sesIdentifier]);
+    end;
+  end;
+
+
 
   if FExpectedName <> '' then
-    if not SameText(FExpectedName, Tokenizer.Token.Value) then
+    if not SameText(FExpectedName, fName) then
       RaiseError(petError, 'Expected "'+FExpectedName+'" as unit name but found "' + Tokenizer.Token.Value + '" instead');
 
-  result := Tokenizer.Token.Value;
-  ReadNextToken;
+  result := fName;
+
   (*
   while not (Tokenizer.Token.AType in [sesSemiColon]) do
   begin
@@ -386,7 +403,7 @@ var pUnit : TSE2Unit;
         if TSE2Class(aUnit.TypeList[i]).IsHelper then
           if ElementIsChildTypeOf(TSE2Type(Parent), TSE2Type(TSE2Class(aUnit.TypeList[i]).InheritFrom)) then
           begin
-            result := FindIdentifier(Method, IdentName, TSE2Class(aUnit.TypeList[i]), '', ClassTypes, AcceptSetType);
+            result := FindIdentifier(Method, IdentName, TSE2Class(aUnit.TypeList[i]), '', ClassTypes.Duplicate, AcceptSetType);
             if result <> nil then
             begin
               exit;
@@ -483,6 +500,25 @@ var pUnit : TSE2Unit;
       //if not (Parent is TSE2Class) then
   end;
 
+  function FindUnitName(const Name: string): TSE2Unit;
+  var i: integer;
+      p: TSE2Unit;
+  begin
+    result := TSE2Unit(FUnitList.FindItem(Name));
+    if result = nil then
+    begin
+      for i:=FUnitList.Count-1 downto 0 do
+      begin
+        p := TSE2Unit(FUnitList.Items[i]);
+        if Pos(LowerCase(Name) + '.', LowerCase(p.Name)) = 1 then
+        begin
+          result := p;
+          exit;
+        end;
+      end;
+    end;
+  end;
+
 begin
   result := nil;
 
@@ -516,6 +552,21 @@ begin
          exit;
 
       result := IdentifierInUnit(pUnit);
+
+      if result = nil then
+      begin
+        pUnit := FindUnitName(UnitName + '.' + IdentName);
+        if pUnit = nil then
+        begin
+          if Pos('.' + AnsiLowerCase(IdentName), AnsiLowerCase(UnitName)) =
+                 length(UnitName) - length(IdentName) then
+          begin
+            pUnit := FindUnitName(UnitName);
+          end;
+        end;
+        if pUnit <> nil then
+           result := pUnit;
+      end;
     end else
     begin
       result := IdentifierInUnit(FUnit);
@@ -716,6 +767,7 @@ end;
 
 procedure TSE2Parser.UsesDeclaration(State: TSE2ParseState);
 var aNewUnit : TSE2Unit;
+    fName    : string;
 begin
   if (not StringIdentical(FUnit.AUnitName, C_SE2SystemUnitName) and State.IsInInterface) then
   begin
@@ -733,23 +785,36 @@ begin
     ReadNextToken;
     while (not FHasError) and (FTokenizer.Token.AType = sesIdentifier) do
     begin
-      if FUnitList.FindItem(Tokenizer.Token.Value) <> nil then
+      fName := '';
+      while Tokenizer.Token.AType = sesIdentifier do
       begin
-        RaiseError(petError, Format(C_ERR_UnitAlreadyAdded, [Tokenizer.Token.Value]));
+        fName := fName + Tokenizer.Token.Value;
+        ReadNextToken;
+        if Tokenizer.Token.AType = sesDot then
+        begin
+          ReadNextToken;
+          fName := fName + '.';
+          ExpectToken([sesIdentifier]);
+        end;
+      end;
+
+
+      if FUnitList.FindItem(fName) <> nil then
+      begin
+        RaiseError(petError, Format(C_ERR_UnitAlreadyAdded, [fName]));
         exit;
       end;
-      if FUnit.IsName(FTokenizer.Token.Value) then
+      if FUnit.IsName(fName) then
       begin
-        RaiseError(petError, Format(C_ERR_CanNotUseOwnUnit, [Tokenizer.Token.Value]));
+        RaiseError(petError, Format(C_ERR_CanNotUseOwnUnit, [fName]));
         exit;
       end;
-      aNewUnit := DoNeedUnit(FTokenizer.Token.Value);
+      aNewUnit := DoNeedUnit(fName);
       if aNewUnit = nil then
-         RaiseError(petError, Format(C_ERR_CouldNotAddUnit, [Tokenizer.Token.Value]))
+         RaiseError(petError, Format(C_ERR_CouldNotAddUnit, [fName]))
       else
          FUnitList.Add(aNewUnit);
 
-      ReadNextToken;
       ExpectToken([sesColon, sesSemiColon]);
       if Tokenizer.Token.AType = sesSemiColon then
          break
@@ -841,7 +906,7 @@ begin
   end;
 
   if State.CurrentOwner <> nil then
-    if TSE2Type(State.CurrentOwner.InheritRoot) = TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
+    if TSE2Type(State.CurrentOwner.InheritRoot) = GetExternalObjectType then
       if State.Method = nil then
          RaiseError(petError, 'External classes can not have any variables');
 
@@ -889,7 +954,8 @@ begin
       ReadNextToken;
       if ExpectToken([sesIdentifier]) then
       begin
-        VarType := FindIdentifier(Method, Tokenizer.Token.Value, nil);
+        VarType := TypeExpression(Method);
+        //VarType := FindIdentifier(Method, Tokenizer.Token.Value, nil);
         if VarType = nil then
            RaiseError(petError, 'Unkown variable type: "'+Tokenizer.Token.Value+'"')
         else
@@ -911,10 +977,10 @@ begin
                RaiseError(petWarning, VarType.AUnitName + '.' + VarType.Name + ' is deprecated.');
           end;
 
-          ReadNextToken;
-
           IsPublic   := False;
           IsExternal := False;
+
+          ReadNextToken;
 
           if Tokenizer.Token.AType in [sesPublic, sesExternal] then
           begin
@@ -1388,7 +1454,10 @@ begin
       ExpectToken([sesFor]);
       ReadNextToken;
       ExpectToken([sesIdentifier]);
-      BaseClass := TSE2Type(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
+
+      BaseClass := TypeExpression(nil);
+
+      //BaseClass := TSE2Type(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
       if BaseClass = nil then
          RaiseError(petError, 'Unknown identifier: "'+Tokenizer.Token.Value+'"');
 
@@ -1420,7 +1489,16 @@ begin
       ReadNextToken;
       ExpectToken([sesIdentifier]);
 
-      BaseClass := TSE2Class(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Class])));
+      BaseClass := TSE2Class( TypeExpression(nil) );
+      if BaseClass = nil then
+         RaiseError(petError, 'Unknown identifier')
+      else
+      if not (BaseClass is TSE2Class) then
+      begin
+         RaiseError(petError, 'Class parent is not a class: ' + BaseClass.Name);
+         exit;
+      end;
+      //BaseClass := TSE2Class(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Class])));
       if BaseClass = nil then
       begin
         RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
@@ -1868,7 +1946,8 @@ begin
       if not ExpectToken([sesIdentifier]) then
          exit;
     end;
-    BaseType := FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type]));
+    BaseType := TypeExpression(nil);
+    //BaseType := FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type]));
     if BaseType = nil then
        RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"')
     else
@@ -1879,11 +1958,29 @@ begin
            RaiseError(petWarning, BaseType.AUnitName + '.' + BaseType.Name + ' is deprecated. ' + BaseType.DeprecatedValue)
         else
            RaiseError(petWarning, BaseType.AUnitName + '.' + BaseType.Name + ' is deprecated.');
-      end;  
+      end;
 
-      newType := TSE2Type.Create;
+      if BaseType is TSE2Class then
+         newType := TSE2Class.Create
+      else
+      if BaseType is TSE2Record then
+         newType := TSE2Record.Create
+      else
+      if BaseType is TSE2Enum then
+         newType := TSE2Enum.Create
+      else
+      if BaseType is TSE2Array then
+         newType := TSE2Array.Create
+      else
+      if BaseType is TSE2MethodVariable then
+         newType := TSE2MethodVariable.Create
+      else
+         newType := TSE2Type.Create;
+
+         
       DeclareType(State, newType, TypeName);
       NewType.InheritFrom := BaseType;
+
 
       //if IsStrict then
         //newType.Compatibles.AddCompatbile(BaseType.InheritRoot, BaseType.InheritRoot.BaseCompatibles, False)
@@ -3110,6 +3207,8 @@ var pSearchUnit   : TSE2Unit;
     LastItem      : TSE2BaseType;
     StringIndex   : string;
     wasExpression : boolean;
+    sCheckUnitName: string;
+    searchString  : string;
 
   function DoMethodCall(CallMethod: TSE2Method; UseBrackets: boolean = False; LastParamSetter: TSE2SetterEvent = nil;
              AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil): TSE2Type;
@@ -3140,6 +3239,7 @@ begin
 
   result      := nil;
   SearchUnit  := '';
+  sCheckUnitName := '';
   if Tokenizer.Token.AType = sesUnit then
   begin
     ExpectToken([sesUnit]);
@@ -3177,6 +3277,7 @@ begin
     //  Sleep(1);
     //end;
 
+    searchString := Tokenizer.Token.Value;
     FindItem := FindIdentifier(Method, Tokenizer.Token.Value, pSearchParent, SearchUnit, nil, AccessSet);
     if FindItem = nil then
        RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"')
@@ -3192,6 +3293,19 @@ begin
              RaiseError(petWarning, FindItem.AUnitName + '.' + FindItem.Name + ' is deprecated.');
         end;
     end;
+
+    if not (FindItem is TSE2Unit) then
+    begin
+      if sCheckUnitName <> '' then
+         if not StringIdentical(FindItem.AUnitName, sCheckUnitName) then
+         begin
+            RaiseError(petError, 'Unknown identifier: ' + sCheckUnitName + '.' + searchString);
+            exit;
+         end;
+      sCheckUnitName := '';
+      SearchUnit     := '';
+    end;
+
 
 
     //LastItem      := nil;
@@ -3369,6 +3483,10 @@ begin
     begin
       if result <> nil then
          RaiseError(petError, 'Unit name can not be used here');
+
+      if sCheckUnitName <> '' then
+         sCheckUnitName := sCheckUnitName + '.';
+      sCheckUnitName := sCheckUnitName + searchString;
 
       State.LastVariable := nil;    
       if not State.IsExpression then
@@ -3702,36 +3820,66 @@ begin
   begin
     Token   := Tokenizer.Token.AType;
     ReadNextToken;
-    FacType := MathExpression(State, Method, TargetType);
 
-    if not IsCompatible(result, FacType, Token, False, Self) then
-       RaiseError(petError, GenIncompatibleExpression(FacType, result, Token));
-
-    result := ConvertIntToSingle(State, Method, result, FacType);
-    //result := FacType;
-
-    case Token of
-    sesPlus   : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(2), ''));
-    sesMinus  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(3), ''));
-    sesOr     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(7), ''));
-    sesXor    : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(8), ''));
-
-    sesIs           : RaiseError(petError, '"is" comparison not implemented yet');
-
-    sesEqual        : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(1), '')); 
-    sesSmaller      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(2), ''));
-    sesBigger       : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(3), ''));
-    sesBiggerEqual  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(4), ''));
-    sesSmallerEqual : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(5), ''));
-    sesUnEqual      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
-    end;
-
-    if Token in [sesEqual, sesSmaller, sesBigger, sesBiggerEqual, sesSmallerEqual, sesUnEqual] then
+    if Token = sesIs then
     begin
-      result := GetBooleanType;
-    end;
 
-    State.DecStack;
+      if not (result is TSE2Class) then
+         RaiseError(petError, 'Is-operator is only available for classes');
+      if (TSE2Class(result).IsHelper) then
+         RaiseError(petError, 'Is-operator can not be used for class helpers');
+
+      if TSE2Type(result.InheritRoot) = GetExternalObjectType then
+         RaiseError(petError, 'Internal Error: Is-Operator not yet implemented for external methods');
+
+
+      ExpectToken([sesIdentifier]);
+      FacType := TypeExpression(Method);
+      if FacType = nil then
+         RaiseError(petError, 'Unknown identifier');
+
+      if not (FacType is TSE2Class) then
+         RaiseError(petError, 'Type comparisons must be applied to classes');
+      if TSE2Class(FacType).IsHelper then
+         RaiseError(petError, 'Is-Operator can not be used for class helpers');
+      if TSE2Type(FacType.InheritRoot) = GetExternalObjectType then
+         RaiseError(petError, 'Internal Error: Is-Operator not yet implemented for external methods');
+
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.META_SHARE(0), 'META_'+TSE2Class(FacType).GenLinkerName));
+
+      ReadNextToken;
+      result := GetBooleanType;
+    end else
+    begin
+      FacType := MathExpression(State, Method, TargetType);
+
+      if not IsCompatible(result, FacType, Token, False, Self) then
+         RaiseError(petError, GenIncompatibleExpression(FacType, result, Token));
+
+      result := ConvertIntToSingle(State, Method, result, FacType);
+      //result := FacType;
+
+      case Token of
+      sesPlus   : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(2), ''));
+      sesMinus  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(3), ''));
+      sesOr     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(7), ''));
+      sesXor    : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(8), ''));
+
+      sesEqual        : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(1), '')); 
+      sesSmaller      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(2), ''));
+      sesBigger       : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(3), ''));
+      sesBiggerEqual  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(4), ''));
+      sesSmallerEqual : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(5), ''));
+      sesUnEqual      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
+      end;
+
+      if Token in [sesEqual, sesSmaller, sesBigger, sesBiggerEqual, sesSmallerEqual, sesUnEqual] then
+      begin
+        result := GetBooleanType;
+      end;
+
+      State.DecStack;
+    end;
   end;
 end;
 
@@ -3946,52 +4094,76 @@ procedure TSE2Parser.CaseStatement(State: TSE2ParseState;
   Method: TSE2Method);
 var Expr         : TSE2Type;
     CaseType     : TSE2Type;
-    OpCodePos1,
-    OpCodePos2   : integer;
+    EqualJumps   : TSE2IntegerList;
+    NextJumps    : TSE2IntegerList;
     FinalJumps   : TSE2IntegerList;
     i            : integer;
+    iCaseCount   : integer;
 begin
   ExpectToken([sesCase]);
   ReadNextToken;
-  
+
   State.IsExpression := True;
   Expr := Expression(State, Method, nil);
   if Expr = nil then
-     RaiseError(petError, 'Expression not allowed here');   
+     RaiseError(petError, 'Expression not allowed here');
   State.IsExpression := False;
 
+  iCaseCount := 0;
   FinalJumps := TSE2IntegerList.Create;
+  EqualJumps := TSE2IntegerList.Create;
+  NextJumps  := TSE2IntegerList.Create;
   try
     ExpectToken([sesOf]);
     ReadNextToken;
 
-    OpCodePos1 := -1;
-    OpCodePos2 := -1;
+    //OpCodePos1 := -1;
     while not (Tokenizer.Token.AType in [sesEnd, sesElse]) do
     begin
-      if OpCodePos1 > -1 then
-         PSE2OpFLOW_JIZ(Method.OpCodes[OpCodePos1].OpCode).Position := Method.OpCodes.Count;
+      //if OpCodePos1 > -1 then
+      //   PSE2OpFLOW_JIZ(Method.OpCodes[OpCodePos1].OpCode).Position := Method.OpCodes.Count;
 
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, False), ''));
-      State.IncStack;
+      while true do
+      begin
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, False), ''));
+        State.IncStack;
 
-      State.TargetType := Expr;
-                                  
-      State.IsExpression := True;
-      CaseType := Expression(State, Method, Expr);
-      if not IsCompatible(Expr, CaseType, sesNone, False, Self) then
-         RaiseError(petError, 'Type dismatch'); 
-      State.IsExpression := False;
+        State.TargetType := Expr;
 
+        State.IsExpression := True;
+        CaseType := Expression(State, Method, Expr);
+        if not IsCompatible(Expr, CaseType, sesNone, False, Self) then
+           RaiseError(petError, 'Type dismatch');
+        State.IsExpression := False;
+
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(1), ''));
+        State.DecStack;
+
+        NextJumps.Add(Method.OpCodes.Count);
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
+        State.DecStack;
+
+        ExpectToken([sesDoublePoint, sesColon]);
+        if Tokenizer.Token.AType = sesDoublePoint then
+           break;
+
+        ExpectToken([sesColon]);
+        ReadNextToken;
+
+        EqualJumps.Add(Method.OpCodes.Count);
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+
+        PSE2OpFLOW_JIZ(Method.OpCodes.Items[NextJumps[0]].OpCode).Position := Method.OpCodes.Count;
+        NextJumps.Clear;
+      end;
+
+      iCaseCount := iCaseCount + 1;
       ExpectToken([sesDoublePoint]);
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(1), ''));
-      State.DecStack;
 
-      OpCodePos1 := Method.OpCodes.Count;
-      OpCodePos2 := Method.OpCodes.Count;
+      for i:=0 to EqualJumps.Count-1 do
+        PSE2OpFLOW_GOTO(Method.OpCodes[EqualJumps[i]].OpCode).Position := Method.OpCodes.Count;
+      EqualJumps.Clear;
 
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
-      State.DecStack;
 
       ReadNextToken;
       Statement(State, Method);
@@ -4000,11 +4172,20 @@ begin
 
       FinalJumps.Add(Method.OpCodes.Count);
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
-    end;
-    if OpCodePos2 = -1 then
-       RaiseError(petError, 'Expression expected');
 
-    PSE2OpFLOW_JIZ(Method.OpCodes[OpCodePos2].OpCode).Position :=  Method.OpCodes.Count;
+      for i:=0 to NextJumps.Count-1 do
+        PSE2OpFLOW_JIZ(Method.OpCodes[NextJumps[i]].OpCode).Position := Method.OpCodes.Count;
+      NextJumps.Clear;
+    end;            {
+    if NextJumps.Count = 0 then
+       RaiseError(petError, 'Expression expected');  }
+
+    for i:=0 to NextJumps.Count-1 do
+      PSE2OpFLOW_JIZ(Method.OpCodes[NextJumps[i]].OpCode).Position := Method.OpCodes.Count;
+
+
+    if iCaseCount = 0 then
+       RaiseError(petError, 'Expression expected');
 
     if Tokenizer.Token.AType in [sesElse] then
     begin
@@ -4023,6 +4204,8 @@ begin
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
     State.DecStack;
   finally
+    EqualJumps.Free;
+    NextJumps.Free;
     FinalJumps.Free;
   end;
   State.TargetType := nil;
@@ -5439,7 +5622,8 @@ begin
     begin
       ReadNextToken;
       ExpectToken([sesIdentifier]);
-      aType := TSE2Type(FindIdentifier(Method, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
+      aType := TypeExpression(Method);
+      //aType := TSE2Type(FindIdentifier(Method, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
       if aType = nil then
          RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
 
@@ -6290,6 +6474,104 @@ begin
          ReadNextToken;
       end;
     end;
+end;
+
+function TSE2Parser.TypeExpression(Method: TSE2Method): TSE2Type;
+var aType     : TSE2BaseType;
+    sUnitName : string;
+    sCheckName: string;
+begin
+  result := nil;
+  ExpectToken([sesIdentifier]);
+
+  sUnitName  := '';
+  sCheckName := '';
+  while true do
+  begin
+    aType := FindIdentifier(Method, Tokenizer.Token.Value, nil, sUnitName, TSE2BaseTypeFilter.Create([TSE2Unit, TSE2Type]));
+    if aType = nil then
+    begin
+       RaiseError(petError, 'Unkown identifier: ' + Tokenizer.Token.Value);
+       exit;
+    end;
+
+    if aType is TSE2Unit then
+    begin
+      if sCheckName <> '' then
+         sCheckName := sCheckName + '.';
+      sCheckName := sCheckName + Tokenizer.Token.Value;
+
+      sUnitName := aType.Name;
+      ReadNextToken;
+      ExpectToken([sesDot]);
+      ReadNextToken;
+      ExpectToken([sesIdentifier]);
+    end else
+    if aType is TSE2Type then
+    begin
+      if sCheckName <> '' then
+         if not StringIdentical(sUnitName, sCheckName) then
+            RaiseError(petError, 'Unknown identifier: ' + sCheckName + '.' + Tokenizer.Token.Value);
+
+      result := TSE2Type(aType);
+      break;
+    end else
+    begin
+      RaiseError(petError, 'Identifier is not a declared type: ' + Tokenizer.Token.Value);
+      exit;
+    end;
+  end;
+end;
+
+{
+
+}
+
+class function TSE2Parser.HasHelper(TargetType, CurrentType: TSE2Type;
+  UnitList: TSE2BaseTypeList; Operation: TSE2TokenType = sesNone): boolean;
+var i, j, k  : integer;
+    aUnit    : TSE2Unit;
+    helper   : TSE2Class;
+    pType    : TSE2Type;
+    m        : TSE2Method;
+begin
+  result := False;
+  pType  := CurrentType;
+  while pType <> nil do
+  begin
+    for i:=0 to UnitList.Count-1 do
+    begin
+      aUnit := TSE2Unit(UnitList[i]);
+      for j:=0 to aUnit.TypeList.Count-1 do
+        if aUnit.TypeList[j] is TSE2Class then
+        begin
+          helper := TSE2Class(aUnit.TypeList[j]);
+          if helper.IsHelper then
+          begin
+            for k:=0 to aUnit.ElemList.Count-1 do
+            begin
+              if aUnit.ElemList[k].Parent = helper then
+                if aUnit.ElemList[k] is TSE2Method then
+                begin
+                  m := TSE2Method(aUnit.ElemList[k]);
+                  if m.ReturnValue <> nil then
+                     if TSE2Parser.IsCompatible(TargetType, m.ReturnValue.AType, Operation) then
+                     begin
+                       result := True;
+                       exit;
+                     end;
+                end;
+            end;
+          end;
+        end;
+    end;
+    pType := TSE2Type(pType.InheritFrom);
+  end;
+end;
+
+function TSE2Parser.GetExternalObjectType: TSE2Type;
+begin
+  result := TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class])));
 end;
 
 end.

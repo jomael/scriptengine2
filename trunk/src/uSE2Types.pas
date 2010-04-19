@@ -117,6 +117,8 @@ type
   public
     Filters : TSE2BaseTypeClasses;
     constructor Create(Filter: array of TSE2BaseTypeClass); reintroduce;
+
+    function Duplicate: TSE2BaseTypeFilter;
   end;
 
   TSE2BaseTypeList = class(TSE2Object)
@@ -1656,6 +1658,13 @@ begin
   SetLength(Filters, length(Filter));
   for i:=Low(Filter) to High(Filter) do
     Filters[i] := Filter[i];
+end;
+
+function TSE2BaseTypeFilter.Duplicate: TSE2BaseTypeFilter;
+begin
+  result := nil;
+  if Self <> nil then
+     result := TSE2BaseTypeFilter.Create(Self.Filters);
 end;
 
 { TSE2LinkStringList }

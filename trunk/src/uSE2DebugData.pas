@@ -74,7 +74,11 @@ const
                 // Safe-Blocks
                 'soSAFE_TRYFIN', 'soSAFE_TRYEX', 'soSAFE_BLOCK', 'soSAFE_TRYEND', 'soSAFE_SJUMP',
 
-                'soDEBUG_META', 'soFINIT_STACK'
+                // special runtime data
+                'soDEBUG_META', 'soFINIT_STACK',
+
+                // Meta
+                'soMETA_PUSH', 'soMETA_SHARE'
                 );
 
 class function TSE2DebugHelper.OpCodeToStr(PE: TSE2PE; OpCode: PSE2OpDefault): string;
@@ -87,6 +91,8 @@ begin
   case OpCode.OpCode of
   soFINIT_STACK          : result := 'FSTK';
   soDEBUG_META           : result := 'META';
+  soMETA_PUSH            : result := Format('MPUT [%d]', [PSE2OpMETA_PUSH(OpCode).MetaIndex]);
+  soMETA_SHARE           : result := Format('MSHR [%d]', [PSE2OpMETA_SHARE(OpCode).MetaIndex]);
   soNOOP                 : result := 'NOOP';
   soSTACK_INC            : result := Format('PUSH [%s]', [VarTypeToStr(PSE2OpSTACK_INC(OpCode).AType)]);
   soSTACK_INC_COUNT      : result := Format('PUSH [%d %s]', [PSE2OpSTACK_INC_COUNT(OpCode).Count, VarTypeToStr(PSE2OpSTACK_INC_COUNT(OpCode).AType)]);

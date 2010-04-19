@@ -24,8 +24,8 @@ type
 
     procedure Clear;
 
-    procedure Add(Name: string; Target: Pointer);
-    procedure SetValues(Name: string; Value: Pointer);
+    procedure Add(const Name: string; Target: Pointer);
+    procedure SetValues(const Name: string; Value: Pointer);
   end;
 
 implementation
@@ -34,7 +34,7 @@ uses SysUtils;
 
 { TSE2NameWeaver }
 
-procedure TSE2NameWeaver.Add(Name: string; Target: Pointer);
+procedure TSE2NameWeaver.Add(const Name: string; Target: Pointer);
 var p: PSE2NameWeaverEntry;
 begin
   if Name = '' then
@@ -75,7 +75,7 @@ begin
   inherited;
 end;
 
-procedure TSE2NameWeaver.SetValues(Name: string; Value: Pointer);
+procedure TSE2NameWeaver.SetValues(const Name: string; Value: Pointer);
 var NameHash : integer;
     p        : PSE2NameWeaverEntry;
     i        : integer;

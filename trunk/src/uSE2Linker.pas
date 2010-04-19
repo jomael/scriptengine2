@@ -350,6 +350,7 @@ var CodePos: integer;
     end;
   end;
 
+var OpCode: TSE2LinkOpCode;
 begin
   if (Method.OpCodes.Count = 0) and (not Method.IsExternal) and (not Method.IsAbstract) then
      exit;
@@ -408,25 +409,34 @@ begin
 
   for i:=0 to Method.OpCodes.Count-1 do
   begin
+    OpCode := Method.OpCodes[i];
     // Do not set .OpCode := nil here - later links will fail
-    PE.OpCodes.Add(Method.OpCodes[i].OpCode);
+    PE.OpCodes.Add(OpCode.OpCode);
 
     // If OpCode is not linked to a global entry,
     // add the CodeOffset to every OpCode
     // right variable will be choosen in "AddCodeOffset"
-    if Method.OpCodes[i].CodeIndex = '' then
-       AddCodeOffset(Method.OpCodes[i].OpCode, CodePos);
+    if OpCode.CodeIndex = '' then
+       AddCodeOffset(OpCode.OpCode, CodePos);
 
-    if Method.OpCodes[i].OpCode.OpCode = soFLOW_CALLEX then
-       PSE2OpFLOW_CALLEX(Method.OpCodes[i].OpCode).MetaIndex := PE.MetaData.Count - 1;
+    if OpCode.OpCode.OpCode = soFLOW_CALLEX then
+       PSE2OpFLOW_CALLEX(OpCode.OpCode).MetaIndex := PE.MetaData.Count - 1;
 
-    if Method.OpCodes[i].OpCode.OpCode = soSPEC_CREATE then
+    if OpCode.OpCode.OpCode = soSPEC_CREATE then
     begin
-      PSE2OpSPEC_CREATE(Method.OpCodes[i].OpCode).MetaIndex := FindClassMeta(Method.OpCodes[i].CodeIndex);
+      PSE2OpSPEC_CREATE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
     end;
-    if Method.OpCodes[i].OpCode.OpCode = soREC_MAKE then
+    if OpCode.OpCode.OpCode = soMETA_PUSH then
     begin
-      PSE2OpREC_MAKE(Method.OpCodes[i].OpCode).MetaIndex := FindRecordMeta(Method.OpCodes[i].CodeIndex);
+      PSE2OpMETA_PUSH(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+    end;
+    if OpCode.OpCode.OpCode = soMETA_SHARE then
+    begin
+      PSE2OpMETA_SHARE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+    end;
+    if OpCode.OpCode.OpCode = soREC_MAKE then
+    begin
+      PSE2OpREC_MAKE(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
     end;
   end;
 end;
@@ -1142,9 +1152,8 @@ var aInheritUnit, aInheritName : string;
     i    : integer;
 begin
   result := nil;
-  aInheritUnit := Copy(string(aClass.ParamDecl), 1, Pos('.', string(aClass.ParamDecl)) - 1);
-  aInheritName := Copy(string(aClass.ParamDecl), Pos('.', string(aClass.ParamDecl)) + 1, MaxInt);
 
+  SE2SplitFullQualifiedName(string(aClass.ParamDecl), aInheritUnit, aInheritName);
   for i:=0 to PE.MetaData.Count-1 do
     if PE.MetaData[i].MetaType = mtClass then
       if PE.MetaData[i].AUnitName = aInheritUnit then
@@ -1226,8 +1235,8 @@ var aInheritUnit, aInheritName : string;
     i    : integer;
 begin
   result := nil;
-  aInheritUnit := Copy(string(aRecord.ParamDecl), 1, Pos('.', string(aRecord.ParamDecl)) - 1);
-  aInheritName := Copy(string(aRecord.ParamDecl), Pos('.', string(aRecord.ParamDecl)) + 1, MaxInt);
+
+  SE2SplitFullQualifiedName(string(aRecord.ParamDecl), aInheritUnit, aInheritName);
 
   for i:=0 to PE.MetaData.Count-1 do
     if PE.MetaData[i].MetaType = mtRecord then

@@ -161,9 +161,41 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 8; Build: 1);
-  
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 9; Build: 0);
+
+
+function SE2SplitFullQualifiedName(const Input: string; var AUnitName, ATypeName: string): boolean;
+
 implementation
+
+function SE2SplitFullQualifiedName(const Input: string;
+  var AUnitName, ATypeName: string): boolean;
+begin
+  AUnitName := '';
+  ATypeName := '';
+
+  if Pos('.', Input) = 0 then
+  begin
+    ATypeName := Input;
+    result    := True;
+    exit;
+  end;
+
+  ATypeName := Input;
+  while Pos('.', ATypeName) > 0 do
+  begin
+    if AUnitName <> '' then
+       AUnitName := AUnitName + '.';
+
+    AUnitName := AUnitName + Copy(ATypeName, 1, Pos('.', ATypeName) - 1);
+    ATypeName := Copy(ATypeName, Pos('.', ATypeName) + 1, MaxInt);
+  end;
+
+  result := (Pos(' ', AUnitName) = 0) and
+            (Pos(' ', ATypeName) = 0);
+
+  result := result and (length(ATypeName) > 0);
+end;
 
 { TSE2StreamHelper }
 
@@ -323,7 +355,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 04, 15);
+  result := EncodeDate(2010, 04, 19);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }

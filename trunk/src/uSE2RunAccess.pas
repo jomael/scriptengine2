@@ -108,18 +108,14 @@ end;
 function TSE2RunAccess.FindParentClass(
   Child: TSE2MetaEntry): TSE2MetaEntry;
 var sClass, sUnit : string;
-    iPos          : integer;
 begin
   result := nil;
   if Child.MetaType <> mtClass then
      exit;
 
-  iPos := Pos('.', string(Child.ParamDecl));
-  if iPos = 0 then
+  SE2SplitFullQualifiedName(string(Child.ParamDecl), sUnit, sClass);
+  if sUnit = '' then
      exit;
-
-  sUnit  := Copy(string(Child.ParamDecl), 1, iPos - 1);
-  sClass := Copy(string(Child.ParamDecl), iPos + 1, MaxInt);
 
   result := FindClass(sClass, sUnit);
 end;
