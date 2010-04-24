@@ -31,6 +31,7 @@ type
     class function UnRegisterUnit(aUnit: TSE2ManagedUnit): boolean;
     class function FindUnit(const Name: string): TSE2ManagedUnit;
 
+    class procedure RegisterExceptions(Target: TSE2RunAccess);
     class procedure RegisterMethods(Target: TSE2RunAccess);
     class procedure RegisterVariables(Target: TSE2RunAccess);
 
@@ -58,6 +59,7 @@ type
     function  LastChangeTime(index: integer): TDateTime; virtual; abstract;
     function  CanCacheSource(index: integer): boolean; virtual; abstract;
 
+    procedure RegisterExceptions(index: integer; const Target: TSE2RunAccess); virtual; abstract;
     procedure GetUnitSource(index: integer; var Target: string); overload; virtual; abstract;
     function  GetUnitSource(index: integer): string; overload;
     procedure RegisterVariables(index: integer; const Target: TSE2RunAccess); virtual; abstract;
@@ -76,8 +78,7 @@ type
   TSE2UnitLastChangeTime     = function: TDateTime;
   TSE2UnitCanCacheSource     = function: boolean;
   TSE2UnitGetUnitSource      = procedure(var Target: string);
-  TSE2UnitRegisterVariables  = procedure(const Target: TSE2RunAccess);
-  TSE2UnitRegisterMethods    = procedure(const Target: TSE2RunAccess);
+  TSE2UnitRegisterEvent      = procedure(const Target: TSE2RunAccess);
 
 
   TSE2MethodUnit = class(TSE2ManagedUnit)
@@ -94,8 +95,9 @@ type
     DoLastChangeTime    : TSE2UnitLastChangeTime;
     DoCanCacheSource    : TSE2UnitCanCacheSource;
     DoGetUnitSource     : TSE2UnitGetUnitSource;
-    DoRegisterVariables : TSE2UnitRegisterVariables;
-    DoRegisterMethods   : TSE2UnitRegisterMethods;
+    DoRegisterVariables : TSE2UnitRegisterEvent;
+    DoRegisterMethods   : TSE2UnitRegisterEvent;
+    DoRegExceptions     : TSE2UnitRegisterEvent;
   public
     constructor Create; override;
 
@@ -105,6 +107,7 @@ type
     procedure GetUnitSource(index: integer; var Target: string); override;
     procedure RegisterVariables(index: integer; const Target: TSE2RunAccess); override;
     procedure RegisterMethods(index: integer; const Target: TSE2RunAccess); override;
+    procedure RegisterExceptions(index: Integer; const Target: TSE2RunAccess); override;
   end;
 
 implementation
@@ -244,6 +247,19 @@ begin
   FList.Sort(@ListSortMethod);
 end;
 
+class procedure TSE2UnitManager.RegisterExceptions(Target: TSE2RunAccess);
+var i, j: integer;
+begin
+  Target.Exceptions.Clear;
+
+  Instance.DoSort;
+  for i:=0 to Instance.FList.Count-1 do
+    for j:=0 to TSE2ManagedUnit(Instance.FList[i]).Modules-1 do
+      TSE2ManagedUnit(Instance.FList[i]).RegisterExceptions(j, Target);
+
+  Target.Exceptions.Sort;
+end;
+
 { TSE2ManagedUnit }
 
 constructor TSE2ManagedUnit.Create;
@@ -299,7 +315,7 @@ begin
   inherited;
   DoLastChangeTime    := MethodUnit_LastChangeTime;
   DoCanCacheSource    := MethodUnit_CanCacheSource;
-  DoRegisterVariables := MethodUnit_RegisterVariables;         
+  DoRegisterVariables := MethodUnit_RegisterVariables;
 end;
 
 function TSE2MethodUnit.GetIsExtender(index: Integer): Boolean;
@@ -332,14 +348,23 @@ begin
   result := DoLastChangeTime;
 end;
 
+procedure TSE2MethodUnit.RegisterExceptions(index: Integer;
+  const Target: TSE2RunAccess);
+begin
+  if Assigned(DoRegExceptions) then
+     DoRegExceptions(Target);
+end;
+
 procedure TSE2MethodUnit.RegisterMethods(index: integer; const Target: TSE2RunAccess);
 begin
-  DoRegisterMethods(Target);
+  if Assigned(DoRegisterMethods) then
+     DoRegisterMethods(Target);
 end;
 
 procedure TSE2MethodUnit.RegisterVariables(index: integer; const Target: TSE2RunAccess);
 begin
-  DoRegisterVariables(Target);
+  if Assigned(DoRegisterVariables) then
+     DoRegisterVariables(Target);
 end;
 
 procedure TSE2MethodUnit.SetModuleName(index: Integer; value: String);

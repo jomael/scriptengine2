@@ -14,7 +14,7 @@ type
     FCache    : Pointer;
     FCacheEnd : integer;
     FEntryC   : integer;
-    FEntries  : TSE2List;
+    FEntries  : TList;
     {$ENDIF}
   protected
     {$IFDEF SEII_MM_USE_CACHE}
@@ -51,7 +51,7 @@ constructor TSE2MemoryManager.Create;
 begin
   inherited;
   {$IFDEF SEII_MM_USE_CACHE}
-  FEntries  := TSE2List.Create;
+  FEntries  := TList.Create;
   CreateCache;
   {$ENDIF}
 end;
@@ -77,7 +77,7 @@ begin
   FCacheEnd := cardinal(FCache) + CacheSize - 1;
   FEntries.Count := (CacheSize div MaxDataSize);
   for i:=0 to (CacheSize div MaxDataSize) - 1 do
-    FEntries.Data[i] := (Pointer(  cardinal(FCache) + i*MaxDataSize  ));
+    FEntries.List[i] := (Pointer(  cardinal(FCache) + i*MaxDataSize  ));
   FEntryC := FEntries.Count - 1;
 end;
 {$ENDIF}           
@@ -101,7 +101,7 @@ begin
      (cardinal(Data) <= cardinal(FCacheEnd)) then
   begin
     FEntryC := FEntryC + 1;
-    FEntries.Data[FEntryC] := (Data);
+    FEntries.List[FEntryC] := (Data);
   end else
   {$ENDIF}
     System.FreeMem(Data);
@@ -114,7 +114,7 @@ begin
      (cardinal(Data) <= cardinal(FCacheEnd)) then
   begin
     FEntryC := FEntryC + 1;
-    FEntries.Data[FEntryC] := (Data);
+    FEntries.List[FEntryC] := (Data);
   end else
   {$ENDIF}
     System.FreeMem(Data, iSize);
@@ -125,7 +125,7 @@ begin
   {$IFDEF SEII_MM_USE_CACHE}
   if (iSize <= MaxDataSize) and (FEntryC >= 0) then
   begin
-    result := FEntries.Data[FEntryC];
+    result := FEntries.List[FEntryC];
     FEntryC := FEntryC - 1;
   end else
   {$ENDIF}
@@ -137,7 +137,7 @@ begin
   {$IFDEF SEII_MM_USE_CACHE}
   if (iSize <= MaxDataSize) and (FEntryC >= 0) then
   begin
-    ptr     := FEntries.Data[FEntryC];
+    ptr     := FEntries.List[FEntryC];
     FEntryC := FEntryC - 1;
   end else
   {$ENDIF}

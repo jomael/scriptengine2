@@ -159,12 +159,13 @@ type
 
                 // Safe-Blocks
                 soSAFE_TRYFIN, soSAFE_TRYEX, soSAFE_BLOCK, soSAFE_TRYEND, soSAFE_SJUMP,
+                soSAFE_INTER, soSAFE_STACK, soSAFE_PEX,
 
                 // special runtime data
                 soDEBUG_META, soFINIT_STACK,
 
                 // Meta
-                soMETA_PUSH, soMETA_SHARE
+                soMETA_PUSH, soMETA_SHARE, soMETA_CNAME
                 );
 
 type
@@ -662,10 +663,14 @@ type
     class function SAFE_BLOCK(SkipPoint: cardinal): PSE2OpDefault;
     class function SAFE_TRYEND: PSE2OpDefault;
     class function SAFE_SJUMP(Target, ExitTo: cardinal): PSE2OpDefault;
+    class function SAFE_INTER: PSE2OpDefault;
+    class function SAFE_STACK: PSE2OpDefault;
+    class function SAFE_PEX: PSE2OpDefault;
 
     class function DEBUG_META(index: cardinal): PSE2OpDefault;
     class function FINIT_STACK(stackSize: integer): PSE2OpDefault;
 
+    class function META_CNAME: PSE2OpDefault;
     class function META_PUSH(index: integer): PSE2OpDefault;
     class function META_SHARE(index: integer): PSE2OpDefault;
   end;
@@ -1040,6 +1045,26 @@ class function TSE2OpCodeGen.META_SHARE(index: integer): PSE2OpDefault;
 begin
   result := DefaultOP(soMETA_SHARE);
   PSE2OpMETA_SHARE(result)^.MetaIndex := index;
+end;
+
+class function TSE2OpCodeGen.META_CNAME: PSE2OpDefault;
+begin
+  result := DefaultOP(soMETA_CNAME);
+end;
+
+class function TSE2OpCodeGen.SAFE_INTER: PSE2OpDefault;
+begin
+  result := DefaultOP(soSAFE_INTER);
+end;
+
+class function TSE2OpCodeGen.SAFE_STACK: PSE2OpDefault;
+begin
+  result := DefaultOP(soSAFE_STACK)
+end;
+
+class function TSE2OpCodeGen.SAFE_PEX: PSE2OpDefault;
+begin
+  result := DefaultOP(soSAFE_PEX);
 end;
 
 { TSE2OpCodeList }

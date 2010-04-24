@@ -554,7 +554,7 @@ var ReturnVar : PSE2VarData;
     pVarRecords: TList;
 begin
   if Method = nil then
-     raise ESE2NullReferenceError.Create('External Method "'+MetaData.AUnitName+'.'+MetaData.Name+'" is not assigned');
+     raise ESE2UnassignedMethod.Create('External Method "'+MetaData.AUnitName+'.'+MetaData.Name+'" is not assigned');
 
   Self.MethodPos := Method;
   Self.CallType  := MetaData.CallType;

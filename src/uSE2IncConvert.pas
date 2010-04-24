@@ -129,7 +129,7 @@ procedure RegisterUnit;
 var p : TSE2MethodUnit;
 begin
   p := TSE2MethodUnit.Create;              
-  p.Priority          := 2;
+  p.Priority          := 3;
   p.DoRegisterMethods := Unit_RegisterMethods;
   p.DoGetUnitSource   := Unit_GetSource;
   p.UnitName          := C_UnitName;

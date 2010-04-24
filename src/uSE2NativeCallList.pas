@@ -17,7 +17,7 @@ type
 
   TSE2NativeCallList = class(TObject)
   private
-    FList : TSE2List;
+    FList : TLIst;
   protected
     function GetCount: integer;
     function GetItem(index: integer): PSE2NativeCallEntry;
@@ -78,7 +78,7 @@ end;
 constructor TSE2NativeCallList.Create;
 begin
   inherited;
-  FList := TSE2List.Create;
+  FList := TList.Create;
 end;
 
 destructor TSE2NativeCallList.Destroy;

@@ -28,6 +28,7 @@ type
     FGetModuleName   : TSE2PackageGetModuleName;
     FGetModuleSource : TSE2PackageGetModuleSource;
     FRegisterMethods : TSE2PackageRegisterModule;
+    FRegisterExcept  : TSE2PackageRegExceptions;
   protected
     function  PackageGetNumModules: integer;
     procedure PackageGetModuleName(index: integer; var Target: AnsiString);
@@ -58,6 +59,7 @@ type
     procedure GetUnitSource(index: integer; var Target: String); override;
     procedure RegisterMethods(index: integer; const Target: TSE2RunAccess); override;
     procedure RegisterVariables(index: integer; const Target: TSE2RunAccess); override;
+    procedure RegisterExceptions(index: Integer; const Target: TSE2RunAccess); override;
 
 
     property  GUID       : TGUID       read FGUID;
@@ -285,6 +287,8 @@ begin
   if not Assigned(FRegisterMethods) then
      exit;
 
+  FRegisterExcept := GetProcAddress(FDLLHandle, PAnsiChar(CSE2PackageRegExceptions));
+
   FGetIsExtender   := GetProcAddress(FDLLHandle, PAnsiChar(CSE2PackageIsExtender));  
 
   if PackInit() <> 0 then
@@ -420,7 +424,7 @@ procedure PackageRegisterCallback(Module: TPackageModule; Data: TSE2RunAccess; M
 begin
   if Data <> nil then
     if Data.TmpObj <> nil then
-    begin                                   
+    begin
       Data.Method[string(MethodName), TSE2PackageUnit(Data.TmpObj).FCurrentUnitName] := MethodPos;
     end;
 end;
@@ -438,6 +442,31 @@ begin
   if Target.HasUnit(FCurrentUnitName) then
     if Assigned(FRegisterMethods) then
        FRegisterMethods(index, Target, @PackageRegisterCallback);
+end;
+
+procedure PackageRegisterExceptCallback(Module: TPackageModule; Data: TSE2RunAccess; AClass: Pointer; ATypeName: PAnsiChar); stdcall;
+begin
+  if Data <> nil then
+    if Data.TmpObj <> nil then
+    begin
+      Data.Exceptions.Add(AClass, Data.FindClass(string(ATypeName), TSE2PackageUnit(Data.TmpObj).FCurrentUnitName));
+    end;
+end;
+
+procedure TSE2PackageUnit.RegisterExceptions(index: Integer;
+  const Target: TSE2RunAccess);
+var sUnitName : AnsiString;
+begin
+  if not FPackageLoaded then
+     exit;
+
+  Target.TmpObj := Self;
+  PackageGetModuleName(index, sUnitName);
+  FCurrentUnitName := string(sUnitName);
+
+  if Target.HasUnit(FCurrentUnitName) then
+    if Assigned(FRegisterExcept) then
+       FRegisterExcept(index, Target, @PackageRegisterExceptCallback);
 end;
 
 function TSE2PackageUnit.GetIsExtender(index: Integer): Boolean;

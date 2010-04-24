@@ -81,7 +81,7 @@ type
   private
     FVarHelp  : TSE2VarHelper;
     {$IFDEF SEII_STACK_USE_CACHE}
-    FList     : TSE2List;
+    FList     : TList;
     FCounter  : integer;
     {$ENDIF}
     FMinCount : integer;
@@ -100,11 +100,10 @@ type
     property MaxCount: integer      read FMaxCount      write FMaxCount;
   end;
 
-  TSE2Stack = class(TSE2List)
+  TSE2Stack = class(TList)
   private
     FVarHelp : TSE2VarHelper;
     FPool    : TSE2VarPool;
-    //FList    : TSE2List;
     FSize    : integer;
     FTop     : PSE2VarData;
 
@@ -130,7 +129,7 @@ type
     //procedure PopNoDel; overload;
     //procedure PopNoDel(index: integer); overload;
 
-    property  Top: PSE2VarData     read FTop;
+    property  Top: PSE2VarData      read FTop;
 
     property MaxSize : integer     read FMaxSize     write FMaxSize;
     property IncSize : integer     read FIncSize     write FIncSize;
@@ -139,6 +138,26 @@ type
     property Pool    : TSE2VarPool read FPool;
 
     property Items[index: integer]: PSE2VarData read GetItem  write SetItem; default;
+  end;
+
+  PSE2RegisteredException = ^TSE2RegisteredException;
+  TSE2RegisteredException = record
+    AClass    : TClass;
+    Meta      : TSE2MetaEntry;
+  end;
+
+  TSE2RegisteredExceptions = class(TObject)
+  private
+    FList : TList;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    procedure Clear;
+    procedure Sort;
+
+    procedure Add(Ex: TClass; Meta: TSE2MetaEntry);
+    function  GetException(Ex: TClass): TSE2MetaEntry;
   end;
 
   TSE2ClassGC = class(TObject)
@@ -801,7 +820,7 @@ begin
   inherited Create;
   FVarHelp := VarHelp;
   {$IFDEF SEII_STACK_USE_CACHE}
-  FList    := TSE2List.Create;
+  FList    := TList.Create;
   {$ENDIF}
 
   FMinCount := 5;
@@ -901,15 +920,19 @@ begin
   FSize := 0;
 end;
 
+const
+  BaseStackSize = $FFFF;
+
 constructor TSE2Stack.Create(VarHelp: TSE2VarHelper);
 begin
   inherited Create;
   FVarHelp := VarHelp;
-  //FList := TSE2List.Create;
   FPool := TSE2VarPool.Create(FVarHelp);
 
-  FMaxSize := $FFFFF;
-  FIncSize := $30;
+  FMaxSize := $FFFFFF;
+  FIncSize := $3E8;
+
+  Self.Count := BaseStackSize;
 
   ManageStack;
 end;
@@ -945,14 +968,18 @@ begin
   begin
     newSize := FSize + FIncSize;
     if newSize > FMaxSize then
-       raise ESE2RunTimeError.Create('Script Stack Overflow');
+       raise ESE2StackOverflow.Create('Stack Overflow');
 
     Self.Count := newSize;
   end else
-  if Self.Count > FSize + 1 + (FIncSize * 5) then
+  if (Self.Count > FSize + 1 + (FIncSize * 5)) then
   begin
     newSize := FSize + 1 + FIncSize * 2;
-    Self.Count := newSize;
+    if newSize < BaseStackSize then
+       newSize := BaseStackSize;
+
+    if Self.Count <> newSize then
+       Self.Count := newSize;
   end;
 end;
 
@@ -969,7 +996,7 @@ begin
      FPool.Push(p);
 
   FSize := FSize - 1;
-  FTop  := Data[FSize - 1];
+  FTop  := List[FSize - 1];
 
   //ManageStack;
 end;
@@ -1298,6 +1325,89 @@ begin
   else
      result := FItems[index];
 
+end;
+
+{ TSE2RegisteredExceptions }
+
+procedure TSE2RegisteredExceptions.Clear;
+var i: integer;
+    p: PSE2RegisteredException;
+begin
+  for i:=FList.Count-1 downto 0 do
+  begin
+    p := FList[i];
+    Dispose(p);
+  end;
+  FList.Clear;
+end;
+
+constructor TSE2RegisteredExceptions.Create;
+begin
+  inherited;
+  FList := TList.Create;
+end;
+
+destructor TSE2RegisteredExceptions.Destroy;
+begin
+  Clear;
+  FList.Free;
+  inherited;
+end;
+
+function TSE2RegisteredExceptions.GetException(Ex: TClass): TSE2MetaEntry;
+var i: integer;
+    p: PSE2RegisteredException;
+begin
+  for i := FList.Count-1 downto 0 do
+  begin
+    p := FList[i];
+    if p.AClass = Ex then
+    begin
+      result := p^.Meta;
+      exit;
+    end;
+  end;
+
+  for i := FList.Count-1 downto 0 do
+  begin
+    p := FList[i];
+    if Ex.InheritsFrom(p.AClass) then
+    begin
+      result := p^.Meta;
+      exit;
+    end;
+  end;
+
+  result := nil;
+end;
+
+procedure TSE2RegisteredExceptions.Add(Ex: TClass;
+  Meta: TSE2MetaEntry);
+var p: PSE2RegisteredException;
+begin
+  if Meta = nil then
+     exit;
+     
+  New(p);
+  p^.AClass := Ex;
+  p^.Meta   := Meta;
+  FList.Add(p);
+end;
+
+function ExceptionsSortCompare(Item1, Item2: PSE2RegisteredException): Integer;
+begin
+  if Item1^.Meta.Index < Item2^.Meta.Index then
+     result := -1
+  else
+  if Item1^.Meta.Index > Item2^.Meta.Index then
+     result := 1
+  else
+     result := 0;
+end;
+
+procedure TSE2RegisteredExceptions.Sort;
+begin
+  FList.Sort(@ExceptionsSortCompare);
 end;
 
 initialization

@@ -36,6 +36,7 @@ type
     WasFunction    : boolean;
     NoStaticPointer: boolean;
     RecordsCreated : integer;
+    IsInExceptBlock: boolean;
 
     TargetType     : TSE2Type;
     Method         : TSE2Method;
@@ -118,6 +119,7 @@ type
     procedure MethodBodyDeclaration(State: TSE2ParseState; Method: TSE2Method);
     procedure PushMethodVariables(State: TSE2ParseState; Method: TSE2Method);
     procedure PopMethodVariables(State: TSE2ParseState; Method: TSE2Method);
+    function  ExceptionCreation(State: TSE2ParseState; Method: TSE2Method): boolean;
 
     procedure IdentifierSetterEvent(Sender: TObject; State: TSE2ParseState; Method: TSE2Method; Target: TSE2Type);
     function  IdentifierExpression(State: TSE2ParseState; Method: TSE2Method; SetterCallBack: TSE2SetterEvent; AccessSet: boolean = False; UseVarMove: boolean = False): TSE2Type;
@@ -125,6 +127,7 @@ type
     procedure AtStatement(State: TSE2ParseState; Method: TSE2Method);
     procedure IfStatement(State: TSE2ParseState; Method: TSE2Method);
     procedure CaseStatement(State: TSE2ParseState; Method: TSE2Method);
+    procedure OnExceptStatement(State: TSE2ParseState; Method: TSE2Method);
     procedure RepeatStatement(State: TSE2ParseState; Method: TSE2Method);
     procedure WhileStatement(State: TSE2ParseState; Method: TSE2Method);
     procedure ForStatement(State: TSE2ParseState; Method: TSE2Method);
@@ -154,6 +157,9 @@ type
     function  GetStringType: TSE2Type;
     function  GetPointerType: TSE2Type;
     function  GetExternalObjectType: TSE2Type;
+    function  GetScriptObjectType: TSE2Type;
+    function  GetScriptExceptionType: TSE2Type;
+    function  IsScriptExceptionType(aType: TSE2Type): boolean;
     procedure DeclareType(State: TSE2ParseState; const aType: TSE2BaseType; const Name: string; UnitName: string = '');
     procedure ReadNextToken;
     function  ExpectToken(Symbol : TSE2TokenTypes): boolean;
@@ -660,7 +666,7 @@ begin
      RaiseError(petError, 'Unkown symbol found: '+Tokenizer.Token.Value);
 end;
 
-procedure TSE2Parser.ParseProgram(State: TSE2ParseState); 
+procedure TSE2Parser.ParseProgram(State: TSE2ParseState);
 var oldExitList : integer;
     i           : integer;
 begin
@@ -683,6 +689,8 @@ begin
   FUnit.Main.Lists.ExitTableList.Add(State.StackSize);
 
   ValidateForwards(State);
+
+  GenCode(FUnit.Main, TSE2LinkOpCode.Create(TSE2OpCodeGen.DEBUG_META(0), FUnit.Main.GenLinkerName));
   StatementSquence(State, FUnit.Main);
 
   FUnit.Main.Lists.ExitTableList.Delete(FUnit.Main.Lists.ExitTableList.Count-1);
@@ -1401,7 +1409,7 @@ begin
       ClassType.IsForwarded := True;
       FUnit.TypeList.Add(ClassType);
 
-      BaseClass := TSE2Class(FindIdentifier(nil, C_SE2TObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class])));
+      BaseClass := GetScriptObjectType;
       if BaseClass = nil then
       begin
         RaiseError(petError, 'FATAL ERROR: internal '+C_SE2TObjectName+' not found!');
@@ -1532,7 +1540,7 @@ begin
       ReadNextToken;
     end else
     begin
-      BaseClass := TSE2Class(FindIdentifier(nil, C_SE2TObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class])));
+      BaseClass := GetScriptObjectType;
       if BaseClass = nil then
       begin
         RaiseError(petError, 'FATAL ERROR: internal '+C_SE2TObjectName+' not found!');
@@ -2057,7 +2065,8 @@ var Method       : TSE2Method;
       ReadNextToken;
       if ExpectToken([sesIdentifier]) then
       begin
-        aType := TSE2Type(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
+        aType := TypeExpression(nil);
+        //aType := TSE2Type(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
         if aType = nil then
         begin
           RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
@@ -2467,7 +2476,7 @@ begin
                  if State.CurrentOwner is TSE2Class then
                  begin
                    if TSE2Type(State.CurrentOwner.InheritRoot) <> TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
-                    RaiseError(petError, 'External method "'+Method.Name+'" of classes must be declared in classes which are decents of TExternalObject');
+                    RaiseError(petError, 'External method "'+Method.Name+'" must be declared in classes which inherits from TExternalObject');
                  end else
                  begin
                  end;
@@ -2730,8 +2739,57 @@ begin
           State.DecStack;
         end;
       end;
+  sesRaise :
+      begin
+        if ExceptionCreation(State, Method) then
+        begin
+          // push call stack
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, False), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(4, btString), ''));
+
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btString), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_STACK, ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        end;
+
+        // raise
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_INTER, ''));
+
+        State.DecStack;
+      end;
+  sesOn :
+      begin
+        if not State.IsInExceptBlock then
+           RaiseError(petError, 'on not allowed here');
+
+        OnExceptStatement(State, Method);
+      end;
   end;
-end;        
+end;
+
+function TSE2Parser.ExceptionCreation(State: TSE2ParseState;
+  Method: TSE2Method): boolean;
+var Ident: TSE2Type;
+    Target: TSE2Type;
+begin
+  ExpectToken([sesRaise]);
+  State.IsExpression := True;
+  ReadNextToken;
+
+  Target := GetScriptObjectType;
+  State.TargetType := Target;
+  State.AParent    := nil;
+
+  Ident := Expression(State, Method, Target);
+  if not IsCompatible(Target, Ident, sesNone, False, Self) then
+     RaiseError(petError, GenIncompatibleExpression(Ident, Target));
+
+  result := IsScriptExceptionType(Ident);
+
+  ConvertVariableCode(State, Method, Ident, Target);
+  State.IsExpression := False;
+end;
 
 function TSE2Parser.MethodCall(State: TSE2ParseState; Method,
   CallMethod: TSE2Method; UseBrackets: boolean = False; LastParamSetter: TSE2SetterEvent = nil;
@@ -4507,6 +4565,25 @@ var oldExitList     : integer;
     OpCodePos2      : integer;
 
     i               : integer;
+    bIsExceptBlock  : boolean;
+
+  procedure CallExceptFree;
+  var aMethod: TSE2Method;
+  begin
+    aMethod := TSE2Method(FindIdentifier(nil, 'Free', GetScriptObjectType, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Method])));
+
+    {$IFDEF SEII_SMART_LINKING}
+    Method.UsedMethods.Add(aMethod);
+    {$ELSE}
+    aMethod.Used := True;
+    {$ENDIF}                       
+
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_PEX, ''));
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(Method.OpCodes.Count + 2, 0), ''));
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALL(0), aMethod.GenLinkerName));   
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+  end;
+
 begin
   ExpectToken([sesTry]);
   ReadNextToken;
@@ -4527,6 +4604,7 @@ begin
   PSE2OpSAFE_TRYFIN(Method.OpCodes[OpCodePos2].OpCode).SavePos := Method.OpCodes.Count;
   OpCodePos1 := Method.OpCodes.Count;
 
+  bIsExceptBlock := False;
   case Tokenizer.Token.AType of
   sesFinally :
       begin
@@ -4560,14 +4638,23 @@ begin
       end;
   sesExcept :
       begin
+        bIsExceptBlock := True;
         PSE2OpSAFE_TRYEX(Method.OpCodes[OpCodePos2].OpCode).OpCode := soSAFE_TRYEX; 
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0), ''));
       end;
   end;
   ReadNextToken;
+  State.IsInExceptBlock := bIsExceptBlock;
   StatementSquence(State, Method);
+  State.IsInExceptBlock := False;
   ExpectToken([sesEnd]);
   ReadNextToken;
+
+
+  if bIsExceptBlock then
+  begin
+    CallExceptFree;
+  end;
 
   PSE2OpSAFE_TRYFIN(Method.OpCodes[OpCodePos2].OpCode).LeavePos := Method.OpCodes.Count;
   PSE2OpSAFE_BLOCK(Method.OpCodes[OpCodePos1].OpCode).SkipPoint := Method.OpCodes.Count;
@@ -4790,6 +4877,7 @@ begin
       CanConvert := CurrentType in [btString, btUTF8String, btWideString];
   btProcPtr :
       CanConvert := CurrentType in [btPointer];
+  btPointer,
   btObject :
       CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64];
   end;
@@ -6572,6 +6660,131 @@ end;
 function TSE2Parser.GetExternalObjectType: TSE2Type;
 begin
   result := TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class])));
+end;
+
+function TSE2Parser.GetScriptObjectType: TSE2Type;
+begin
+  result := TSE2Class(FindIdentifier(nil, C_SE2TObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class])));
+  if result = nil then
+     RaiseError(petError, 'FATAL ERROR: internal '+C_SE2TObjectName+' not found!');
+end;
+
+procedure TSE2Parser.OnExceptStatement(State: TSE2ParseState;
+  Method: TSE2Method);
+var aType    : TSE2Type;
+    varName  : string;
+    Variable : TSE2Variable;
+    nextJump : TSE2IntegerList;
+    finalJump: TSE2IntegerList;
+    i        : integer;
+begin
+  nextJump  := TSE2IntegerList.Create;
+  finalJump := TSE2IntegerList.Create;
+  try
+    repeat
+      ExpectToken([sesOn]);
+      ReadNextToken;
+      ExpectToken([sesIdentifier]);
+
+      varName := Tokenizer.Token.Value;
+      if Method.Variables.FindItem(varName) <> nil then
+         RaiseError(petError, varName + ' is already declared');
+
+      ReadNextToken;
+      ExpectToken([sesDoublePoint]);
+      ReadNextToken;
+      ExpectToken([sesIdentifier]);
+
+      aType := TypeExpression(Method);
+
+      if not (aType is TSE2Class) then
+         RaiseError(petError, 'Class identifier expected');
+      if TSE2Class(aType).IsHelper then
+         RaiseError(petError, 'Helper classes can not be used for here');
+      if TSE2Type(aType.InheritRoot) = GetExternalObjectType then
+           RaiseError(petError, 'External classes not not supported here');
+
+      Variable := TSE2Variable.Create;
+      try
+        Method.Variables.Add(Variable);
+        DeclareType(State, Variable, varName);
+        Variable.CodePos := Method.StackSize;
+        Variable.AType := aType;
+
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_PEX, ''));
+        State.IncStack;
+
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, False), ''));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.META_SHARE(0), 'META_'+TSE2Class(aType).GenLinkerName));
+
+        nextJump.Add(Method.OpCodes.Count);
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
+
+        ReadNextToken;
+        ExpectToken([sesDo]);
+        ReadNextToken;
+
+        State.IsInExceptBlock := False;
+        Statement(State, Method);
+        State.IsInExceptBlock := True;
+
+
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        finalJump.Add(Method.OpCodes.Count);
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+        State.DecStack;
+
+        PSE2OpFLOW_JIZ(Method.OpCodes.Items[nextJump[0]].OpCode).Position := Method.OpCodes.Count;
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        nextJump.Clear;
+      finally
+        Method.Variables.Delete(Variable);
+      end;
+
+      ExpectToken([sesSemiColon]);
+      ReadNextToken;
+    until Tokenizer.Token.AType <> sesOn;
+
+    for i:=0 to finalJump.Count-1 do 
+      PSE2OpFLOW_GOTO(Method.OpCodes.Items[finalJump[i]].OpCode).Position := Method.OpCodes.Count;
+
+  finally
+    nextJump.Free;
+    finalJump.Free;
+  end;
+end;
+
+function TSE2Parser.IsScriptExceptionType(aType: TSE2Type): boolean;
+var exType: TSE2Type;
+begin
+  result := False;
+  if not (aType is TSE2Class) then
+     exit;
+
+  if TSE2Class(aType).IsHelper then
+     exit;
+
+  if TSE2Type(aType.InheritRoot) <> GetScriptObjectType then
+     exit;
+
+  exType := GetScriptExceptionType;
+  while aType <> nil do
+  begin
+    if aType = exType then
+    begin
+      result := True;
+      exit;
+    end;
+    aType := TSE2Type(aType.InheritFrom);
+    if aType <> nil then
+      if aType.InheritFrom = aType then
+         exit;
+  end;
+end;
+
+function TSE2Parser.GetScriptExceptionType: TSE2Type;
+begin
+  result := TSE2Class(FindIdentifier(nil, C_SE2ExceptionObject, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class])));
 end;
 
 end.
