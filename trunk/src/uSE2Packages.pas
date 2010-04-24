@@ -4,6 +4,12 @@ unit uSE2Packages;
 
 interface
 
+
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+  {$WARNINGS OFF}
+{$ENDIF}
+
 uses
   {$IFDEF MSWINDOWS}
   Windows,

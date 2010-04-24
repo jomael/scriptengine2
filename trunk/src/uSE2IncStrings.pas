@@ -12,6 +12,11 @@ implementation
 uses
   uSE2RunType;
 
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+  {$WARNINGS OFF}
+{$ENDIF}
+
 const
   C_UnitName   = 'System';
   C_UnitSource =

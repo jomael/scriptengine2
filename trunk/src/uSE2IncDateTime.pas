@@ -12,6 +12,11 @@ uses
 
 implementation
 
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+  {$WARNINGS OFF}
+{$ENDIF}
+
 uses
   uSE2IncTypes;
 

@@ -11,6 +11,10 @@ uses
   Classes, uSE2Tokenizer, uSE2Reader, uSE2BaseTypes, uSE2Consts, uSE2OpCode,
   uSE2NameWeaver;
 
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+{$ENDIF}
+
 type
   TSE2Visibility    = (visPrivate, visProtected, visPublic);
   TSE2Visibilities  = set of TSE2Visibility;
@@ -914,14 +918,6 @@ end;
 
 function TSE2BaseTypeList.Delete(index: integer): boolean;
 var obj: TSE2BaseType;
-    nm  : string;
-
-  procedure DoDelete(s: string);
-  begin
-    s := s + ' ';
-    nm := s;
-  end;
-
 begin
   if (index < 0) or (index >= FList.Count) then
      result := False
@@ -929,7 +925,6 @@ begin
   begin
 
     obj := FList[index];
-    DoDelete(obj.Name);
     FList.Delete(index);
     try
       if FOwnsObjs then
