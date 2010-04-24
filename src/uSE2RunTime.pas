@@ -4,6 +4,11 @@ unit uSE2RunTime;
 
 interface
 
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+  {$WARNINGS OFF}
+{$ENDIF}
+
 uses
   Classes, SysUtils, uSE2RunType, uSE2Consts, uSE2BaseTypes, uSE2OpCode, uSE2PEData, uSE2RunCall,
   uSE2RunOperation, uSE2RunAccess, uSE2SafeBlockMngr, uSE2DebugData, uSE2MemoryManager, uSE2PerfMonitor,
@@ -1285,12 +1290,7 @@ begin
     exit;
   end;
 
-  if Entry.HasResult then
-     result := 'function '
-  else
-     result := 'procedure ';
-
-  result := result + Entry.AUnitName + '.' + Entry.Name;
+  result := Entry.AUnitName + '.' + Entry.Name;
   if Entry.ParamCount > 0 then
   begin
     result := result + '(';
@@ -1325,12 +1325,7 @@ begin
     exit;
   end;
 
-  if Entry.HasResult then
-     result := 'function '
-  else
-     result := 'procedure ';
-
-  result := result + Entry.AUnitName + '.' + Entry.Name;
+  result := Entry.AUnitName + '.' + Entry.Name;
   if Entry.ParamCount > 0 then
   begin
     result := result + '(';

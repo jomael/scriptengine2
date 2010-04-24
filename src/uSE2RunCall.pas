@@ -4,6 +4,11 @@ unit uSE2RunCall;
 
 interface
 
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+  {$WARNINGS OFF}
+{$ENDIF}
+
 uses
   Classes, uSE2RunType, uSE2BaseTypes, uSE2PEData, uSE2OpCode, uSE2Consts,
   uSE2RunTimeClasses;
@@ -160,13 +165,13 @@ begin
             DEC  EAX                                                              // EAX = ECX - 1
             IMUL  EAX, LSize                                                      // EAX = (ECX - 1) * LSize
             ADD  EAX, EBX                                                         // EAX = (ECX - 1) * LSize + EBX
-            PUSH [EAX]                                                            // push Parameter to Stack
+            PUSH dword ptr [EAX]                                                            // push Parameter to Stack
 
             DEC  ECX                                                              // decrease ECX-Register (Count-Register)
             JMP  @DoTest                                                          // jump to DoTest
 
           @DoCall:
-            CALL [AMethodPointer]                                                 // call Method
+            CALL dword ptr [AMethodPointer]                                                 // call Method
             MOV  Result, EAX                                                      // save Result
             MOV  iSecRes, EDX
 
@@ -201,13 +206,13 @@ begin
             SUB  EAX, ECX                                                         // EAX = LLength - ECX
             IMUL  EAX, LSize                                                      // EAX = (LLength - ECX) * LSize
             ADD  EAX, EBX                                                         // EAX = (LLength - ECX) * LSize + EBX
-            PUSH [EAX]                                                            // push Parameter to Stack
+            PUSH dword ptr [EAX]                                                            // push Parameter to Stack
 
             DEC  ECX                                                              // decrease ECX-Register (Count-Register)
             JMP  @DoTest                                                          // jump to DoTest
 
           @DoCall:
-            CALL [AMethodPointer]                                                 // call Method
+            CALL dword ptr [AMethodPointer]                                                 // call Method
             MOV  Result, EAX                                                      // save Result
             MOV  iSecRes, EDX
 
@@ -246,7 +251,7 @@ begin
             ADD  EAX, 3                                                           // EAX = LLength - ECX + 3
             IMUL  EAX, LSize                                                      // EAX = (LLength - ECX + 3) * LSize
             ADD  EAX, EBX                                                         // EAX = (LLength - ECX + 3) * LSize + EBX
-            PUSH [EAX]                                                            // push Parameter to Stack
+            PUSH dword ptr [EAX]                                                            // push Parameter to Stack
 
             DEC  ECX                                                              // decrease ECX-Register (Count-Register)
             JMP  @DoTest                                                          // jump to DoTest
@@ -311,6 +316,12 @@ begin
     end;
   end;
 end;
+
+
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}   
+  {$WARNINGS OFF}
+{$ENDIF}
 
 { TSE2MethodCall }
 

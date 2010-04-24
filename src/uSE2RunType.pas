@@ -921,7 +921,7 @@ begin
 end;
 
 const
-  BaseStackSize = $FFFF;
+  BaseStackSize = $AFFF;
 
 constructor TSE2Stack.Create(VarHelp: TSE2VarHelper);
 begin
@@ -929,7 +929,7 @@ begin
   FVarHelp := VarHelp;
   FPool := TSE2VarPool.Create(FVarHelp);
 
-  FMaxSize := $FFFFFF;
+  FMaxSize := $FFFFF;
   FIncSize := $3E8;
 
   Self.Count := BaseStackSize;

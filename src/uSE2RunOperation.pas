@@ -4,6 +4,11 @@ unit uSE2RunOperation;
 
 interface
 
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+  {$WARNINGS OFF}
+{$ENDIF}
+
 uses
   Classes, uSE2RunType, uSE2OpCode, uSE2MemoryManager;
 

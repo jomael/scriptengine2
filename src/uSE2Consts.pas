@@ -7,6 +7,11 @@ interface
 uses
   Classes, SysUtils;
 
+{$IFNDEF SEII_FPC}
+type
+  PtrInt = integer; 
+{$ENDIF}
+
 type
   TSE2TokenType  = (sesNone, sesUnknown, sesIdentifier,
                     // Aritmetic operators
@@ -269,8 +274,10 @@ var strAnsi : AnsiString;
     len     : cardinal;
 begin
   s := '';
+  {$IFDEF SEII_FPC} {$HINTS OFF} {$ENDIF}
   if Stream.Read(len, SizeOf(len)) < SizeOf(len) then
-     exit;
+     exit;                                       
+  {$IFDEF SEII_FPC} {$HINTS ON} {$ENDIF}
 
   if len > 0 then
   begin

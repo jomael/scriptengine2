@@ -1175,6 +1175,7 @@ begin
   end;
 end;
 
+{$IFDEF SEII_FPC} {$HINTS OFF} {$ENDIF}
 procedure TSE2LinkOpCode.AddOffset(Offset: integer; MinJumpPos: integer);
 begin
   if FOpCode = nil then
@@ -1214,7 +1215,8 @@ begin
         PSE2OpSAFE_BLOCK(FOpCode)^.SkipPoint  := PSE2OpSAFE_BLOCK(FOpCode)^.SkipPoint + Offset;
       end;
   end;
-end;
+end;        
+{$IFDEF SEII_FPC} {$HINTS ON} {$ENDIF}
 {$Warnings on}
 
 procedure TSE2LinkOpCode.SetPosition(index: integer);

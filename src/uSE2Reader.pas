@@ -155,7 +155,9 @@ end;
 
 procedure TSE2StringReader.SetPosition(const value: integer);
 begin
+  {$IFNDEF SEII_FPC}
   inherited;
+  {$ENDIF}
   FPosition := value;
 end;
 

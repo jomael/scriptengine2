@@ -11,6 +11,11 @@ procedure SE2MethodScriptCallHandler;
 
 implementation
 
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+  {$WARNINGS OFF}
+{$ENDIF}
+
 uses
   uSE2RunTime, uSE2OpCode, uSE2PEData, uSE2SystemUnit, uSE2RunType;
 
@@ -70,7 +75,6 @@ asm
 
 end;
 
-{$Warnings on}
 function InternalMethodHandler(MethodPtr: Pointer; const AStackPtr: Pointer; _EDX: Pointer): integer;
 var CallInfo     : PSE2NativeCallEntry;
     RunTime      : TSE2RunTime;

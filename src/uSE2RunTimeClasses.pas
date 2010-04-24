@@ -4,8 +4,13 @@ unit uSE2RunTimeClasses;
 
 interface
 
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+  {$WARNINGS OFF}
+{$ENDIF}
+
 uses
-  Classes, uSE2MemoryManager, uSE2PEData;
+  Classes, uSE2MemoryManager, uSE2PEData, uSE2Consts;
 
 type
   TSE2RunTimeClasses = class(TObject)
@@ -149,19 +154,19 @@ begin
     case p.aType of
     btString     :
         begin
-          PbtString(PPointer(integer(AClass) + p.Offset)^)^ := PbtString(PPointer(integer(ADataSource) + p.Offset)^)^;
+          PbtString(PPointer(PtrInt(AClass) + p.Offset)^)^ := PbtString(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
         end;
     btUTF8String :
         begin
-          PbtUTF8String(PPointer(integer(AClass) + p.Offset)^)^ := PbtUTF8String(PPointer(integer(ADataSource) + p.Offset)^)^;
+          PbtUTF8String(PPointer(PtrInt(AClass) + p.Offset)^)^ := PbtUTF8String(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
         end;
     btWideString :
         begin
-          PbtWideString(PPointer(integer(AClass) + p.Offset)^)^ := PbtWideString(PPointer(integer(ADataSource) + p.Offset)^)^;
+          PbtWideString(PPointer(PtrInt(AClass) + p.Offset)^)^ := PbtWideString(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
         end;
     btPChar      :
         begin
-          PbtPChar(PPointer(integer(AClass) + p.Offset)^)^ := PbtPChar(PPointer(integer(ADataSource) + p.Offset)^)^;
+          PbtPChar(PPointer(PtrInt(AClass) + p.Offset)^)^ := PbtPChar(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
         end;
     btArray      :
         begin
@@ -169,7 +174,7 @@ begin
         end;
     btRecord     :
         begin
-          FRT.CopyScriptRecord(PPointer(integer(ADataSource) + p.Offset)^, PPointer(integer(AClass) + p.Offset)^);
+          FRT.CopyScriptRecord(PPointer(PtrInt(ADataSource) + p.Offset)^, PPointer(PtrInt(AClass) + p.Offset)^);
         end;
     end;
   end;
@@ -192,26 +197,26 @@ begin
     btString     :
         begin
           New(pS);
-          pS^ := PbtString(PPointer(integer(ADataSource) + p.Offset)^)^;
-          PPointer(integer(AClass) + p.Offset)^ := pS;
+          pS^ := PbtString(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pS;
         end;
     btUTF8String :
         begin
           New(pU);
-          pU^ := PbtUTF8String(PPointer(integer(ADataSource) + p.Offset)^)^;
-          PPointer(integer(AClass) + p.Offset)^ := pU;
+          pU^ := PbtUTF8String(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pU;
         end;
     btWideString :
         begin
           New(pW);
-          pW^ := PbtWideString(PPointer(integer(ADataSource) + p.Offset)^)^;
+          pW^ := PbtWideString(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
           PPointer(integer(AClass) + p.Offset)^ := pW;
         end;
     btPChar      :
         begin
           New(pC);
-          pC^ := PbtPChar(PPointer(integer(ADataSource) + p.Offset)^)^;
-          PPointer(integer(AClass) + p.Offset)^ := pC;
+          pC^ := PbtPChar(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pC;
         end;
     btArray      :
         begin
@@ -219,8 +224,8 @@ begin
         end;
     btRecord     :
         begin
-          pP := FRT.DuplicateScriptRecord(PPointer(integer(ADataSource) + p.Offset)^);
-          PPointer(integer(AClass) + p.Offset)^ := pP;
+          pP := FRT.DuplicateScriptRecord(PPointer(PtrInt(ADataSource) + p.Offset)^);
+          PPointer(PtrInt(AClass) + p.Offset)^ := pP;
         end;
     end;
   end;
@@ -244,25 +249,25 @@ begin
         begin
           New(pS);
           pS^ := '';
-          PPointer(integer(AClass) + p.Offset)^ := pS;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pS;
         end;
     btUTF8String :
         begin
           New(pU);
           pU^ := '';
-          PPointer(integer(AClass) + p.Offset)^ := pU;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pU;
         end;
     btWideString :
         begin
           New(pW);
           pW^ := '';
-          PPointer(integer(AClass) + p.Offset)^ := pW;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pW;
         end;
     btPChar      :
         begin
           New(pC);
           pC^ := '';
-          PPointer(integer(AClass) + p.Offset)^ := pC;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pC;
         end;
     btArray      :
         begin
@@ -271,7 +276,7 @@ begin
     btRecord     :
         begin
           pP := FRT.CreateScriptRecord( PE.MetaData[p.Size], PE );
-          PPointer(integer(AClass) + p.Offset)^ := pP;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pP;
         end;
     end;
   end;
@@ -295,25 +300,25 @@ begin
     case p.aType of
     btString     :
         begin
-          pS := PPointer(integer(AClass) + p.Offset)^;
+          pS := PPointer(PtrInt(AClass) + p.Offset)^;
           pS^ := '';
           Dispose(pS);
         end;
     btUTF8String :
         begin
-          pU := PPointer(integer(AClass) + p.Offset)^;
+          pU := PPointer(PtrInt(AClass) + p.Offset)^;
           pU^ := '';
           Dispose(pU);
         end;
     btWideString :
         begin
-          pW := PPointer(integer(AClass) + p.Offset)^;
+          pW := PPointer(PtrInt(AClass) + p.Offset)^;
           pW^ := '';
           Dispose(pW);
         end;
     btPChar      :
         begin
-          pC := PPointer(integer(AClass) + p.Offset)^;
+          pC := PPointer(PtrInt(AClass) + p.Offset)^;
           pC^ := '';
           Dispose(pC);
         end;
@@ -323,7 +328,7 @@ begin
         end;
     btRecord     :
         begin
-          pP := PPointer(Pointer(integer(AClass) + p^.Offset))^;
+          pP := PPointer(Pointer(PtrInt(AClass) + p^.Offset))^;
           FRT.DestroyScriptRecord(pP);
         end;
     end;
@@ -369,7 +374,7 @@ begin
   begin
     Entry := Flist[i];
     //if Entry <> nil then
-       PPointer(integer(Data) + Entry^.Offset)^ := Entry^.Value;
+       PPointer(PtrInt(Data) + Entry^.Offset)^ := Entry^.Value;
   end;
 end;
 
@@ -395,7 +400,7 @@ begin
         begin
           New(Entry);
           Entry^.Offset := p.Offset;
-          Entry^.Value  := PPointer(integer(Data) + p.Offset)^;
+          Entry^.Value  := PPointer(PtrInt(Data) + p.Offset)^;
           FList[i] := Entry;
         end;
     end;
@@ -413,10 +418,10 @@ begin
   begin
     PtrSave := TSE2PointerList.Create(Self);
 
-    runInfo := PPointer(integer(ADest) + vmtScriptPointerList)^;
+    runInfo := PPointer(PtrInt(ADest) + vmtScriptPointerList)^;
     PtrSave.PushPointers(ADest, runInfo);
 
-    iSize := PInteger(Integer(ADest) + vmtScriptInstanceSize)^;
+    iSize := PInteger(PtrInt(ADest) + vmtScriptInstanceSize)^;
     Move(ASource^, ADest^, iSize);
 
     PtrSave.PopPointers(ADest);
@@ -447,14 +452,14 @@ begin
       FillChar(result^, Meta.ParamCount + vmtScriptMetaTotalSize, 0);
       result := Pointer(cardinal(result) + vmtScriptMetaTotalSize);
 
-      PInteger(integer(result) + vmtScriptInstanceSize)^ := Meta.ParamCount;
-      PPointer(integer(result) + vmtScriptMetaEntry)^    := Meta;
+      PInteger(PtrInt(result) + vmtScriptInstanceSize)^ := Meta.ParamCount;
+      PPointer(PtrInt(result) + vmtScriptMetaEntry)^    := Meta;
 
       runInfo := TSE2ClassPointerList.Create(Self);
-      PPointer(integer(result) + vmtScriptPointerList)^  := runInfo;
+      PPointer(PtrInt(result) + vmtScriptPointerList)^  := runInfo;
 
       runCalls := TSE2DynMethodList.Create;
-      PPointer(integer(result) + vmtScriptMethodList)^   := runCalls;
+      PPointer(PtrInt(result) + vmtScriptMethodList)^   := runCalls;
 
       runCalls.Assign(Meta.DynMethods);
 
@@ -482,14 +487,14 @@ begin
       FillChar(result^, Meta.ParamCount + vmtScriptMetaTotalSize, 0);
       result := Pointer(cardinal(result) + vmtScriptMetaTotalSize);
 
-      PInteger(integer(result) + vmtScriptInstanceSize)^ := Meta.ParamCount;
-      PPointer(integer(result) + vmtScriptMetaEntry)^    := Meta;
+      PInteger(PtrInt(result) + vmtScriptInstanceSize)^ := Meta.ParamCount;
+      PPointer(PtrInt(result) + vmtScriptMetaEntry)^    := Meta;
 
       runInfo := TSE2ClassPointerList.Create(Self);
-      PPointer(integer(result) + vmtScriptPointerList)^  := runInfo;
+      PPointer(PtrInt(result) + vmtScriptPointerList)^  := runInfo;
 
       runCalls := TSE2DynMethodList.Create;             
-      PPointer(integer(result) + vmtScriptMethodList)^   := runCalls;
+      PPointer(PtrInt(result) + vmtScriptMethodList)^   := runCalls;
 
       runCalls.Assign(Meta.DynMethods);
 
@@ -511,10 +516,10 @@ begin
   begin
     PtrSave := TSE2PointerList.Create(Self);
 
-    runInfo := PPointer(integer(ADest) + vmtScriptPointerList)^;
+    runInfo := PPointer(PtrInt(ADest) + vmtScriptPointerList)^;
     PtrSave.PushPointers(ADest, runInfo);
 
-    iSize := PInteger(Integer(ADest) + vmtScriptInstanceSize)^;
+    iSize := PInteger(PtrInt(ADest) + vmtScriptInstanceSize)^;
     Move(ASource^, ADest^, iSize);
 
     PtrSave.PopPointers(ADest);
@@ -531,14 +536,14 @@ var iSize   : integer;
 begin
   if AClass <> nil then
   begin
-    iSize  := PInteger(Integer(AClass) + vmtScriptInstanceSize)^;
-    runInfo := PPointer(integer(AClass) + vmtScriptPointerList)^;
+    iSize  := PInteger(PtrInt(AClass) + vmtScriptInstanceSize)^;
+    runInfo := PPointer(PtrInt(AClass) + vmtScriptPointerList)^;
     runInfo.FreeData(AClass);
     runInfo.Free;
-    runCalls := PPointer(integer(AClass) + vmtScriptMethodList)^;
+    runCalls := PPointer(PtrInt(AClass) + vmtScriptMethodList)^;
     runCalls.Free;
 
-    AClass := Pointer(cardinal(AClass) - vmtScriptMetaTotalSize);
+    AClass := Pointer(PtrInt(AClass) - vmtScriptMetaTotalSize);
     FMM.FreeMem(AClass, iSize + vmtScriptMetaTotalSize);
   end;
 end;
@@ -550,14 +555,14 @@ var iSize   : integer;
 begin
   if ARecord <> nil then
   begin
-    iSize  := PInteger(Integer(ARecord) + vmtScriptInstanceSize)^;
-    runInfo := PPointer(integer(ARecord) + vmtScriptPointerList)^;
+    iSize  := PInteger(PtrInt(ARecord) + vmtScriptInstanceSize)^;
+    runInfo := PPointer(PtrInt(ARecord) + vmtScriptPointerList)^;
     runInfo.FreeData(ARecord);
     runInfo.Free;
-    runCalls := PPointer(integer(ARecord) + vmtScriptMethodList)^;
+    runCalls := PPointer(PtrInt(ARecord) + vmtScriptMethodList)^;
     runCalls.Free;
 
-    ARecord := Pointer(cardinal(ARecord) - vmtScriptMetaTotalSize);
+    ARecord := Pointer(PtrInt(ARecord) - vmtScriptMetaTotalSize);
     FMM.FreeMem(ARecord, iSize + vmtScriptMetaTotalSize);
   end;
 end;
@@ -573,19 +578,19 @@ begin
   result := nil;
   if ARecord <> nil then
   begin
-    pReal  := Pointer(cardinal(ARecord) - vmtScriptMetaTotalSize);
-    iSize  := PInteger(Integer(ARecord) + vmtScriptInstanceSize)^;
+    pReal  := Pointer(PtrInt(ARecord) - vmtScriptMetaTotalSize);
+    iSize  := PInteger(PtrInt(ARecord) + vmtScriptInstanceSize)^;
     FMM.GetMem(result, iSize + vmtScriptMetaTotalSize);
     Move(pReal^, result^, iSize + vmtScriptMetaTotalSize);
     result := Pointer(cardinal(result) + vmtScriptMetaTotalSize);
     
     runInfo := TSE2ClassPointerList.Create(Self);
-    runInfo.Assign(TSE2ClassPointerList(PPointer(integer(result) + vmtScriptPointerList)^));
+    runInfo.Assign(TSE2ClassPointerList(PPointer(PtrInt(result) + vmtScriptPointerList)^));
     PPointer(integer(result) + vmtScriptPointerList)^  := runInfo;
 
     runCalls := TSE2DynMethodList.Create;
-    runCalls.Assign(TSE2DynMethodList(PPointer(integer(result) + vmtScriptMethodList)^));
-    PPointer(integer(result) + vmtScriptMethodList)^   := runCalls;
+    runCalls.Assign(TSE2DynMethodList(PPointer(PtrInt(result) + vmtScriptMethodList)^));
+    PPointer(PtrInt(result) + vmtScriptMethodList)^   := runCalls;
 
     runInfo.CreateData(result, ARecord);
   end;
@@ -593,13 +598,13 @@ end;
 
 function TSE2RunTimeClasses.GetClassMeta(AClass: Pointer): TSE2MetaEntry;
 begin
-  result := PPointer(integer(AClass) + vmtScriptMetaEntry)^;
+  result := PPointer(PtrInt(AClass) + vmtScriptMetaEntry)^;
 end;
 
 function TSE2RunTimeClasses.GetClassMethods(
   AClass: Pointer): TSE2DynMethodList;
 begin                          
-  result := PPointer(integer(AClass) + vmtScriptMethodList)^;
+  result := PPointer(PtrInt(AClass) + vmtScriptMethodList)^;
 end;
 
 function TSE2RunTimeClasses.ScriptToDelphiRecord(
@@ -609,7 +614,7 @@ begin
   result := nil;
   if ASource <> nil then
   begin
-    iSize := PInteger(Integer(ASource) + vmtScriptInstanceSize)^;
+    iSize := PInteger(PtrInt(ASource) + vmtScriptInstanceSize)^;
     FMM.GetMem(result, iSize);
     ScriptToDelphiRecord(ASource, result);
   end;
@@ -624,10 +629,10 @@ begin
   begin
     PtrSave := TSE2PointerList.Create(Self);
 
-    runInfo := PPointer(integer(ASource) + vmtScriptPointerList)^;
+    runInfo := PPointer(PtrInt(ASource) + vmtScriptPointerList)^;
     PtrSave.PushPointers(ASource, runInfo);
 
-    iSize := PInteger(Integer(ASource) + vmtScriptInstanceSize)^;
+    iSize := PInteger(PtrInt(ASource) + vmtScriptInstanceSize)^;
     Move(ASource^, ADest^, iSize);
 
     PtrSave.PopPointers(ASource);

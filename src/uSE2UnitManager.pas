@@ -4,6 +4,11 @@ unit uSE2UnitManager;
 
 interface
 
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}
+  {$WARNINGS OFF}
+{$ENDIF}
+
 uses
   Classes, SysUtils, uSE2Types, uSE2BaseTypes, uSE2RunAccess;
 
@@ -111,6 +116,11 @@ type
   end;
 
 implementation
+
+{$IFDEF SEII_FPC}
+  {$HINTS OFF}                       
+  {$WARNINGS OFF}
+{$ENDIF}
 
 var
   unitMngr : TSE2UnitManager;
