@@ -3178,6 +3178,10 @@ begin
     State.IncStack;
     //=========== NEW CODE : END
 
+    if State.NoStaticPointer then
+      if not CallMethod.IsStatic then
+         RaiseError(petError, 'Method is not a static');
+
     if CallMethod.IsMethodType then
     begin
       PSE2OpFLOW_PUSHRET(Method.OpCodes[Method.OpCodes.Count-1].OpCode)^.Position :=
