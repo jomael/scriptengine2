@@ -27,7 +27,7 @@ type
                     // Expression Helpers
                     sesOpenRound, sesCloseRound, sesOpenBracket, sesCloseBracket,
                     // Special expressions
-                    sesTry, sesFinally, sesExcept, sesOn, sesDeprecated,
+                    sesTry, sesFinally, sesExcept, sesOn, sesDeprecated, sesRaise,
                     // Class Definitions
                     sesClass, sesPrivate, sesProtected, sesPublic, sesProperty, sesVirtual, sesAbstract, sesOverride, sesOverload,
                     sesInherited, sesReintroduce, sesPartial, sesHelper,
@@ -54,9 +54,15 @@ type
   ESE2InvalidDataStream   = class(Exception);
   ESE2ParserError         = class(EAbort);
   ESE2InternalParserError = class(ESE2ParserError);
-  ESE2NullReferenceError  = class(Exception);
   ESE2RunTimeError        = class(Exception);
-  ESE2RunTimeCallError    = class(Exception);
+  ESE2StackOverflow       = class(ESE2RunTimeError);
+  ESE2NullReferenceError  = class(ESE2RunTimeError);
+  ESE2UnassignedMethod    = class(ESE2NullReferenceError);
+  ESE2RunTimeCallError    = class(ESE2RunTimeError);
+  ESE2ScriptException     = class(Exception)
+  public
+    ScriptException : Pointer;
+  end;
   ESE2CallParameterError  = class(ESE2RunTimeCallError);
   ESE2PackageError        = class(Exception);
   ESE2PackageIncompatible = class(ESE2PackageError);
@@ -82,7 +88,7 @@ const
                     // Expression Helpers
                     '(', ')', '[', ']',
                     // Special expressions
-                    'try', 'finally', 'except', 'on', 'deprecated',
+                    'try', 'finally', 'except', 'on', 'deprecated', 'raise',
                     // Class Definitions
                     'class', 'private', 'protected', 'public', 'property', 'virtual', 'abstract', 'override', 'overload',
                     'inherited', 'reintroduce', 'partial', 'helper',
@@ -109,6 +115,11 @@ const
   C_SE2Double                   = 'double';   
   C_SE2Pointer                  = 'pointer';
   C_SE2PEHeaderStr              : AnsiString = 'SEII_PE';
+
+  C_SE2ExceptionObject          = 'EException';
+  C_SE2ExceptExternal	          = 'EExternalException';
+
+  C_SE2ExceptionUnit            = 'System.Exceptions';
 
   C_SE2MainMethod               = '!MAIN';
   C_SE2InitializationMethod     = '!INITIALIZATION';
@@ -161,7 +172,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 4; Patch: 9; Build: 0);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 0; Build: 0);
 
 
 function SE2SplitFullQualifiedName(const Input: string; var AUnitName, ATypeName: string): boolean;
@@ -355,7 +366,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 04, 19);
+  result := EncodeDate(2010, 04, 24);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }

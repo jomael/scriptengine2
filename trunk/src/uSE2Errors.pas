@@ -31,7 +31,7 @@ const
                     // Expression Helpers
                     '(', ')', '[', ']',
                     // Special expressions
-                    'try', 'finally', 'except', 'on', 'deprecated',
+                    'try', 'finally', 'except', 'on', 'deprecated', 'raise',
                     // Class Definitions
                     'class', 'private', 'protected', 'public', 'property', 'virtual', 'abstract', 'override', 'overload',
                     'inherited', 'reintroduce', 'partial', 'helper',

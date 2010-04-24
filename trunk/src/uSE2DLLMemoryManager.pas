@@ -1,14 +1,24 @@
 unit uSE2DLLMemoryManager;
 
+{$Include ScriptEngine.inc}
+
 interface
 
 uses
-  {$IFDEF MSWINDOWS}
-  Windows
-  {$ENDIF}
-  {$IFDEF LINUX}
-  SysUtils,
-  Types
+  {$IFDEF SEII_FPC}
+    {$IFDEF MSWINDOWS}
+    Windows, SysUtils
+    {$ELSE}
+    SysUtils, Types
+    {$ENDIF}
+  {$ELSE}
+    {$IFDEF MSWINDOWS}
+    Windows
+    {$ENDIF}
+    {$IFDEF LINUX}
+    SysUtils,
+    Types
+    {$ENDIF}
   {$ENDIF}
   ;
 
@@ -23,7 +33,7 @@ function SE2LoadLibrary(lpLibFileName: PWideChar): HMODULE;
 function SE2LoadLibrary(lpLibFileName: PAnsiChar): HMODULE;
 {$ENDIF}
 
-function SE2SafeLoadLibrary(const FileName: string; ErrorMode: cardinal = SEM_NOOPENFILEERRORBOX): HMODULE;
+function SE2SafeLoadLibrary(const FileName: string; ErrorMode: cardinal = {$IFDEF SEII_FPC} 0 {$ELSE} {$IFDEF MSWINDOWS} SEM_NOOPENFILEERRORBOX {$ELSE} 0 {$ENDIF} {$ENDIF}): HMODULE;
 
 implementation
 
@@ -73,7 +83,9 @@ begin
   ViewHandle   := MapViewOfFile(MappedHandle, FILE_MAP_READ or FILE_MAP_WRITE, 0, 0, 0);
   if (MappedHandle <> 0) and (ViewHandle <> nil) then
   begin
+    {$HINTS OFF}
     GetMemoryManager(mm);
+    {$HINTS ON}
     ZeroMemory(ViewHandle, SizeOf(mm) * 2);
     CopyMemory(ViewHandle, @mm, SizeOf(mm));
   end;
@@ -126,21 +138,41 @@ begin
   {$ENDIF}
 end;
 
-function SE2SafeLoadLibrary(const FileName: string; ErrorMode: UINT = SEM_NOOPENFILEERRORBOX): HMODULE;   
+function SE2SafeLoadLibrary(const FileName: string; ErrorMode: UINT): HMODULE;
+{$IFNDEF SEII_FPC}
 var         
   {$IFDEF MSWINDOWS}
-  OldMode        : UINT;
+   OldMode        : UINT;
   {$ENDIF}
   FPUControlWord : Word;
+{$ENDIF}
 begin
   {$IFDEF MSWINDOWS}
   CreateMemoryMappedFile;
   try
   {$ENDIF}
-
-    {$IFDEF MSWINDOWS}
-    OldMode := SetErrorMode(ErrorMode);
-    try
+    {$IFDEF SEII_FPC}
+       result := SafeLoadLibrary(FileName, ErrorMode);
+    {$ELSE}
+      {$IFDEF MSWINDOWS}
+      OldMode := SetErrorMode(ErrorMode);
+      try
+        asm
+          FNSTCW  FPUControlWord
+        end;
+        try
+          Result := SE2LoadLibrary({$IFDEF Unicode}PWideChar{$ELSE}PChar{$ENDIF}(Filename));
+        finally
+          asm
+            FNCLEX
+            FLDCW FPUControlWord
+          end;
+        end;
+      finally
+        SetErrorMode(OldMode);
+      end;
+      {$ENDIF}
+      {$IFDEF LINUX}
       asm
         FNSTCW  FPUControlWord
       end;
@@ -152,24 +184,8 @@ begin
           FLDCW FPUControlWord
         end;
       end;
-    finally
-      SetErrorMode(OldMode);
-    end;
+      {$ENDIF}
     {$ENDIF}
-    {$IFDEF LINUX}
-    asm
-      FNSTCW  FPUControlWord
-    end;
-    try
-      Result := SE2LoadLibrary({$IFDEF Unicode}PWideChar{$ELSE}PChar{$ENDIF}(Filename));
-    finally
-      asm
-        FNCLEX
-        FLDCW FPUControlWord
-      end;
-    end;
-    {$ENDIF}
-
 
   {$IFDEF MSWINDOWS}
   finally

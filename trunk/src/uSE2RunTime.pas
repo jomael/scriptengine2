@@ -52,8 +52,10 @@ type
   protected
     procedure SetAppCode(const value: TSE2PE);
 
+    procedure BuildScriptExceptions(TryBlock: TSE2TryBlock; ex: Exception);
     procedure DoErrorEvent(Exp: ExceptClass; const Msg: string; ErrorPos: integer; const CallStack: string);
 
+    function  MethodDescToStr(Entry: TSE2MetaEntry): string;
     function  MetaEntryToStr(Entry: TSE2MetaEntry; StackIndex: integer): string;
     procedure MetaEntryToItem(Entry: TSE2MetaEntry; StackIndex: integer; Target: TSE2StackItem);
 
@@ -61,6 +63,8 @@ type
     procedure ProcessRecordGC;
     procedure RecordDeleteEvent(Data: PSE2VarData);
     procedure RemoveUnusedRecords(numRecords: integer);
+
+    function  ExceptionCallStack: string;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -73,7 +77,7 @@ type
     procedure Finalize;
 
     procedure Abort;
-    function  GetCallStack: string; overload;
+    function  GetCallStack(limit: integer = -1): string; overload;
     procedure GetCallStack(Target: TSE2StackTrace); overload;
 
     function  CreateClass(const Meta: TSE2MetaEntry): Pointer;
@@ -185,7 +189,7 @@ begin
 
   ProcessGC;
   ProcessRecordGC;
-
+  
   FInitialized := False;
 end;
 
@@ -235,6 +239,8 @@ begin
     if not value.PointerReady then
     begin
       TSE2UnitManager.RegisterMethods(FCodeAccess);
+      TSE2UnitManager.RegisterExceptions(FCodeAccess);
+
       value.PointerReady := True;
     end;
     FNativeList := TSE2NativeCallList.Create;
@@ -292,7 +298,7 @@ begin
   while (FCodePos > 0) and (not FDoAbort) do
   begin
     try
-  OpCode := FAppCode.OpCodes.Data[FCodePos];
+  OpCode := FAppCode.OpCodes.List[FCodePos];
   if OpCode = nil then
      exit;
 
@@ -433,6 +439,21 @@ begin
           r1.ts64^ := PInt64(@(Pos[0]))^;
         end;
       end;
+  soMETA_CNAME   :
+      begin
+        r1 := FStack.Top;
+        r2 := FStack[FStack.Size - 3];
+
+        if not (r2.AType in [btObject, btPointer]) then
+           raise ESE2RunTimeError.Create('Stack item is not a class');
+
+        if PPointer(r2.tPointer)^ = nil then
+           raise ESE2NullReferenceError.Create('Class is not assigned');
+
+
+        Meta := FRunClasses.GetClassMeta(PPointer(r2.tPointer)^);
+        PString(r1.tString^)^ := Meta.AUnitName + '.' + Meta.Name;
+      end;
   soMETA_PUSH    :
       begin
         FStack.PushNew(btS32).ts32^ := PSE2OpMETA_PUSH(OpCode).MetaIndex;
@@ -495,7 +516,7 @@ begin
         2..11   :
             begin
               r2 { VarDat[1] } := Stack.Top;
-              r1 { VarDat[0] } := FStack.Data[FStack.Size - 2]; //r1 { VarDat[0] } := Stack[Stack.Size - 2];
+              r1 { VarDat[0] } := FStack.List[FStack.Size - 2]; //r1 { VarDat[0] } := Stack[Stack.Size - 2];
 
               if r1 { VarDat[0] }^.RefContent then
               begin
@@ -537,11 +558,11 @@ begin
               CompareInt := PSE2OpOP_FASTOPERATION(OpCode).Src1;
               if CompareInt >= 0 then // Static
               begin
-                r1 := FStack.Data[CompareInt];
+                r1 := FStack.List[CompareInt];
                 r2 := FStack.PushNew(r1.AType);
               end else
               begin
-                r1 := FStack.Data[FStack.Size-1 + CompareInt];
+                r1 := FStack.List[FStack.Size-1 + CompareInt];
                 r2 := FStack.PushNew(r1.AType);
               end;
               FVarHelper.SetVarData(r1, r2);
@@ -593,7 +614,7 @@ begin
         //QueryPerformanceFrequency(c);
         //QueryPerformanceCounter(t1);
         r2 { VarDat[1] } := FStack.Top;
-        r1 { VarDat[0] } := FStack.Data[FStack.Size - 2]; //r1 { VarDat[0] } := FStack[Stack.Size - 2];
+        r1 { VarDat[0] } := FStack.List[FStack.Size - 2]; //r1 { VarDat[0] } := FStack[Stack.Size - 2];
 
         case PSE2OpOP_COMPARE(OpCode).CompType of
         1 : CompareInt := Ord(FVarCompare.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
@@ -643,9 +664,9 @@ begin
         CompareInt := PSE2OpDAT_COPY_TO(OpCode).Target;
 
         if PSE2OpDAT_COPY_TO(OpCode).Static then
-           r1 { VarDat[0] } := FStack.Data[CompareInt]
+           r1 { VarDat[0] } := FStack.List[CompareInt]
         else
-           r1 { VarDat[0] } := FStack.Data[FStack.Size-1 + CompareInt];
+           r1 { VarDat[0] } := FStack.List[FStack.Size-1 + CompareInt];
 
         if r1 { VarDat[0] }^.RefContent then
         begin
@@ -669,11 +690,11 @@ begin
 
         if PSE2OpDAT_COPY_FROM(OpCode).Static then
         begin
-          r1 { VarDat[0] } := FStack.Data[CompareInt];
+          r1 { VarDat[0] } := FStack.List[CompareInt];
           r2 { VarDat[1] } := FStack.PushNew(r1 { VarDat[0] }.AType);
         end else
         begin
-          r1 { VarDat[0] } := FStack.Data[FStack.Size-1 + CompareInt];
+          r1 { VarDat[0] } := FStack.List[FStack.Size-1 + CompareInt];
           r2 { VarDat[1] } := FStack.PushNew(r1 { VarDat[0] }.AType);
         end;
         FVarHelper.SetVarData(r1 { VarDat[0] }, r2 { VarDat[1] });
@@ -984,17 +1005,6 @@ begin
       begin
         RemoveUnusedRecords(PSE2OpREC_DEL_RECS(OpCode).MaxRecords);
       end;
-  {
-program Project1;
-
-uses
-  ScriptTestUnit;
-
-var i: integer;
-begin
-  i := TPoint.Point(4, 2).X; // t.Add(TPoint.Point(4, 2).Add(10, 10).Add(TPoint.Point(4, 4))).X;
-end.
-  }
   soINT_INCSTATIC :
       begin
         r1 { VarDat[0] } := FStack[PSE2OpINT_INCSTATIC(OpCode).Offset];
@@ -1031,6 +1041,26 @@ end.
         FVarOperation.Substract(r1 { VarDat[0] }, r2 { VarDat[1] }); 
         FVarHelper.FreeVarData(r2 { VarDat[1] });
       end;
+  soSAFE_PEX :
+      begin
+        if FSafeBlocks.TopItem = nil then
+           raise ESE2RunTimeError.Create('Could not get exception class');
+
+        PPointer(FStack.PushNew(btObject).tPointer)^ := FSafeBlocks.TopItem.ScriptExcept;
+      end;
+  soSAFE_STACK  :
+      begin
+        r1 := Stack.Top;
+        PString(r1.tString^)^ := ExceptionCallStack;
+      end;
+  soSAFE_INTER  :
+      begin
+        r1 := Stack.Top;
+        ESE2ScriptException(r2) := ESE2ScriptException.Create('');
+        ESE2ScriptException(r2).ScriptException := PPointer(r1^.tPointer)^;
+        Stack.Pop;
+        raise ESE2ScriptException(r2);
+      end;
   soSAFE_TRYFIN :
       begin
         FSafeBlocks.Add(blFinally, FStack.Size, PSE2OpSAFE_TRYFIN(OpCode).SavePos, PSE2OpSAFE_TRYFIN(OpCode).LeavePos);
@@ -1063,6 +1093,7 @@ end.
           begin
             TempTryBlock := TSE2TryBlock.Create;
             try
+              TempTryBlock.ScriptExcept:= TryBlock.ScriptExcept;
               TempTryBlock.ErrorExcept := TryBlock.ErrorExcept;
               TempTryBlock.ErrorMsg    := TryBlock.ErrorMsg;
               TempTryBlock.ErrorStack  := TryBlock.ErrorStack;
@@ -1082,6 +1113,7 @@ end.
               end else
               begin
                 FCodePos := TryBlock.BlockStart - 1;
+                TryBlock.ScriptExcept:= TempTryBlock.ScriptExcept;
                 TryBlock.ErrorExcept := TempTryBlock.ErrorExcept;
                 TryBlock.ErrorMsg    := TempTryBlock.ErrorMsg;
                 TryBlock.ErrorStack  := TempTryBlock.ErrorStack;
@@ -1110,12 +1142,7 @@ end.
   soNOOP : ;
   end;
 
-  {$IFDEF PERF_MONITOR}
-  FPerfMonitor.Stop(OpCode.OpCode);
-  {$ENDIF}
-
   FCodePos := FCodePos + 1;
-
 
     except
       on E:Exception do
@@ -1135,40 +1162,93 @@ end.
 
         if TryBlock = nil then
         begin
-          DoErrorEvent(ExceptClass(e.ClassType), e.Message, FCodePos, GetCallStack);
+          DoErrorEvent(ExceptClass(e.ClassType), e.Message, FCodePos, GetCallStack(200));
           // no Exception Manager
           FCodePos := -1;
         end else
         begin
           FHasException := True;
           FCodePos      := TryBlock.BlockStart;
+
+          TryBlock.ErrorStack  := ExceptionCallStack;
+          try
+            BuildScriptExceptions(TryBlock, E);
+          except
+          end;
+
           TryBlock.ErrorExcept := ExceptClass(E.ClassType);
           TryBlock.ErrorMsg    := E.Message;
           TryBlock.ErrorPos    := FCodePos;
-          TryBlock.ErrorStack  := GetCallStack;
         end;
-      end;  
+      end;
     end;
+
+  {$IFDEF PERF_MONITOR}
+  FPerfMonitor.Stop(OpCode.OpCode);
+  {$ENDIF}
+
   end;
 end;
 
-function TSE2RunTime.GetCallStack: string;
+function TSE2RunTime.ExceptionCallStack: string;
 var i     : integer;
     sl    : TStringList;
     index : integer;
+    p     : PSE2VarData;
 begin
   result := '';
 
   sl := TStringList.Create;
   try
     for i:=FStack.Size-1 downto 0 do
-    begin         
-      if FStack[i]^.AType = btReturnAddress then
+    begin
+      p := FStack.List[i];
+      if p^.AType = btReturnAddress then
       begin
-        index := (FStack[i]^.tS64^ shr 32);
+        index := (p^.tS64^ shr 32);
+        if index > 0 then
+        begin
+          sl.Add('at ' + MetaEntryToStr(FAppCode.MetaData[index-1], i));
+        end;
+      end;
+      if sl.Count > 300 then
+      begin
+        sl.Add('...');
+        break;
+      end;
+    end;
+    result := sl.Text;
+  finally
+    sl.Free;
+  end;
+end;
+
+function TSE2RunTime.GetCallStack(limit: integer = -1): string;
+var i     : integer;
+    sl    : TStringList;
+    index : integer;
+    p     : PSE2VarData;
+begin
+  result := '';
+
+  sl := TStringList.Create;
+  try
+    for i:=FStack.Size-1 downto 0 do
+    begin
+      p := FStack.List[i];
+      if p^.AType = btReturnAddress then
+      begin
+        index := (p^.tS64^ shr 32);
         if index > 0 then
            sl.Add(MetaEntryToStr(FAppCode.MetaData[index-1], i));
       end;
+
+      if limit > -1 then
+        if sl.Count > limit then
+        begin
+          sl.Add('...');
+          break;
+        end;
     end;
     result := sl.Text;
   finally
@@ -1193,6 +1273,45 @@ begin
       end;
     end;
   end;
+end;
+
+function TSE2RunTime.MethodDescToStr(Entry: TSE2MetaEntry): string;
+var i         : integer;
+    ParamDecl : byte;
+begin
+  if Entry = nil then
+  begin
+    result := 'DEBUG ERROR: Meta Data is null';
+    exit;
+  end;
+
+  if Entry.HasResult then
+     result := 'function '
+  else
+     result := 'procedure ';
+
+  result := result + Entry.AUnitName + '.' + Entry.Name;
+  if Entry.ParamCount > 0 then
+  begin
+    result := result + '(';
+    for i:=0 to Entry.ParamCount-1 do
+    begin
+      ParamDecl := Ord(Entry.ParamDecl[i + 1]);
+      if TSE2ParamHelper.IsVarParam(ParamDecl) then
+         result := result + 'var '; 
+      result := result + TSE2DebugHelper.VarTypeToStr(TSE2ParamHelper.GetParamType(ParamDecl));
+      if i < Entry.ParamCount-1 then
+         result := result + ', ';
+    end;
+    result := result + ')';
+  end;
+
+  if Entry.HasResult then
+  begin
+    result := result + ': ';
+    result := result + TSE2DebugHelper.VarTypeToStr(TSE2ParamHelper.GetParamType(Entry.ResultType));
+  end;
+  result := result + ';';
 end;
 
 function TSE2RunTime.MetaEntryToStr(Entry: TSE2MetaEntry;
@@ -1729,6 +1848,37 @@ function TSE2RunTime.MethodAsScript(Data, MethodPos,
   ClassPtr: Pointer): boolean;
 begin
   result := FNativeList.FindEntry(Data, MethodPos, ClassPtr);
+end;
+
+procedure TSE2RunTime.BuildScriptExceptions(TryBlock: TSE2TryBlock;
+  ex: Exception);
+var p1, p2       : Pointer;
+    Meta         : TSE2MetaEntry;
+begin
+  if (ex is ESE2ScriptException) then
+  begin
+    TryBlock.ScriptExcept := ESE2ScriptException(ex).ScriptException;
+    exit;
+  end;
+
+  Meta := FCodeAccess.Exceptions.GetException(ex.ClassType);
+  if Meta <> nil then
+  begin
+    TryBlock.ScriptExcept := CreateClass( Meta );
+    FClassGC.Add(TryBlock.ScriptExcept);
+
+    // Message
+    p1 := Pointer(cardinal(TryBlock.ScriptExcept) + 0);
+    // CallStack
+    p2 := Pointer(cardinal(TryBlock.ScriptExcept) + 4);
+
+    try
+      PString(p1^)^ := ex.Message;
+    except
+      PString(p1^)^ := '';
+    end;
+    PString(p2^)^ := TryBlock.ErrorStack;
+  end;
 end;
 
 end.

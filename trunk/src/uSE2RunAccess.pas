@@ -12,6 +12,7 @@ type
   private
     FPEData : TSE2PE;
     FTmpObj : TObject;
+    FRegEx  : TSE2RegisteredExceptions;
   protected
     function  GetMetaEntry(const Name, UnitName: string): TSE2MetaEntry; overload;
     function  GetMetaEntry(const Name, UnitName: string; MetaType: TSE2MetaType): TSE2MetaEntry; overload;
@@ -40,6 +41,7 @@ type
     function HasUnit(const UnitName: string): boolean;
     property Method[MethodName, UnitName: string]: Pointer read GetMethod  write SetMethod;
 
+    property Exceptions                 : TSE2RegisteredExceptions read FRegEx;
     property MethodNames[index: integer]: string  read GetMethodName;
     property Count                      : integer read GetCount;
   end;
@@ -64,10 +66,12 @@ begin
 
   inherited Create;
   FPEData := PEData;
+  FRegEx  := TSE2RegisteredExceptions.Create;
 end;
 
 destructor TSE2RunAccess.Destroy;
 begin
+  FRegEx.Free;
   inherited;
 end;
 

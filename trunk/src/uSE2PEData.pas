@@ -8,9 +8,8 @@ uses
   Classes, uSE2BaseTypes, uSE2OpCode, uSE2Consts;
 
 type
-  TSE2OpCodes = class(TSE2List)
+  TSE2OpCodes = class(TList)
   private
-    //FList      : TSE2List;
     FPosition  : integer;                     
   protected
     function GetOpCode: PSE2OpDefault;
@@ -18,7 +17,7 @@ type
 
     procedure Remove(index: integer);
   public
-    constructor Create; override;
+    constructor Create;
     destructor Destroy; override;
 
     procedure LoadFromStream(Stream: TStream);
@@ -38,7 +37,7 @@ type
 
   TSE2StringList = class(TSE2Object)
   private
-    FList : TSE2List;
+    FList : TList;
   protected
     function  GetCount: integer;
     function  GetItem(index: integer): string;
@@ -165,7 +164,7 @@ type
 
   TSE2MetaList = class(TSE2Object)
   private
-    FList : TSE2List;
+    FList : TList;
   protected
     function  GetItem(index: integer): TSE2MetaEntry;
     function  GetCount: integer;
@@ -384,7 +383,7 @@ end;
 constructor TSE2StringList.Create;
 begin
   inherited;
-  FList := TSE2List.Create;
+  FList := TList.Create;
 end;
 
 function TSE2StringList.Delete(index: integer): boolean;
@@ -639,7 +638,7 @@ end;
 constructor TSE2MetaList.Create;
 begin
   inherited;
-  FList := TSE2List.Create;
+  FList := TList.Create;
 end;
 
 function TSE2MetaList.Delete(index: integer): boolean;

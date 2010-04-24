@@ -73,12 +73,13 @@ const
 
                 // Safe-Blocks
                 'soSAFE_TRYFIN', 'soSAFE_TRYEX', 'soSAFE_BLOCK', 'soSAFE_TRYEND', 'soSAFE_SJUMP',
+                'soSAFE_INTER', 'soSAFE_STACK', 'soSAFE_PEX',
 
                 // special runtime data
                 'soDEBUG_META', 'soFINIT_STACK',
 
                 // Meta
-                'soMETA_PUSH', 'soMETA_SHARE'
+                'soMETA_PUSH', 'soMETA_SHARE', 'soMETA_CNAME'
                 );
 
 class function TSE2DebugHelper.OpCodeToStr(PE: TSE2PE; OpCode: PSE2OpDefault): string;
@@ -91,6 +92,7 @@ begin
   case OpCode.OpCode of
   soFINIT_STACK          : result := 'FSTK';
   soDEBUG_META           : result := 'META';
+  soMETA_CNAME           : result := 'CNM';
   soMETA_PUSH            : result := Format('MPUT [%d]', [PSE2OpMETA_PUSH(OpCode).MetaIndex]);
   soMETA_SHARE           : result := Format('MSHR [%d]', [PSE2OpMETA_SHARE(OpCode).MetaIndex]);
   soNOOP                 : result := 'NOOP';
@@ -150,6 +152,9 @@ begin
   soSAFE_BLOCK           : result := Format('TRY BLOCK [%d]', [PSE2OpSAFE_BLOCK(OpCode).SkipPoint]);
   soSAFE_TRYEND          : result := 'TRY END';
   soSAFE_SJUMP           : result := Format('TRY JUMP [%d %d]', [PSE2OpSAFE_SJUMP(OpCode).Target, PSE2OpSAFE_SJUMP(OpCode).ExitTo]);
+  soSAFE_INTER           : result := 'ITRP';
+  soSAFE_STACK           : result := 'ISCK';
+  soSAFE_PEX             : result := 'PEX';
 
 
   else                     result := '[unknown] {'+TSE2OpCodeStr[OpCode.OpCode]+'}';

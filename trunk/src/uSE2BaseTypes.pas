@@ -87,6 +87,7 @@ type
     function  GetItem(index: integer): Pointer;
     procedure SetItem(index: integer; p: Pointer);
     procedure SetCount(value: integer);
+    procedure SetCapacity(value: integer);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -101,9 +102,10 @@ type
     procedure DeleteLast;
     procedure Clear; virtual;
 
+    property  Capacity             : integer      read FCapacity  write SetCapacity;
     property  Items[index: integer]: Pointer      read GetItem    write SetItem; default;
     property  Count                : integer      read FCount     write SetCount;
-    property  Data                 : PPointerList read FData;
+    property  List                 : PPointerList read FData;
   end;
 
 function MakeHash(const s: string; MakeLower: boolean = True): integer;
@@ -288,6 +290,28 @@ end;
 
 { TSE2List }
 
+procedure TSE2List.SetCapacity(value: integer);
+var NewData      : PPointerList;
+    NewCapacity  : Cardinal;
+begin
+  if value = FCapacity then
+     exit;
+
+  if value <= FCount then
+     exit;
+
+  NewCapacity := value;
+  {$IFDEF SEII_FPC} {$HINTS OFF} {$ENDIF}
+  GetMem(NewData, NewCapacity * SizeOf(Pointer));
+  {$IFDEF SEII_FPC} {$HINTS ON} {$ENDIF}
+
+  Move(FData^, NewData^, FCount * SizeOf(Pointer));
+
+  FreeMem(FData, FCapacity * SizeOf(Pointer));
+  FData     := NewData;
+  FCapacity := NewCapacity;
+end;
+
 function TSE2List.Add(p: Pointer): integer;
 begin
   if FCount >= FCapacity then
@@ -388,7 +412,6 @@ end;
 procedure TSE2List.Recreate;
 var NewData      : PPointerList;
     NewCapacity  : Cardinal;
-    i            : integer;
 begin
   FCheckCount := 0;
   NewCapacity := mm(FCount, FCapacityInc);
@@ -397,14 +420,13 @@ begin
   {$IFDEF SEII_FPC}
     {$HINTS OFF}
   {$ENDIF}
-  GetMem(NewData, NewCapacity * 4);
+  GetMem(NewData, NewCapacity * SizeOf(Pointer));
   {$IFDEF SEII_FPC}
     {$HINTS ON}
   {$ENDIF}
-  for i := 0 to integer(FCount) -1 do
-  begin
-    NewData^[i] := FData^[I];
-  end;
+
+  Move(FData^, NewData^, FCount * SizeOf(Pointer));
+
   FreeMem(FData, FCapacity * 4);
   FData     := NewData;
   FCapacity := NewCapacity;
@@ -442,3 +464,5 @@ begin
 end;
 
 end.
+
+

@@ -19,6 +19,7 @@ type
     FBlockLeave   : integer;
     FExitTo       : integer;
 
+    FScriptExcept : Pointer;
     FErrorExcept  : ExceptClass;
     FErrorMsg     : string;
     FErrorStack   : string;
@@ -31,6 +32,7 @@ type
     property BlockLeave   : integer        read FBlockLeave   write FBlockLeave;
     property ExitTo       : integer        read FExitTo       write FExitTo;
 
+    property ScriptExcept : Pointer        read FScriptExcept write FScriptExcept;
     property ErrorExcept  : ExceptClass    read FErrorExcept  write FErrorExcept;
     property ErrorMsg     : string         read FErrorMsg     write FErrorMsg;
     property ErrorStack   : string         read FErrorStack   write FErrorStack;
@@ -40,6 +42,7 @@ type
   TSE2SafeBlockMngr = class(TSE2Object)
   private
     FBlockList : TList;
+    //FTop       : TSE2TryBlock;
   protected
     function GetCount: integer;
     function GetItem(index: integer): TSE2TryBlock;
@@ -73,6 +76,7 @@ begin
   result.ExitTo        := -1;
   result.ErrorPos      := -1;
   FBlockList.Add(result);
+  //FTop := result;
 end;
 
 procedure TSE2SafeBlockMngr.Clear;
@@ -98,6 +102,7 @@ begin
     FBlockList.Delete(index);
     result := True;
   end;
+
 end;
 
 destructor TSE2SafeBlockMngr.Destroy;

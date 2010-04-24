@@ -22,6 +22,7 @@ const
   CSE2PackageGetModuleName    = 'SE2ModuleName';
   CSE2PackageGetModuleSource  = 'SE2ModuleSource';
   CSE2PackageRegisterModule   = 'SE2RegisterModule';
+  CSE2PackageRegExceptions    = 'SE2RegisterExceptions';
 
 
 
@@ -32,6 +33,7 @@ type
   end;
 
   TSE2PackageFunctionRegister = procedure(Module: TPackageModule; Data: Pointer; MethodPos: Pointer; MethodName: PAnsiChar); stdcall;
+  TSE2PackageExceptionsReg    = procedure(Module: TPackageModule; Data: Pointer; ExceptionClass: Pointer; ExceptionMame: PAnsiChar); stdcall;
 
   
   // Package Information
@@ -75,6 +77,9 @@ type
   TSE2PackageGetModuleName    = function(Module: TPackageModule; pName: PAnsiChar; BuffSize: integer): integer; stdcall;
   TSE2PackageGetModuleSource  = function(Module: TPackageModule; pSource: PAnsiChar; BuffSize: integer): integer; stdcall;
   TSE2PackageRegisterModule   = procedure(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister); stdcall;
+
+  // Class registrations
+  TSE2PackageRegExceptions    = procedure(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageExceptionsReg); stdcall;
 
 implementation
 

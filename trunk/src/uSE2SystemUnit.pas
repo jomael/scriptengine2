@@ -24,6 +24,7 @@ uses
 
   { YOU ARE NOT ALLOWED TO CHANGE AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING LINE }
   uSE2IncDateTime, uSE2IncInfo, uSE2IncConsole, uSE2IncConvert, uSE2IncMath, uSE2IncStrings, uSE2IncTypes, uSE2IncSCriptInfo,
+  uSE2IncScriptExceptions, uSE2IncExceptions,
   SysUtils;
 
 { TSE2SystemUnit }
@@ -329,6 +330,50 @@ begin
   method.ReturnValue.Name     := 'result';
   method.ReturnValue.AUnitName := C_SE2SystemUnitName;
   method.ReturnValue.AType    := FindType('boolean');
+  method.ReturnValue.Visibility := visPublic;
+
+  { ClassName }
+
+  method := TSE2Method.Create;
+  AUnit.ElemList.Add(method);
+  method.Parent       := aClass;
+  method.Name         := 'ClassName';
+  method.AUnitName    := C_SE2SystemUnitName;
+  method.IsStatic     := False;
+  method.MethodType   := mtFunction;
+  method.IsExternal   := False;
+
+
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btString), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.META_CNAME, ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-3, False), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+
+  (*
+  PUSH [string]
+  MAKE STR [ ... class name ... ]  = CNM
+  POP TO -3
+  RET
+  *)
+
+  method.CallConvention := callRegister;
+  method.Visibility     := visPublic;
+
+  Param := TSE2Parameter.Create;
+  param.Name := 'Self';
+  param.AUnitName := C_SE2SystemUnitName;
+  Param.Visibility  := visPublic;
+  Param.Parent := Method;
+  Param.AType  := aClass;
+  Param.Visibility := visPrivate;
+  Param.IsStatic   := False;
+  Param.Visibility := visProtected;
+  Method.Params.Insert(0, Param);
+
+  method.ReturnValue          := TSE2Variable.Create;
+  method.ReturnValue.Name     := 'result';
+  method.ReturnValue.AUnitName := C_SE2SystemUnitName;
+  method.ReturnValue.AType    := FindType('string');
   method.ReturnValue.Visibility := visPublic;
 end;
 
