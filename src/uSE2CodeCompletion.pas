@@ -21,6 +21,7 @@ type
     FOnGetCustomUnits : TSE2GetCustomUnits;
     FEventRaised      : boolean;
     FCanExecute       : boolean;
+    FShowKeyWords     : boolean;
     FProcessed        : TList;
   protected
     procedure CompileCallBack(Sender: TObject; CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method;
@@ -129,6 +130,7 @@ begin
   FOnAddItem := CallBack;
   FCompiler  := TSE2Compiler.Create;
   FProcessed := TList.Create;
+  FShowKeyWords := True;
 end;
 
 destructor TSE2CodeCompletion.Destroy;
@@ -458,9 +460,10 @@ begin
     ProcessUnits(FCompiler, nil, nil, CAllVisibilities, nil, nil, False);
   end;
 
-  for Token := sesNone to sesLastToken do
-      if length(TSE2TokenString[Token]) > 2 then
-         DoAddItem(GetDisplayStrToken(TSE2TokenString[Token]), GetInsertStrToken(TSE2TokenString[Token]));
+  if FShowKeyWords then
+    for Token := sesNone to sesLastToken do
+        if length(TSE2TokenString[Token]) > 2 then
+           DoAddItem(GetDisplayStrToken(TSE2TokenString[Token]), GetInsertStrToken(TSE2TokenString[Token]));
 
   result := FCanExecute;
 end;
@@ -533,9 +536,6 @@ begin
       unitList.Free;
     end;
   end;
-
-
-
 end;
 
 procedure TSE2CodeCompletion.DoGetCustomUnits(const Target: TStrings);

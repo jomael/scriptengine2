@@ -165,7 +165,7 @@ type
                 soDEBUG_META, soFINIT_STACK,
 
                 // Meta
-                soMETA_PUSH, soMETA_SHARE, soMETA_CNAME
+                soMETA_PUSH, soMETA_SHARE, soMETA_CNAME, soMETA_CAST
                 );
 
 type
@@ -391,6 +391,7 @@ type
     OpCode     : TSE2OpCode;
     Offset     : integer;
     newType    : TSE2TypeIdent;
+    NoRef      : boolean;
   end;
 
   PSE2OpSPEC_DECP = ^TSE2OpSPEC_DECP;
@@ -449,7 +450,7 @@ type
   TSE2OpREC_COPY_TO = packed record
     OpCode     : TSE2OpCode;
     Target     : integer;
-    Static     : boolean;
+    MetaIndex  : integer;
   end;
 
   PSE2OpSPEC_UNREF = ^TSE2OpSPEC_UNREF;
@@ -541,6 +542,12 @@ type
     MetaIndex  : integer;
   end;
 
+  PSE2OpMETA_CAST = ^TSE2OpMETA_CAST;
+  TSE2OpMETA_CAST = packed record
+    OpCode     : TSE2OpCode;
+    MetaIndex  : integer;
+  end;
+
   TSE2OpCodeList = class(TSE2Object)
   private
     FList : TList;
@@ -591,6 +598,7 @@ type
     function  GetItem(index: integer): TSE2LinkOpCode;
     procedure SetItem(index: integer; value: TSE2LinkOpCode);
     function  GetCount: integer;
+    function  GetLast: TSE2LinkOpCode;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -605,6 +613,7 @@ type
     procedure SetPosition(Name: string; Index: integer);
     function  Delete(index: integer): boolean;
 
+    property Last                 : TSE2LinkOpCode  read GetLast;
     property Items[index: integer]: TSE2LinkOpCode  read GetItem   write SetItem; default;
     property Count                : integer         read GetCount; 
   end;
@@ -644,7 +653,7 @@ type
     class function INT_DECSTATIC(Position, value: integer): PSE2OpDefault;
     class function INT_DECSTACK(Position, value: integer): PSE2OpDefault;
 
-    class function SPEC_INCP(Offset: integer; newType: TSE2TypeIdent): PSE2OpDefault;
+    class function SPEC_INCP(Offset: integer; newType: TSE2TypeIdent; NoRef: boolean): PSE2OpDefault;
     class function SPEC_CREATE(Variables: integer; MetaIndex: integer): PSE2OpDefault;
     class function SPEC_DESTROY: PSE2OpDefault;                                     
     class function SPEC_UNREF: PSE2OpDefault;
@@ -654,7 +663,7 @@ type
 
     class function REC_MAKE(Variables: integer; MetaIndex: integer): PSE2OpDefault;
     class function REC_FREE(Offset: integer): PSE2OpDefault;
-    class function REC_COPY_TO(Target: integer; Static: boolean): PSE2OpDefault;   
+    class function REC_COPY_TO(Target: integer; Meta: integer): PSE2OpDefault;
     class function REC_MARK_DEL: PSE2OpDefault;
     class function REC_DEL_RECS(MaxRecords: integer): PSE2OpDefault;
 
@@ -673,6 +682,7 @@ type
     class function META_CNAME: PSE2OpDefault;
     class function META_PUSH(index: integer): PSE2OpDefault;
     class function META_SHARE(index: integer): PSE2OpDefault;
+    class function META_CAST(index: integer): PSE2OpDefault;
   end;
 
   TSE2ParamHelper = class(TSE2Object)
@@ -876,11 +886,12 @@ begin
   result := DefaultOP(soSAFE_TRYEND);
 end;
 
-class function TSE2OpCodeGen.SPEC_INCP(Offset: integer; newType: TSE2TypeIdent): PSE2OpDefault;
+class function TSE2OpCodeGen.SPEC_INCP(Offset: integer; newType: TSE2TypeIdent; NoRef: boolean): PSE2OpDefault;
 begin
   result := DefaultOP(soSPEC_INCP);
   PSE2OpSPEC_INCP(result)^.Offset := Offset;
-  PSE2OpSPEC_INCP(result)^.newType := newType;
+  PSE2OpSPEC_INCP(result)^.newType := newType;    
+  PSE2OpSPEC_INCP(result)^.NoRef := NoRef;
 end;
 
 class function TSE2OpCodeGen.STACK_DEC: PSE2OpDefault;
@@ -991,11 +1002,11 @@ begin
 end;
 
 class function TSE2OpCodeGen.REC_COPY_TO(Target: integer;
-  Static: boolean): PSE2OpDefault;
+  Meta: integer): PSE2OpDefault;
 begin      
   result := DefaultOP(soREC_COPY_TO);
   PSE2OpREC_COPY_TO(result)^.Target := Target;
-  PSE2OpREC_COPY_TO(result)^.Static := Static;
+  PSE2OpREC_COPY_TO(result)^.MetaIndex   := Meta;
 end;
 
 class function TSE2OpCodeGen.REC_MARK_DEL: PSE2OpDefault;
@@ -1050,6 +1061,12 @@ end;
 class function TSE2OpCodeGen.META_CNAME: PSE2OpDefault;
 begin
   result := DefaultOP(soMETA_CNAME);
+end;       
+
+class function TSE2OpCodeGen.META_CAST(index: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soMETA_CAST);
+  PSE2OpMETA_CAST(result)^.MetaIndex := index;
 end;
 
 class function TSE2OpCodeGen.SAFE_INTER: PSE2OpDefault;
@@ -1241,7 +1258,7 @@ begin
   soDAT_LOADRES     : PSE2OpDAT_LOADRES(FOpCode).Index := index;
   soSPEC_GetRef     : if PSE2OpSPEC_GetRef(FOpCode).Static then
                          PSE2OpSPEC_GetRef(FOpCode).Offset := index;
-  soREC_COPY_TO     : if PSE2OpREC_COPY_TO(FOpCode).Static then
+  soREC_COPY_TO     : if PSE2OpREC_COPY_TO(FOpCode).Target >= 0 then
                          PSE2OpREC_COPY_TO(FOpCode).Target   := index;
   soINT_INCSTATIC   : PSE2OpINT_INCSTATIC(FOpCode).Offset := index;
   soINT_DECSTATIC   : PSE2OpINT_DECSTATIC(FOpCode).Offset := index;
@@ -1438,6 +1455,11 @@ begin
     p := FList[i];
     p.SaveToStream(Stream);
   end;                    
+end;
+
+function TSE2LinkOpCodeList.GetLast: TSE2LinkOpCode;
+begin
+  result := Items[Count-1];
 end;
 
 { TSE2ParamHelper }

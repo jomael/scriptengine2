@@ -12,7 +12,7 @@ type
   private
     FUnitList : TSE2BaseTypeList;
   protected
-    procedure SetCodePos(ElemName: string; NewPos: cardinal);
+    procedure SetCodePos(ElemName: string; NewPos: cardinal; TypeMeta: TSE2BaseType = nil);
     procedure SetDebugPos(ElemName: string; DebugPos: cardinal);
     procedure AddCodeOffset(OpCode: PSE2OpDefault; Offset: integer);
 
@@ -119,7 +119,7 @@ end;
 procedure TSE2Linker.LinkString(PE: TSE2PE; value: TSE2LinkString);
 begin
   PE.Strings.Add(value.Value);
-  SetCodePos(value.GenLinkerName, PE.Strings.Count-1);
+  SetCodePos(value.GenLinkerName, PE.Strings.Count-1, nil);
 end;
 
 procedure TSE2Linker.LinkResources(PE: TSE2PE);
@@ -218,6 +218,7 @@ begin
 
   LinkRecordRTTI(ARecord);
 
+  ARecord.MetaIndex := PE.MetaData.Count;
   PE.MetaData.Add(Meta);
 end;
 
@@ -253,7 +254,7 @@ begin
           pVar := TSE2Variable(AUnit.ElemList[j]);
           pVar.CodePos := Index;
           aType := TSE2Type(TSE2Variable(AUnit.ElemList[j]).AType.InheritRoot).AType;
-          SetCodePos(pVar.GenLinkerName, Index);
+          SetCodePos(pVar.GenLinkerName, Index, TSE2Variable(AUnit.ElemList[j]).AType);
           GenCode(PE, TSE2OpCodeGen.STACK_INC(aType));
           if TSE2Variable(AUnit.ElemList[j]).AType is TSE2Record then
             GenCode(PE, TSE2OpCodeGen.REC_MAKE(0, GetIndexOfRecord(PE, TSE2Record(TSE2Variable(AUnit.ElemList[j]).AType))))
@@ -313,12 +314,15 @@ var CodePos: integer;
 
   function FindClassMeta(const MetaName: string): integer;
   var s: string;
+      n: integer;
   begin
+    n := MakeHash(MetaName);
     for result := 0 to PE.MetaData.Count-1 do
     begin
       s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
-      if s = MetaName then
-         exit;
+      if n = MakeHash(s) then
+        if s = MetaName then
+           exit;
     end;
     result := -1;
   end;
@@ -328,16 +332,19 @@ var CodePos: integer;
     result := 'META_['+Rec.Name+']['+rec.AUnitName+']';
   end;
 
-  function FindRecordMeta(const MetaName: string): integer;
+  function FindRecordMeta(const MetaName: string; const default: integer = -1): integer;
   var s: string;
+      n: integer;
   begin
+    n := MakeHash(MetaName);
     for result := 0 to PE.MetaData.Count-1 do
     begin
       s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
-      if s = MetaName then
-         exit;
+      if n = MakeHash(s) then
+        if s = MetaName then
+           exit;
     end;
-    result := -1;
+    result := default;
   end;
 
   procedure SetupDynamicMethod(Method: TSE2Method; aClass: TSE2Class);
@@ -434,9 +441,17 @@ begin
     begin
       PSE2OpMETA_SHARE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
     end;
+    if OpCode.OpCode.OpCode = soMETA_CAST then
+    begin           
+      PSE2OpMETA_CAST(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+    end;
     if OpCode.OpCode.OpCode = soREC_MAKE then
     begin
       PSE2OpREC_MAKE(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
+    end;
+    if OpCode.OpCode.OpCode = soREC_COPY_TO then
+    begin
+      PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex, PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex);
     end;
   end;
 end;
@@ -521,9 +536,8 @@ begin
   end;
 end;
 
-procedure TSE2Linker.SetCodePos(ElemName: string; NewPos: cardinal);
+procedure TSE2Linker.SetCodePos(ElemName: string; NewPos: cardinal; TypeMeta: TSE2BaseType = nil);
 var i, j     : integer;
-    Entry    : TSE2BaseType;
     NameHash : integer;
 
   procedure DoForMethod(Method: TSE2Method);
@@ -538,9 +552,13 @@ var i, j     : integer;
         begin
           Assert(Method.OpCodes[c].OpCode <> nil);
           Method.OpCodes[c].SetPosition(NewPos);
+          if Method.OpCodes[c].OpCode.OpCode = soREC_COPY_TO then
+            if TypeMeta is TSE2Type then
+               PSE2OpREC_COPY_TO(Method.OpCodes[c].OpCode).MetaIndex := TSE2Type(TypeMeta).MetaIndex;
         end;
   end;
 
+var Entry    : TSE2BaseType;
 begin
   if ElemName = '' then
      exit;
@@ -627,7 +645,7 @@ begin
 
   GenCode(PE, TSE2OpCodeGen.FINIT_STACK(numStatic));
 
-  for i:=0 to FUnitList.Count-1 do
+  for i:=FUnitList.Count-1 downto 0 do
     if TSE2Unit(FUnitList[i]).AFinalization <> nil then
       for j:=0 to TSE2Unit(FUnitList[i]).AFinalization.Count-1 do
         if TSE2Method(TSE2Unit(FUnitList[i]).AFinalization[j]).OpCodes.Count > 1 then
@@ -735,6 +753,7 @@ var i, j    : integer;
   end;
 
   procedure DeleteUselessPushPop();
+  var n, c: integer;
   begin
     if OpCodes[0].OpCode.OpCode = soDAT_COPY_FROM then
     begin
@@ -750,6 +769,33 @@ var i, j    : integer;
           AddOffsetPos(-2, i);
 
           i := i - 1;
+        end else
+        if OpCodes[1].OpCode.OpCode = soSPEC_INCP then
+        begin
+          c := 2;
+          for n:=2 to 9 do
+            if OpCodes[n] <> nil then
+            begin
+              if OpCodes[n].OpCode.OpCode = soSPEC_INCP then
+                 c := c + 1
+              else
+                 break;
+            end else
+              break;
+
+          if OpCodes[c] <> nil then
+            if OpCodes[c].OpCode.OpCode = soSTACK_DEC then
+            begin
+              Method.OpCodes.Delete(i);
+              for n:=2 to c do
+                Method.OpCodes.Delete(i);
+              Method.OpCodes.Delete(i);
+
+                             
+              AddOffsetPos(-c - 1, i);
+
+              i := i - 1;
+            end;
         end;
       end;
     end;

@@ -79,7 +79,7 @@ const
                 'soDEBUG_META', 'soFINIT_STACK',
 
                 // Meta
-                'soMETA_PUSH', 'soMETA_SHARE', 'soMETA_CNAME'
+                'soMETA_PUSH', 'soMETA_SHARE', 'soMETA_CNAME', 'soMETA_CAST'
                 );
 
 class function TSE2DebugHelper.OpCodeToStr(PE: TSE2PE; OpCode: PSE2OpDefault): string;
@@ -95,6 +95,7 @@ begin
   soMETA_CNAME           : result := 'CNM';
   soMETA_PUSH            : result := Format('MPUT [%d]', [PSE2OpMETA_PUSH(OpCode).MetaIndex]);
   soMETA_SHARE           : result := Format('MSHR [%d]', [PSE2OpMETA_SHARE(OpCode).MetaIndex]);
+  soMETA_CAST            : result := Format('MCST [%d]', [PSE2OpMETA_CAST(OpCode).MetaIndex]);
   soNOOP                 : result := 'NOOP';
   soSTACK_INC            : result := Format('PUSH [%s]', [VarTypeToStr(PSE2OpSTACK_INC(OpCode).AType)]);
   soSTACK_INC_COUNT      : result := Format('PUSH [%d %s]', [PSE2OpSTACK_INC_COUNT(OpCode).Count, VarTypeToStr(PSE2OpSTACK_INC_COUNT(OpCode).AType)]);
@@ -135,7 +136,7 @@ begin
 
   soREC_MAKE             : result := Format('REC.NEW [%d %s.%s]', [PSE2OpREC_MAKE(OpCode).Variables, PE.MetaData[PSE2OpREC_MAKE(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpREC_MAKE(OpCode).MetaIndex].Name]);
   soREC_FREE             : result := Format('REC.FREE [%d]', [PSE2OpREC_FREE(OpCode).Offset]);
-  soREC_COPY_TO          : result := Format('REC.POP TO [%d %s]', [PSE2OpREC_COPY_TO(OpCode).Target, IfThen(PSE2OpREC_COPY_TO(OpCode).Static, 'Static', 'Dynamic')]);
+  soREC_COPY_TO          : result := Format('REC.POP TO [%d %s]', [PSE2OpREC_COPY_TO(OpCode).Target, IfThen(PSE2OpREC_COPY_TO(OpCode).Target >= 0, 'Static', 'Dynamic')]);
   soREC_MARK_DEL         : result := 'REC.UNUSE';
   soREC_DEL_RECS         : result := Format('REC.GC [%d]', [PSE2OpREC_DEL_RECS(OpCode).MaxRecords]);
 
@@ -289,11 +290,19 @@ begin
            result := 'invalid'
         else
         begin
-          result := '0x' +IntToHex(integer(PPointer(Integer(Data^.tPointer) + SizeOf(Pointer))^), 8);
-          if RunTime <> nil then
-             Result := result + ' '+GetClassPtrName(RunTime, PPointer(Integer(Data^.tPointer) + SizeOf(Pointer))^);
+          if PPointer(Integer(Data^.tPointer) + SizeOf(Pointer))^ = nil then
+             result := ''
+          else
+          begin
+            result := ' 0x' +IntToHex(integer(PPointer(Integer(Data^.tPointer) + SizeOf(Pointer))^), 8);
+            if RunTime <> nil then
+               Result := result + ' '+GetClassPtrName(RunTime, PPointer(Integer(Data^.tPointer) + SizeOf(Pointer))^);
+          end;
 
-          result := '0x' + IntToHex(Integer(Data^.tPointer^), 8) + ' ' + result;
+          if PPointer(Data^.tPointer)^ = nil then
+             result := 'nil'
+          else
+             result := '0x' + IntToHex(Integer(Data^.tPointer^), 8) + result;
         end;
       end;
   end;

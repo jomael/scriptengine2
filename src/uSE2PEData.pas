@@ -892,13 +892,17 @@ end;
 function TSE2RTTIList.FindSize(AType: TSE2TypeIdent;
   Offset: integer): integer;
 var p: PSE2RTTIEntry;
+    i: integer;
 begin
-  for result := FList.Count-1 downto 0 do
+  for i := FList.Count-1 downto 0 do
   begin
-    p := FList[result];
+    p := FList[i];
     if p^.AType = AType then
       if p^.Offset = Offset then
+      begin
+        result := p^.Size;
         exit;
+      end;
   end;
   result := -1;
 end;

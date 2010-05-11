@@ -61,7 +61,7 @@ type
     procedure AddSingle(value: single);
     procedure AddDouble(const value: double);
     procedure AddPointer(value: pointer);
-    function  AddRecord(value: pointer): pointer;
+    function  AddRecord(value: pointer; Meta: TSE2MetaEntry): pointer;
 
     procedure Call;
 
@@ -555,6 +555,7 @@ end;
 
 procedure TSE2MethodCall.Run(Method: Pointer; MetaData: TSE2MetaEntry);
 var ReturnVar : PSE2VarData;
+    RetVarData: Pointer;
     Param     : PSE2VarData;
     i         : integer;
     ParamDecl : byte;
@@ -596,7 +597,8 @@ begin
              if pVarRecords = nil then
                 pVarRecords := TList.Create;
 
-             pVarRecords.Add(Self.AddRecord(Pointer(Param.tPointer^)));
+             pVarRecords.Add(Self.AddRecord(PPointer(Param.tPointer)^,
+                              TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]));
            end;
         btString, btUTF8String, btWideString, btPChar :
            Self.AddPointer(PPointer(Param.tString)^);
@@ -613,7 +615,7 @@ begin
         btS64         : Self.AddS64(Param^.ts64^);
         btSingle      : Self.AddSingle(Param^.tSingle^);
         btDouble      : Self.AddDouble(Param^.tDouble^);
-        btRecord      : Self.AddRecord(Pointer(Param^.tPointer^));
+        btRecord      : Self.AddRecord(Pointer(Param^.tPointer^), TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]);
         btString,
         btWideString,
         btUTF8String,
@@ -645,6 +647,7 @@ begin
       end;
     end;
 
+    RetVarData := nil;
     if CanUsePtr then
       if ReturnVar <> nil then
       begin
@@ -655,7 +658,12 @@ begin
         btUTF8String,
         btPChar         : Self.SetResultPointer(Pointer(ReturnVar.tString^));
         btProcPtr       : Self.SetResultPointer(Pointer(ReturnVar.tPointer));
-        btRecord        : Self.SetResultPointer(Pointer(ReturnVar.tPointer^));
+        btRecord        :
+            begin
+              RetVarData := FClasses.ScriptToDelphiRecord(PPointer(ReturnVar.tPointer)^, TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, -1) ]);
+              //RetVarData := FClasses.ScriptToDelphiRecord(PPointer(ReturnVar.tPointer)^);
+              Self.SetResultPointer(RetVarData);
+            end;
         end;
       end;
 
@@ -671,7 +679,7 @@ begin
         if TSE2ParamHelper.IsVarParam(ParamDecl) then
           if TSE2ParamHelper.GetParamType(ParamDecl) = btRecord then
           begin
-            Self.FClasses.DelphiToScriptRecord(pVarRecords.Last, Pointer(Param.tPointer^));
+            Self.FClasses.DelphiToScriptRecord(pVarRecords.Last, Pointer(Param.tPointer^), TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]);
             pVarRecords.Delete(pVarRecords.Count - 1);
           end;
       end;
@@ -700,6 +708,13 @@ begin
                  ) then
                  PPointer(ReturnVar.tPointer)^ := nil;
             end;
+          end;
+      btRecord             :
+          begin
+            FClasses.DelphiToScriptRecord(RetVarData, PPointer(ReturnVar.tPointer)^, TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, -1) ]);
+            //FClasses.MM.FreeMem(RetVarData);
+            FClasses.MM.FreeMem(RetVarData);
+            //FClasses.DelphiToScriptRecord(Self.AsPointer, PPointer(ReturnVar.tPointer)^);
           end;
       {$IFDEF SEII_FPC_STRING_EAX}
       btString             : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
@@ -738,11 +753,18 @@ begin
   {$ENDIF}
 end;
 
-function TSE2MethodCall.AddRecord(value: pointer): pointer;
+function TSE2MethodCall.AddRecord(value: pointer; Meta: TSE2MetaEntry): pointer;
 begin
-  result := FClasses.ScriptToDelphiRecord(value);
-  AddPointer(result);
-  FRecords.Add(result);
+  if Meta.RTTI.Count > 0 then
+  begin
+    result := FClasses.ScriptToDelphiRecord(value, Meta);
+    AddPointer(result);
+    FRecords.Add(result);
+  end else
+  begin
+    result := value;
+    AddPointer(value);
+  end;
 end;
 
 end.

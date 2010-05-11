@@ -435,7 +435,7 @@ var CallInfo     : PSE2NativeCallEntry;
                   raise ESE2CallParameterError.Create(SParamNotCompatible);
 
                Pointer(newEntry.tPointer^) := RunTime.RunTimeClasses.CreateScriptRecord(RecMeta, RunTime.AppCode);
-               RunTime.RunTimeClasses.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^));
+               RunTime.RunTimeClasses.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^), RecMeta);
                if bAddToList then
                begin
                  if pVarRecords = nil then
@@ -604,7 +604,8 @@ var CallInfo     : PSE2NativeCallEntry;
             begin
               if pVarRecords <> nil then
               begin
-                RunTime.RunTimeClasses.ScriptToDelphiRecord(pVarRecords.Last, PPointer(Parameter)^);
+                RunTime.RunTimeClasses.ScriptToDelphiRecord(pVarRecords.Last, PPointer(Parameter)^,
+                           RunTime.AppCode.MetaData[ ScriptMethod.RTTI.FindSize(btRecord, i) ]);
                 pVarRecords.Delete(pVarRecords.Count - 1);
               end;
             end;
@@ -683,7 +684,8 @@ var CallInfo     : PSE2NativeCallEntry;
             //Parameter := @_EDX;
             //if _EDX = nil then
             //   Parameter := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 2);
-            RunTime.RunTimeClasses.ScriptToDelphiRecord(Pointer(RunTime.Stack.Top^.tPointer^), Pointer(Parameter^));
+            RunTime.RunTimeClasses.ScriptToDelphiRecord(Pointer(RunTime.Stack.Top^.tPointer^), Pointer(Parameter^),
+                 RunTime.AppCode.MetaData[ ScriptMethod.RTTI.FindSize(btRecord, -1) ]);
             RunTime.RunTimeClasses.DestroyScriptRecord(Pointer(RunTime.Stack.Top^.tPointer^));
           end;
 
