@@ -8,6 +8,12 @@ uses
   SynHighlighterSE2;
 
 type
+  TTreeData = class
+    Item   : TSE2ManagedUnit;
+    Module : integer;
+    constructor Create(Item: TSE2ManagedUnit; Module: integer);
+  end;
+
   TIDEPackageInspector = class(TPanel)
   private
     FHorzSplitter  : TSplitter;
@@ -30,6 +36,8 @@ type
     FSizeImageList   : TImageList;
     FToggleUpIndex   : integer;
     FToggleDownIndex : integer;
+
+    FTreeDataList    : TList;
   protected           
     procedure packageTreeCustomDrawItem(Sender: TCustomTreeView;
       Node: TTreeNode; State: TCustomDrawState; var DefaultDraw: Boolean); 
@@ -41,8 +49,11 @@ type
                 Data: Integer; var Compare: Integer);
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+
     procedure CreateComponents(TreeImages: TImageList);
     procedure FillTree;
+    procedure ClearTree;
                  
     property Tree            : TTreeView  read FTree;
     property Editor          : TSynEdit   read FPackageSource;
@@ -54,6 +65,8 @@ type
   end;
 
 implementation
+
+
 
 { TIDEPackageInspector }
 
@@ -87,11 +100,24 @@ begin
   end;
 end;
 
+procedure TIDEPackageInspector.ClearTree;
+var i: integer;
+begin
+  for i:=0 to FTreeDataList.Count-1 do
+  begin
+    TObject(FTreeDataList[i]).Free;
+  end;
+  FTreeDataList.Clear;
+  FTree.Items.Clear;
+end;
+
 constructor TIDEPackageInspector.Create(AOwner: TComponent);
 begin
   inherited;
   Height := 146;
   Width  := 446;
+
+  FTreeDataList := TList.Create;
 end;
 
 procedure TIDEPackageInspector.CreateComponents(TreeImages: TImageList);
@@ -220,6 +246,13 @@ begin
   FPackageSource.Highlighter := FSourceHighlight;
 end;
 
+destructor TIDEPackageInspector.Destroy;
+begin
+  ClearTree;
+  FTreeDataList.Free;
+  inherited;
+end;
+
 procedure TIDEPackageInspector.FillTree;
 var Root  : TTreeNode;
     Child : TTreeNode;
@@ -236,7 +269,7 @@ var Root  : TTreeNode;
           result := FTree.Items[i];
           exit;
         end;
-     result := FTree.Items.AddChild(nil, Item.UnitName);
+     result := FTree.Items.AddChild(nil, Name);
      result.ImageIndex := 0;
      result.SelectedIndex := 0;
   end;
@@ -258,28 +291,53 @@ var Root  : TTreeNode;
 begin
   FTree.Items.BeginUpdate;
   try
-    FTree.Items.Clear;
+    ClearTree;
 
     for i:=0 to TSE2UnitManager.Instance.Count-1 do
       //if TSE2UnitManager.Instance[i] is TSE2PackageUnit then
       begin
         Item := TSE2UnitManager.Instance[i];
+
+        for j:=0 to Item.Modules-1 do
+        begin
+          Root := FindRootNode(Item.UnitNames[j]);
+
+          Child := FTree.Items.AddChild(Root, Format('[%d] %s', [ Root.Count + 1, Item.UnitNames[j]]) );
+
+          if Item is TSE2PackageUnit then
+             Child.Text := Child.Text + ' ('+GetPackageName(TSE2PackageUnit(Item).FileName)+')';
+
+
+          Child.ImageIndex := IfThen(Item is TSE2PackageUnit, 7, 4);
+          Child.SelectedIndex := Child.ImageIndex;
+          Child.Data := TTreeData.Create(Item, j);
+          FTreeDataList.Add(Child.Data);
+
+          if Item is TSE2PackageUnit then
+          begin
+            Root.ImageIndex := 7;
+            Root.SelectedIndex := Root.ImageIndex;
+          end;
+        end;
+                               (*
         if Item is TSE2PackageUnit then
         begin
+          Root := FindRootNode(Item.UnitName);
+                                              {
           Root := FTree.Items.AddChild(nil, GetPackageName(TSE2PackageUnit(Item).FileName));
           Root.ImageIndex := 7;
           Root.SelectedIndex := 7;
-          Root.Data := Item;
+          Root.Data := Item;                   }
         end else
           Root := FindRootNode(Item.UnitName);
 
         for j:=0 to Item.Modules-1 do
         begin
           Child := FTree.Items.AddChild(Root, Format('[%d] %s', [ IfThen(Item is TSE2PackageUnit, j + 1, Root.Count + 1), Item.UnitNames[j]]) );
-          Child.ImageIndex := IfThen(Item is TSE2PackageUnit, 6, 4);
+          Child.ImageIndex := IfThen(Item is TSE2PackageUnit, 7, 4);
           Child.SelectedIndex := Child.ImageIndex;
           Child.Data := Item;
-        end;
+        end;        *)
       end;
 
       FTree.CustomSort(nil, 0, False);
@@ -290,12 +348,19 @@ end;
 
 procedure TIDEPackageInspector.ItemCompare(Sender: TObject; Node1,
   Node2: TTreeNode; Data: Integer; var Compare: Integer);
-var Item1, Item2: TSE2ManagedUnit;
+var Item1, Item2: TTreeData;
 
   function GetPackageName(const Input: string): string;
   begin
     result := ExtractFileName(Input);
     result := Copy(result, 1, length(result) - length(ExtractFileExt(result)));
+  end;
+
+  function IsPartOfSystemUnit(const s: string): boolean;
+  begin
+    result := SameText(s, 'System');
+    if not result then
+       result := Pos('system.', LowerCase(s)) = 1;
   end;
 
 begin
@@ -319,13 +384,21 @@ begin
        Compare := -1
     else
     begin
-      if AnsiSameText(Node1.Text, 'System') then
-         Compare := -1
-      else
-      if AnsiSameText(Node2.Text, 'System') then
-         Compare := 1
-      else
-         Compare := AnsiCompareText(Node1.Text, Node2.Text)
+      if IsPartOfSystemUnit(Node1.Text) then
+      begin
+        if not IsPartOfSystemUnit(Node2.Text) then
+           Compare := -1
+        else
+           Compare := CompareText(Node1.Text, Node2.Text);
+      end else
+      if IsPartOfSystemUnit(Node2.Text) then
+      begin
+        if not IsPartOfSystemUnit(Node1.Text)  then
+           Compare := 1
+        else
+           Compare := CompareText(Node1.Text, Node2.Text);
+      end else
+        Compare := CompareText(Node1.Text, Node2.Text);
     end;
   end;
 
@@ -343,7 +416,7 @@ end;
 
 procedure TIDEPackageInspector.packageTreeDblClick(Sender: TObject);
 var Node: TTreeNode;
-    Item: TSE2ManagedUnit;
+    Item: TTreeData;
 
   function GetIndex(s: string): integer;
   var iPos : integer;
@@ -372,16 +445,19 @@ begin
 
     Node := FTree.Selected;
 
+    if Node.Data = nil then
+       exit;
+
       Item := Node.Data;
-      if Item is TSE2PackageUnit then
+      if Item.Item is TSE2PackageUnit then
       begin
-        FInfoFileName.Text      := TSE2PackageUnit(Item).FileName;
-        FInfoGUID.Caption       := GUIDToString(TSE2PackageUnit(Item).GUID);
-        FInfoModules.Caption    := IntToStr(Item.Modules);
-        FInfoVersion.Caption    := Format('%d.%d.%d.%d', [TSE2PackageUnit(Item).MinVersion.Major,
-                                                            TSE2PackageUnit(Item).MinVersion.Minor,
-                                                            TSE2PackageUnit(Item).MinVersion.Patch,
-                                                            TSE2PackageUnit(Item).MinVersion.Build]);
+        FInfoFileName.Text      := TSE2PackageUnit(Item.Item).FileName;
+        FInfoGUID.Caption       := GUIDToString(TSE2PackageUnit(Item.Item).GUID);
+        FInfoModules.Caption    := IntToStr(Item.Item.Modules);
+        FInfoVersion.Caption    := Format('%d.%d.%d.%d', [TSE2PackageUnit(Item.Item).MinVersion.Major,
+                                                            TSE2PackageUnit(Item.Item).MinVersion.Minor,
+                                                            TSE2PackageUnit(Item.Item).MinVersion.Patch,
+                                                            TSE2PackageUnit(Item.Item).MinVersion.Build]);
       end else
       begin
         //if Self.Height > 30 then
@@ -393,7 +469,7 @@ begin
         FInfoVersion.Caption    := '';
       end;
       if Item <> nil then
-         FPackageSource.Text := Item.GetUnitSource(GetIndex(Node.Text));
+         FPackageSource.Text := Item.Item.GetUnitSource(Item.Module);
   finally
     FPackageSource.EndUpdate;
   end;
@@ -409,4 +485,14 @@ begin
   end;
 end;
 
+{ TTreeData }
+
+constructor TTreeData.Create(Item: TSE2ManagedUnit; Module: integer);
+begin
+  inherited Create;
+  Self.Item := Item;
+  Self.Module := Module;
+end;
+
 end.
+
