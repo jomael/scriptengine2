@@ -141,6 +141,5 @@ Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 Count=1
 Item0=.\_dcu
 [HistoryLists\hlOutputDirectorry]
-Count=2
+Count=1
 Item0=..\..\_bin\Packages
-Item1=.\_bin

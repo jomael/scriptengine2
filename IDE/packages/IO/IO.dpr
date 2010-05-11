@@ -4,7 +4,10 @@ library IO;
 
 {$R *.res}
 
+{$LIBPREFIX 'lib'}
+
 uses
+  uSE2DLLMemoryManager,
   SysUtils,
   Classes,
   uSE2PackageAPI in '..\..\units\Script Engine\Package\uSE2PackageAPI.pas',
@@ -16,8 +19,8 @@ uses
 procedure PackageMinimumVersion(var Version: TSE2Version); stdcall;
 begin
   Version.Major := 0;
-  Version.Minor := 3;
-  Version.Patch := 6;
+  Version.Minor := 4;
+  Version.Patch := 9;
   Version.Build := 0;
 end;
 
@@ -32,6 +35,7 @@ begin
   result := 0;
 end;
 
+(*
 var
   {$IFDEF DELPHI2005UP}
   oldMM : TMemoryManagerEx;
@@ -41,17 +45,21 @@ var
   newMM : TMemoryManager;
   {$ENDIF}
   useMM : boolean;
+*)
 
 // Package Finalization
 procedure PackageFinalize; stdcall;
 begin
+  (*
   if useMM then
   begin
     SetMemoryManager(oldMM);
     useMM := False;
   end;
+  *)
 end;
 
+(*
 procedure PackageSetMM(const MemoryManager: {$IFDEF DELPHI2005UP} TMemoryManagerEx {$ELSE} TMemoryManager {$ENDIF}); stdcall;
 begin
   if not useMM then
@@ -61,7 +69,7 @@ begin
     SetMemoryManager(newMM);
     useMM := True;
   end;
-end;
+end;     *)
 
 function PackageInitModule(Module: TPackageModule): integer; stdcall;
 begin
@@ -166,7 +174,7 @@ exports
   PackageGetGUID name CSE2PackageGUID,
   PackageInitialize name CSE2PackageInitialize,
   PackageFinalize name CSE2PackageFinalize,
-  PackageSetMM name {$IFDEF DELPHI2005UP} CSE2PackageSetMMEx {$ELSE} CSE2PackageSetMM {$ENDIF},
+  //PackageSetMM name {$IFDEF DELPHI2005UP} CSE2PackageSetMMEx {$ELSE} CSE2PackageSetMM {$ENDIF},
   PackageNumModules name CSE2PackageNumModules,
   PackageInitModule name CSE2PackageInitModule,
   PackageFinalizeModule name CSE2PackageFinalizeModule,
