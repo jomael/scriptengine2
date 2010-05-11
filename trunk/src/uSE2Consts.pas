@@ -18,7 +18,7 @@ type
                     sesPlus, sesMinus, sesStar, sesSlash, sesDiv, sesMod,
                     // Comparison
                     sesEqual, sesSmaller, sesSmallerEqual, sesBiggerEqual, sesBigger, sesUnEqual,
-                    sesIs,
+                    sesIs, sesAs,
                     // Assignment
                     sesBecomes, sesDoublePoint, sesDot, sesSemiColon, sesColon,
                     // Operators
@@ -32,7 +32,7 @@ type
                     // Expression Helpers
                     sesOpenRound, sesCloseRound, sesOpenBracket, sesCloseBracket,
                     // Special expressions
-                    sesTry, sesFinally, sesExcept, sesOn, sesDeprecated, sesRaise,
+                    sesTry, sesFinally, sesExcept, sesOn, sesDeprecated, sesRaise, sesSizeOf,
                     // Class Definitions
                     sesClass, sesPrivate, sesProtected, sesPublic, sesProperty, sesVirtual, sesAbstract, sesOverride, sesOverload,
                     sesInherited, sesReintroduce, sesPartial, sesHelper,
@@ -79,7 +79,7 @@ const
                     '+', '-', '*', '/', 'div', 'mod',
                     // Comparison
                     '=', '<', '<=', '>=', '>', '<>',
-                    'is',
+                    'is', 'as',
                     // Assignment
                     ':=', ':', '.', ';', ',',
                     // Operators
@@ -93,7 +93,7 @@ const
                     // Expression Helpers
                     '(', ')', '[', ']',
                     // Special expressions
-                    'try', 'finally', 'except', 'on', 'deprecated', 'raise',
+                    'try', 'finally', 'except', 'on', 'deprecated', 'raise', 'sizeof',
                     // Class Definitions
                     'class', 'private', 'protected', 'public', 'property', 'virtual', 'abstract', 'override', 'overload',
                     'inherited', 'reintroduce', 'partial', 'helper',
@@ -177,7 +177,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 0; Build: 0);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 1; Build: 0);
 
 
 function SE2SplitFullQualifiedName(const Input: string; var AUnitName, ATypeName: string): boolean;
@@ -373,7 +373,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 04, 24);
+  result := EncodeDate(2010, 05, 11);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }

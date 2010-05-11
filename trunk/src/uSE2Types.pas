@@ -123,6 +123,7 @@ type
     constructor Create(Filter: array of TSE2BaseTypeClass); reintroduce;
 
     function Duplicate: TSE2BaseTypeFilter;
+    function TypeIsIn(aType: TSE2BaseTypeClass): boolean;
   end;
 
   TSE2BaseTypeList = class(TSE2Object)
@@ -234,10 +235,13 @@ type
     destructor Destroy; override;
 
     procedure Clear;
-    procedure Add(aType: TSE2TypeIdent; Offset, Size: integer);
+    procedure Add(aType: TSE2TypeIdent; Offset, Size: integer); overload;
+    procedure Add(Item: PSE2ClassRTTIEntry); overload;
+
 
     procedure LoadFromStream(Stream: TStream; Weaver: TSE2NameWeaver); override;    
     procedure SaveToStream(Stream: TStream); override;
+    function  Duplicate(index, deltaOffset: integer): PSE2ClassRTTIEntry;
 
     property  Items[index: integer]: PSE2ClassRTTIEntry read GetItem; default;
     property  Count                : integer            read GetCount;
@@ -248,10 +252,12 @@ type
     FType     : TSE2TypeIdent;
     FDataSize : integer;
     FStrict   : boolean;
+    FMetaIndex: integer;
   public
     procedure LoadFromStream(Stream: TStream; Weaver: TSE2NameWeaver); override;
     procedure SaveToStream(Stream: TStream); override;
 
+    property MetaIndex: integer         read FMetaIndex       write FMetaIndex;
     property AType    : TSE2TypeIdent   read FType            write FType;
     property Strict   : boolean         read FStrict          write FStrict;
     property DataSize : integer         read FDataSize        write FDataSize;
@@ -614,7 +620,7 @@ type
 
 implementation
 
-uses SysUtils, uSE2UnitCache;
+uses SysUtils, uSE2UnitCache, StrUtils;
 
 const
   TSE2IntegerList_CurrentVersion  = 1;
@@ -1599,7 +1605,7 @@ begin
         FElemList.LoadFromStream(Stream, Weaver);
         FStrings.LoadFromStream(Stream, Weaver);
         FInitializations.LoadFromStream(Stream, Weaver);
-        FInitializations.LoadFromStream(Stream, Weaver);
+        FFinalizations.LoadFromStream(Stream, Weaver);
         if TSE2StreamHelper.ReadString(Stream) <> '' then
         begin
           if FMain = nil then
@@ -1630,7 +1636,7 @@ begin
   FElemList.SaveToStream(Stream);
   FStrings.SaveToStream(Stream);
   FInitializations.SaveToStream(Stream);
-  FInitializations.SaveToStream(Stream);
+  FFinalizations.SaveToStream(Stream);
   if FMain = nil then
      TSE2StreamHelper.WriteString(Stream, '')
   else
@@ -1660,6 +1666,19 @@ begin
   result := nil;
   if Self <> nil then
      result := TSE2BaseTypeFilter.Create(Self.Filters);
+end;
+
+function TSE2BaseTypeFilter.TypeIsIn(aType: TSE2BaseTypeClass): boolean;
+var i: integer;
+begin            
+  result := True;
+  if Self <> nil then
+  begin
+    for i:=Low(Filters) to High(Filters) do
+      if Filters[i] = aType then
+        exit;
+    result := False;
+  end;
 end;
 
 { TSE2LinkStringList }
@@ -2279,6 +2298,12 @@ begin
   FList.Add(p);
 end;
 
+procedure TSE2ClassRTTI.Add(Item: PSE2ClassRTTIEntry);
+begin
+  if FList.IndexOf(Item) < 0 then
+     FList.Add(Item);
+end;
+
 procedure TSE2ClassRTTI.Clear;
 var i: integer;
 begin
@@ -2298,6 +2323,17 @@ begin
   Clear;
   FList.Free;
   inherited;
+end;
+
+function TSE2ClassRTTI.Duplicate(index,
+  deltaOffset: integer): PSE2ClassRTTIEntry;
+var source: PSE2ClassRTTIEntry;
+begin
+  source := FList[index];
+  New(result);
+  result^.Offset := source^.Offset + deltaOffset;
+  result^.Size   := source^.Size;
+  result^.aType  := source^.aType;
 end;
 
 function TSE2ClassRTTI.GetCount: integer;

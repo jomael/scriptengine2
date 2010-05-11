@@ -29,6 +29,7 @@ type
     LastVariable   : TSE2Variable;
     LastProperty   : TSE2Property;
     LastMethod     : TSE2Method;
+    RootRecord     : TSE2Record;
     LastTargetVar  : TSE2Variable;
     LastSetVariable: TSE2Variable;
     CurrentOwner   : TSE2Type;
@@ -81,6 +82,7 @@ type
     function  GenIncompatibleExpression(Current, Target: TSE2Type; Operation: TSE2TokenType = sesNone): string;
 
 
+    procedure ShowUnusedVariables(OnlyPrivate: boolean);
     procedure ParseUnit(State: TSE2ParseState);
     procedure ParseProgram(State: TSE2ParseState);
 
@@ -417,10 +419,28 @@ var pUnit : TSE2Unit;
           end;
   end;
 
+  function FindUnitName(const Name: string): TSE2Unit;
+  var i: integer;
+      p: TSE2Unit;
+  begin
+    result := TSE2Unit(FUnitList.FindItem(Name));
+    if result = nil then
+    begin
+      for i:=FUnitList.Count-1 downto 0 do
+      begin
+        p := TSE2Unit(FUnitList.Items[i]);
+        if Pos(LowerCase(Name) + '.', LowerCase(p.Name)) = 1 then
+        begin
+          result := p;
+          exit;
+        end;
+      end;
+    end;
+  end;
+
   function IdentifierInUnit(aUnit: TSE2Unit): TSE2BaseType;
   var vis        : TSE2Visibilities;
       bCanBeUnit : boolean;
-      i          : integer;
       p          : TSE2BaseType;
       bCanSearch : boolean;
   begin
@@ -475,17 +495,13 @@ var pUnit : TSE2Unit;
       if result = nil then
          result := aUnit.TypeList.FindItem(IdentName, '', Parent, nil, ClassTypes, vis, AcceptSetType);
     end;
+    bCanBeUnit := False;
     if result = nil then
     begin
       bCanBeUnit := (ClassTypes = nil) and (UnitName = '');
       if (not bCanBeUnit) and (ClassTypes <> nil) then
       begin
-        for i:=Low(ClassTypes.Filters) to High(ClassTypes.Filters) do
-          if ClassTypes.Filters[i] = TSE2Unit then
-          begin
-            bCanBeUnit := True;
-            break;
-          end;
+        bCanBeUnit := ClassTypes.TypeIsIn(TSE2Unit);
       end;
       if bCanBeUnit then
          if aUnit.IsName(IdentName) then
@@ -501,27 +517,36 @@ var pUnit : TSE2Unit;
 
       if bCanSearch then       
          result := FindInClassHelpers(aUnit);
-
     end;
+
+    if result = nil then
+      if bCanBeUnit then
+        Result := FindUnitName(IdentName);
       //if not (Parent is TSE2Class) then
   end;
 
-  function FindUnitName(const Name: string): TSE2Unit;
-  var i: integer;
-      p: TSE2Unit;
+{
+program Project1;
+
+uses
+  SE2.Records.Externals;
+
+var t: SE2.Records.Externals;
+begin
+
+end.
+}
+
+  function FindUnitEx(const UnitName, IdentName: string): TSE2Unit;
+  var iPos: integer;
   begin
-    result := TSE2Unit(FUnitList.FindItem(Name));
-    if result = nil then
+    result := nil;
+    iPos := Pos('.' + AnsiLowerCase(IdentName), AnsiLowerCase(UnitName));
+    if iPos = length(Copy(UnitName, 1, iPos)) { - length(IdentName) } then
     begin
-      for i:=FUnitList.Count-1 downto 0 do
-      begin
-        p := TSE2Unit(FUnitList.Items[i]);
-        if Pos(LowerCase(Name) + '.', LowerCase(p.Name)) = 1 then
-        begin
-          result := p;
-          exit;
-        end;
-      end;
+      result := FindUnitName(UnitName);
+      if not (result is TSE2Unit) then
+         result := nil;
     end;
   end;
 
@@ -559,16 +584,12 @@ begin
 
       result := IdentifierInUnit(pUnit);
 
-      if result = nil then
+      if (result = nil) and (ClassTypes.TypeIsIn(TSE2Unit)) then
       begin
         pUnit := FindUnitName(UnitName + '.' + IdentName);
         if pUnit = nil then
         begin
-          if Pos('.' + AnsiLowerCase(IdentName), AnsiLowerCase(UnitName)) =
-                 length(UnitName) - length(IdentName) then
-          begin
-            pUnit := FindUnitName(UnitName);
-          end;
+          pUnit := FindUnitEx(UnitName, IdentName);
         end;
         if pUnit <> nil then
            result := pUnit;
@@ -586,6 +607,7 @@ begin
              exit;
         end;
       end;
+
     end;
   finally
     ClassTypes.Free;
@@ -693,6 +715,8 @@ begin
   GenCode(FUnit.Main, TSE2LinkOpCode.Create(TSE2OpCodeGen.DEBUG_META(0), FUnit.Main.GenLinkerName));
   StatementSquence(State, FUnit.Main);
 
+  ShowUnusedVariables(False);
+
   FUnit.Main.Lists.ExitTableList.Delete(FUnit.Main.Lists.ExitTableList.Count-1);
 
   for i:=FUnit.Main.Lists.ExitList.Count-1 downto oldExitList do
@@ -766,6 +790,7 @@ begin
   ReadNextToken;
   ExpectToken([sesDot]);
 
+  ShowUnusedVariables(True);
 
   // More Text ???
   if Tokenizer.NextToken then
@@ -893,7 +918,7 @@ procedure TSE2Parser.VariableDeclaration(State: TSE2ParseState;
 var NewVaribles: TSE2BaseTypeList;
     NewVar     : TSE2Variable;
     VarType    : TSE2BaseType;
-    i          : integer;
+    i, rt      : integer;
     IsPublic   : boolean;
     IsExternal : boolean;
 begin
@@ -1074,14 +1099,26 @@ begin
             begin
               NewVar.CodePos := TSE2Record(State.CurrentOwner).RecordSize;
 
-              TSE2Record(State.CurrentOwner).RecordSize := TSE2Record(State.CurrentOwner).RecordSize + TSE2Type(NewVar.AType).DataSize;
-              case TSE2Type(NewVar.AType).AType of
-              btString     : TSE2Record(State.CurrentOwner).RTTI.Add(btString, NewVar.CodePos, SizeOf(Pointer));
-              btUTF8String : TSE2Record(State.CurrentOwner).RTTI.Add(btUTF8String, NewVar.CodePos, SizeOf(Pointer));
-              btWideString : TSE2Record(State.CurrentOwner).RTTI.Add(btWideString, NewVar.CodePos, SizeOf(Pointer));
-              btPChar      : TSE2Record(State.CurrentOwner).RTTI.Add(btPChar, NewVar.CodePos, SizeOf(Pointer));
-              btArray      : ;
-              btRecord     : TSE2Record(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(NewVar.AType));
+              if NewVar.AType is TSE2Record then
+              begin
+                TSE2Record(State.CurrentOwner).RecordSize := TSE2Record(State.CurrentOwner).RecordSize + TSE2Record(NewVar.AType).RecordSize;
+                for rt:=0 to TSE2Record(NewVar.AType).RTTI.Count-1 do
+                begin
+                  TSE2Record(State.CurrentOwner).RTTI.Add( TSE2Record(NewVar.AType).RTTI.Duplicate(rt, NewVar.CodePos));
+                end;
+
+                //TSE2Record(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(NewVar.AType));
+              end else
+              begin
+                TSE2Record(State.CurrentOwner).RecordSize := TSE2Record(State.CurrentOwner).RecordSize + TSE2Type(NewVar.AType).DataSize;
+                case TSE2Type(NewVar.AType).AType of
+                btString     : TSE2Record(State.CurrentOwner).RTTI.Add(btString, NewVar.CodePos, SizeOf(Pointer));
+                btUTF8String : TSE2Record(State.CurrentOwner).RTTI.Add(btUTF8String, NewVar.CodePos, SizeOf(Pointer));
+                btWideString : TSE2Record(State.CurrentOwner).RTTI.Add(btWideString, NewVar.CodePos, SizeOf(Pointer));
+                btPChar      : TSE2Record(State.CurrentOwner).RTTI.Add(btPChar, NewVar.CodePos, SizeOf(Pointer));
+                btArray      : ;
+                btRecord     : TSE2Record(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(NewVar.AType));
+                end;
               end;
             end;
           end;
@@ -2274,7 +2311,7 @@ begin
           if (((pMeth.IsStatic <> Method.IsStatic) and ((pMeth.MethodType <> mtConstructor) and (Method.MethodType <> mtConstructor))) or
              (pMeth.MethodType <> Method.MethodType)) and
              (not (pMeth.IsExternal or Method.IsExternal)) then
-             RaiseError(petError, 'The method is not equal to the forwarded declaration');
+             RaiseError(petError, 'The method is not equal to the forwarded declaration: ' + pMeth.Name);
 
           if pMeth.IsForwarded and (pMeth.Parent = State.CurrentOwner) then
 
@@ -2745,7 +2782,7 @@ begin
         begin
           // push call stack
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, False), ''));
-          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(4, btString), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(4, btString, False), ''));
 
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btString), ''));
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_STACK, ''));
@@ -3295,6 +3332,7 @@ var pSearchUnit   : TSE2Unit;
   end;
 
 begin
+  State.RootRecord := nil;
   State.LastMethod := nil;
   State.AParent    := nil;
   State.NoStaticPointer := False;
@@ -3389,6 +3427,15 @@ begin
       result        := TSE2Variable(FindItem).AType;
       LastItem      := FindItem;
       pSearchParent := result;
+
+      if TSE2Variable(FindItem).Parent is TSE2Record then
+      begin
+        if State.RootRecord = nil then
+          State.RootRecord := TSE2Record(TSE2Variable(FindItem).Parent);
+      end;
+
+      if (TSE2Variable(FindItem).AType is TSE2Class) then
+         State.RootRecord := nil;
 
       if result is TSE2MethodVariable then
       begin
@@ -3815,7 +3862,11 @@ begin
           State.NoStaticPointer := False;
 
           if not TSE2Variable(TSE2Property(LastItem).Setter).IsStatic then
-             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(TSE2Variable(TSE2Property(LastItem).Setter).CodePos, TSE2Type(TSE2Variable(TSE2Property(LastItem).Setter).AType.InheritRoot).AType), ''));
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(
+                               TSE2Variable(TSE2Property(LastItem).Setter).CodePos,
+                               TSE2Type(TSE2Variable(TSE2Property(LastItem).Setter).AType.InheritRoot).AType,
+                               False), '')
+             );
           SetterCallBack(Self, State, Method, TSE2Property(LastItem).AType);
           PopStackToVar(State, Method, TSE2Variable(TSE2Property(LastItem).Setter));
         end;
@@ -3878,69 +3929,99 @@ var Token   : TSE2TokenType;
     FacType : TSE2Type;
 begin
   result := MathExpression(State, Method, TargetType);
-  while Tokenizer.Token.AType in [sesPlus, sesMinus, sesIs, sesEqual, sesSmaller, sesBigger, sesSmallerEqual, sesBiggerEqual, sesUnEqual, sesOr, sesXor] do
+  while Tokenizer.Token.AType in [sesPlus, sesMinus, sesIs, sesAs, sesEqual, sesSmaller, sesBigger, sesSmallerEqual, sesBiggerEqual, sesUnEqual, sesOr, sesXor] do
   begin
     Token   := Tokenizer.Token.AType;
     ReadNextToken;
 
-    if Token = sesIs then
-    begin
+    case Token of
+    sesIs :
+        begin
+          if not (result is TSE2Class) then
+             RaiseError(petError, 'Is-operator is only available for classes');
+          if (TSE2Class(result).IsHelper) then
+             RaiseError(petError, 'Is-operator can not be used for class helpers');
 
-      if not (result is TSE2Class) then
-         RaiseError(petError, 'Is-operator is only available for classes');
-      if (TSE2Class(result).IsHelper) then
-         RaiseError(petError, 'Is-operator can not be used for class helpers');
-
-      if TSE2Type(result.InheritRoot) = GetExternalObjectType then
-         RaiseError(petError, 'Internal Error: Is-Operator not yet implemented for external methods');
+          if TSE2Type(result.InheritRoot) = GetExternalObjectType then
+             RaiseError(petError, 'Internal Error: Is-Operator not yet implemented for external classes');
 
 
-      ExpectToken([sesIdentifier]);
-      FacType := TypeExpression(Method);
-      if FacType = nil then
-         RaiseError(petError, 'Unknown identifier');
+          ExpectToken([sesIdentifier]);
+          FacType := TypeExpression(Method);
+          if FacType = nil then
+             RaiseError(petError, 'Unknown identifier');
 
-      if not (FacType is TSE2Class) then
-         RaiseError(petError, 'Type comparisons must be applied to classes');
-      if TSE2Class(FacType).IsHelper then
-         RaiseError(petError, 'Is-Operator can not be used for class helpers');
-      if TSE2Type(FacType.InheritRoot) = GetExternalObjectType then
-         RaiseError(petError, 'Internal Error: Is-Operator not yet implemented for external methods');
+          if not (FacType is TSE2Class) then
+             RaiseError(petError, 'Type comparisons must be applied to classes');
+          if TSE2Class(FacType).IsHelper then
+             RaiseError(petError, 'Is-Operator can not be used for class helpers');
+          if TSE2Type(FacType.InheritRoot) = GetExternalObjectType then
+             RaiseError(petError, 'Internal Error: Is-Operator not yet implemented for external classes');
 
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.META_SHARE(0), 'META_'+TSE2Class(FacType).GenLinkerName));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.META_SHARE(0), 'META_'+TSE2Class(FacType).GenLinkerName));
 
-      ReadNextToken;
-      result := GetBooleanType;
-    end else
-    begin
-      FacType := MathExpression(State, Method, TargetType);
+          ReadNextToken;
+          result := GetBooleanType;
+        end;
+    sesAs :
+        begin
+          if not (result is TSE2Class) then
+             RaiseError(petError, 'As-operator is only available for classes');
+          if (TSE2Class(result).IsHelper) then
+             RaiseError(petError, 'As-operator can not be used for class helpers');
 
-      if not IsCompatible(result, FacType, Token, False, Self) then
-         RaiseError(petError, GenIncompatibleExpression(FacType, result, Token));
+          if TSE2Type(result.InheritRoot) = GetExternalObjectType then
+             RaiseError(petError, 'Internal Error: As-Operator not yet implemented for external classes');
 
-      result := ConvertIntToSingle(State, Method, result, FacType);
-      //result := FacType;
 
-      case Token of
-      sesPlus   : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(2), ''));
-      sesMinus  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(3), ''));
-      sesOr     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(7), ''));
-      sesXor    : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(8), ''));
+          ExpectToken([sesIdentifier]);
+          FacType := TypeExpression(Method);
+          if FacType = nil then
+             RaiseError(petError, 'Unknown identifier');
 
-      sesEqual        : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(1), '')); 
-      sesSmaller      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(2), ''));
-      sesBigger       : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(3), ''));
-      sesBiggerEqual  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(4), ''));
-      sesSmallerEqual : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(5), ''));
-      sesUnEqual      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
-      end;
+          if not (FacType is TSE2Class) then
+             RaiseError(petError, 'Type comparisons must be applied to classes');
+          if TSE2Class(FacType).IsHelper then
+             RaiseError(petError, 'As-Operator can not be used for class helpers');
+          if TSE2Type(FacType.InheritRoot) = GetExternalObjectType then
+             RaiseError(petError, 'Internal Error: As-Operator not yet implemented for external classes');
 
-      if Token in [sesEqual, sesSmaller, sesBigger, sesBiggerEqual, sesSmallerEqual, sesUnEqual] then
-      begin
-        result := GetBooleanType;
-      end;
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.META_CAST(0), 'META_'+TSE2Class(FacType).GenLinkerName));
 
-      State.DecStack;
+          ReadNextToken;
+          result := FacType;
+        end;
+    else
+        begin
+          FacType := MathExpression(State, Method, TargetType);
+
+          if not IsCompatible(result, FacType, Token, False, Self) then
+             RaiseError(petError, GenIncompatibleExpression(FacType, result, Token));
+
+          result := ConvertIntToSingle(State, Method, result, FacType);
+          //result := FacType;
+
+          case Token of
+          sesPlus   : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(2), ''));
+          sesMinus  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(3), ''));
+          sesOr     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(7), ''));
+          sesXor    : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(8), ''));
+
+          sesEqual        : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(1), '')); 
+          sesSmaller      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(2), ''));
+          sesBigger       : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(3), ''));
+          sesBiggerEqual  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(4), ''));
+          sesSmallerEqual : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(5), ''));
+          sesUnEqual      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
+          end;
+
+          if Token in [sesEqual, sesSmaller, sesBigger, sesBiggerEqual, sesSmallerEqual, sesUnEqual] then
+          begin
+            result := GetBooleanType;
+          end;
+
+          State.DecStack;
+        end;
     end;
   end;
 end;
@@ -3978,7 +4059,7 @@ begin
       end else
       if Variable.Parent is TSE2Class then
       begin
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(Variable.CodePos, TSE2Type(Variable.AType.InheritRoot).AType), ''));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(Variable.CodePos, TSE2Type(Variable.AType.InheritRoot).AType, False), ''));
         // Decrease stack because last intruction of this method is IncStack and SPEC_INCP does not change stack size
         // --> StackSize = StackSize - 1 + 1 = StackSize;
         State.DecStack;
@@ -3987,8 +4068,15 @@ begin
       begin
         //if State.WasFunction then
         //   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MARK_DEL, ''));
-           
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(Variable.CodePos, TSE2Type(Variable.AType.InheritRoot).AType), ''));   
+
+        if State.RootRecord = nil then
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(Variable.CodePos, TSE2Type(Variable.AType.InheritRoot).AType, TSE2Type(Variable.AType.InheritRoot).AType = btRecord), ''))
+        else
+        begin
+          PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).Offset  := PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).Offset + Variable.CodePos;
+          PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).newType := TSE2Type(Variable.AType.InheritRoot).AType;
+          PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).NoRef   := TSE2Type(Variable.AType.InheritRoot).AType = btRecord;
+        end;
         // Decrease stack because last intruction of this method is IncStack and SPEC_INCP does not change stack size
         // --> StackSize = StackSize - 1 + 1 = StackSize;
         State.DecStack;
@@ -4018,7 +4106,7 @@ begin
     CodeIndex := -(State.StackSize) - Method.StackSize + TSE2Parameter(Variable).CodePos;
     if (Variable.AType.InheritRoot is TSE2Record) and (not Variable.IsStatic) then
     begin
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, False), ''));
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
       MakeRecordPop;
     end else
     if TSE2Parameter(Variable).ParameterType = ptVar then
@@ -4034,12 +4122,12 @@ begin
       begin
         if Variable.IsStatic then
         begin
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, True), Variable.GenLinkerName));
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, 0), Variable.GenLinkerName));
            MakeRecordPop;
         end else
         begin
            CodeIndex := -(State.StackSize) - Method.StackSize + 1 + Variable.CodePos;
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, False), ''));
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
            MakeRecordPop;
         end;
       end else
@@ -4059,12 +4147,12 @@ begin
       begin
         if Variable.IsStatic then
         begin
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, True), Variable.GenLinkerName));
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, 0), Variable.GenLinkerName));
            MakeRecordPop;
         end else
         begin
            CodeIndex := -1;
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, False), ''));   
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
            MakeRecordPop;
         end;
@@ -4087,12 +4175,12 @@ begin
       begin
         if Variable.IsStatic then
         begin
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, True), Variable.GenLinkerName));
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, 0), Variable.GenLinkerName));
            MakeRecordPop;
         end else
         begin
            CodeIndex := -1;
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, False), ''));   
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
            MakeRecordPop;
         end;
@@ -5238,6 +5326,32 @@ begin
         if result = nil then
            RaiseError(petError, 'Expression does not return a value');
       end;
+  sesSizeOf :
+      begin
+        ExpectToken([sesSizeOf]);
+        ReadNextToken;
+        ExpectToken([sesOpenRound]);
+        ReadNextToken;
+        aType := TypeExpression(Method);
+        if aType = nil then
+           RaiseError(petError, 'Unknown identifier');
+        ReadNextToken;
+        ExpectToken([sesCloseRound]);
+        ReadNextToken;
+
+        result := GetIntegerType;
+
+        if aType is TSE2Class then
+          if TSE2Class(aType).IsHelper then
+            RaiseError(petError, 'Helper classes does not have a size');
+        
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btS64), ''));
+        if aType is TSE2Record then
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(TSE2Record(aType).RecordSize), ''))
+        else
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(aType.DataSize), ''));
+        State.IncStack;
+      end;
   else
       begin
         RaiseError(petError, 'Expression expected but found "'+TSE2TokenName[Tokenizer.Token.AType]+'" instead');
@@ -6029,6 +6143,7 @@ begin
            RaiseError(petError, 'Variable and property type must be the same');
 
         aProperty.Getter := aSource;
+        TSE2Variable(aSource).Used := True;
         //RaiseError(petError, 'Variables are not supported yet');
       end else
         RaiseError(petError, 'Internal error: Unknown source');
@@ -6118,7 +6233,8 @@ begin
         if TSE2Variable(aSource).AType <> aProperty.AType then
            RaiseError(petError, 'Variable and property type must be the same');
 
-        aProperty.Setter := aSource;
+        aProperty.Setter := aSource;  
+        TSE2Variable(aSource).Used := True;
       end else
         RaiseError(petError, 'Internal error: Unknown source');
 
@@ -6537,7 +6653,7 @@ begin
       end;
   soREC_COPY_TO    :
       begin
-        if not PSE2OpREC_COPY_TO(OpCode).Static then   
+        if PSE2OpREC_COPY_TO(OpCode).Target >= 0 then   
            if DistanceOk(PSE2OpREC_COPY_TO(OpCode).Target) then
               PSE2OpREC_COPY_TO(OpCode).Target := PSE2OpREC_COPY_TO(OpCode).Target + Offset;
       end;
@@ -6789,6 +6905,29 @@ end;
 function TSE2Parser.GetScriptExceptionType: TSE2Type;
 begin
   result := TSE2Class(FindIdentifier(nil, C_SE2ExceptionObject, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class])));
+end;
+
+procedure TSE2Parser.ShowUnusedVariables(OnlyPrivate: boolean);
+var i: integer;
+begin
+  for i:=0 to FUnit.ElemList.Count-1 do
+    if FUnit.ElemList[i] is TSE2Variable then
+      if ((FUnit.ElemList[i].Visibility = visPrivate) and OnlyPrivate) or
+          not OnlyPrivate then
+      begin
+        if TSE2Variable(FUnit.ElemList[i]).IsStatic then
+        begin
+          if not TSE2Variable(FUnit.ElemList[i]).Used then
+             RaiseError(petHint, 'Variable "'+TSE2Variable(FUnit.ElemList[i]).Name+'" is declared but never used', TSE2Variable(FUnit.ElemList[i]).DeclPos,
+                        TSE2Variable(FUnit.ElemList[i]).DeclLine);
+        end else
+        begin
+          if not TSE2Variable(FUnit.ElemList[i]).Used then
+            if not (TSE2Variable(FUnit.ElemList[i]).Parent is TSE2Record) then
+             RaiseError(petHint, 'Variable "'+TSE2Variable(FUnit.ElemList[i]).Name+'" is declared but never used', TSE2Variable(FUnit.ElemList[i]).DeclPos,
+                        TSE2Variable(FUnit.ElemList[i]).DeclLine);
+        end;
+      end;
 end;
 
 end.

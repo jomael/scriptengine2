@@ -70,8 +70,8 @@ const
         '    constructor Create(const Message: string); override;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 + 
-        '  EAbort = class(EException)' + #13#10 + 
-        '  public' + #13#10 + 
+        '  EAbort = class(EException)' + #13#10 +
+        '  public' + #13#10 +
         '    constructor Create(const Message: string); override;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 + 
@@ -85,7 +85,7 @@ const
         '    constructor Create(const Message: string); override;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 + 
-        '  EAccessViolation = class(EConvertError)' + #13#10 + 
+        '  EAccessViolation = class(EExternalException)' + #13#10 + 
         '  public' + #13#10 + 
         '    constructor Create(const Message: string); override;' + #13#10 + 
         '  end;' + #13#10 + 
@@ -104,7 +104,13 @@ const
         '  public' + #13#10 +
         '    constructor Create(const Message: string); override;' + #13#10 +
         '  end;' + #13#10 +
-        #13#10 + 
+        #13#10 +
+        #13#10 +
+        '  EInvalidCast = class(EExternalException)'+#13#10+
+        '  public' + #13#10 +
+        '    constructor Create(const Message: string); override;'+#13#10+
+        '  end;'+#13#10+
+        #13#10 +
         'implementation' + #13#10 + 
         #13#10 +
         'constructor EOutOfMemory.Create(const Message: string);'+#13#10+
@@ -157,7 +163,10 @@ const
         #13#10+
         'constructor EStackOverflow.Create(const Message: string);' + #13#10 +
         'begin inherited; end;' + #13#10 +
-        #13#10 + 
+        #13#10 +
+        'constructor EInvalidCast.Create(const Message: string);' + #13#10+
+        'begin inherited; end;' + #13#10 +
+        #13#10+
         'end.';
 
 
@@ -192,7 +201,8 @@ const
   C_SE2ExceptEAccessViolation    = 'EAccessViolation';
   C_SE2ExceptENullReference      = 'ENullReference';
   C_SE2ExceptEMethodNotAssigned  = 'EMethodNotAssigned';
-  C_SE2ExceotEStackOverflow      = 'EStackOverflow';
+  C_SE2ExceptEStackOverflow      = 'EStackOverflow';
+  C_SE2ExceptEInvalidCast        = 'EInvalidCast';
 begin
   Target.Exceptions.Add(EOutOfMemory, Target.FindClass(C_SE2ExceptEOutOfMemory, C_UnitName));
 
@@ -214,7 +224,8 @@ begin
   Target.Exceptions.Add(ESE2NullReferenceError, Target.FindClass(C_SE2ExceptENullReference, C_UnitName));
   Target.Exceptions.Add(ESE2UnassignedMethod, Target.FindClass(C_SE2ExceptEMethodNotAssigned, C_UnitName));
 
-  Target.Exceptions.Add(ESE2StackOverflow, Target.FindClass(C_SE2ExceotEStackOverflow, C_UnitName));
+  Target.Exceptions.Add(ESE2StackOverflow, Target.FindClass(C_SE2ExceptEStackOverflow, C_UnitName));
+  Target.Exceptions.Add(EInvalidCast, Target.FindClass(C_SE2ExceptEInvalidCast, C_UnitName));
 end;
 
 procedure RegisterUnit();

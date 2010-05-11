@@ -284,6 +284,11 @@ begin
   end;
 end;
 
+function GetRef(const p: Pointer): Pointer;
+begin
+  result := @p;
+end;
+
 procedure TSE2RunTime.Process;
 
 type
@@ -396,6 +401,17 @@ begin
 
         Meta := PPointer(r1 { VarDat[0] }.tPointer)^;
         FCodePos := Meta.CodePos - 1;
+
+
+        r2 := FStack.Items[FStack.Size - 2];
+        if r2.AType = btReturnAddress then
+        begin
+          Pos    := PPosArray(r2.ts64)^;
+          Pos[1] := Meta.Index + 1;
+          r2.ts64^ := PInt64(@(Pos[0]))^;
+        end;
+
+
         if Meta.HasSelf then
         begin
           r3 { VarDat[2] } := FStack.Items[FStack.Size - Meta.ParamCount - 2];
@@ -483,6 +499,23 @@ begin
 
         Stack.Pop;
         Stack.PushNew(btBoolean).tu8^ := CompareInt;
+      end;
+  soMETA_CAST :
+      begin
+        r1 := FStack.Top;
+
+        if (not (r1.AType in [btPointer, btObject])) then
+           raise ESE2RunTimeError.Create('['+IntToStr(FCodePos)+']: as-cast not possible');
+
+        if PPointer(r1.tPointer)^ <> nil then
+        begin
+          if not (FCodeAccess.IsChildOfClass(
+                             FAppCode.MetaData.Items[PSE2OpMETA_SHARE(OpCode).MetaIndex],
+                             FRunClasses.GetClassMeta(PPointer(r1.tPointer)^),
+                             True)
+                           ) then
+             raise EInvalidCast.Create('Class not compatible');
+        end;
       end;
   soFLOW_PUSHRET :
       begin
@@ -872,17 +905,27 @@ begin
         FStack.Top.tPointer := nil;
       end;     *)
   soSPEC_INCP :
-      begin
-        r1 { VarDat[0] } := Pointer(FStack.Top.tPointer^);
-        r1 { VarDat[0] } := Pointer(integer(r1 { VarDat[0] }) + PSE2OpSPEC_INCP(OpCode).Offset);
-        FStack.Pop;
+      begin                     
+        if PSE2OpSPEC_INCP(OpCode).NoRef then
+        begin
+          r1 := Pointer(FStack.Top.tPointer^);
+          r1 := Pointer(PtrInt(r1) + PSE2OpSPEC_INCP(OpCode).Offset);
+          FStack.Pop;
 
-        r2 { VarDat[1] } := FStack.PushNew($FF);
-        //r2 { VarDat[1] } := FVarHelper.CreateVarData($FF);
-        //Stack.Push(r2 { VarDat[1] });
-        r2 { VarDat[1] }.AType := PSE2OpSPEC_INCP(OpCode).newType;
-        r2 { VarDat[1] }.RefContent := True;
-        Pointer(r2 { VarDat[1] }.tPointer)   := Pointer(r1 { VarDat[0] });
+          r2 := FStack.PushNew(PSE2OpSPEC_INCP(OpCode).newType);
+          PPointer(r2.tPointer)^ := Pointer(r1);
+        end else
+        begin
+          r1 := Pointer(FStack.Top.tPointer^);
+          r1 := Pointer(PtrInt(r1) + PSE2OpSPEC_INCP(OpCode).Offset);
+          FStack.Pop;
+
+          r2 := FStack.PushNew($FF);
+          r2.AType := PSE2OpSPEC_INCP(OpCode).newType;
+          r2.RefContent := True;
+
+          Pointer(r2.tPointer) := Pointer(r1);
+        end;
       end;
   soSPEC_DECP   :
       begin
@@ -989,6 +1032,19 @@ begin
       begin
         CompareInt := PSE2OpREC_COPY_TO(OpCode).Target;
 
+        if CompareInt >= 0 then
+           r1 := FStack[CompareInt]
+        else
+           r1 := FStack[FStack.Size-1 + CompareInt];
+
+        if (r1.AType <> btRecord) or
+           (FStack.Top.AType <> btRecord) then
+           raise ESE2RunTimeError.Create('Record copy not possible');
+
+        FRunClasses.CopyScriptRecord(PPointer(FStack.Top.tPointer)^, PPointer(r1.tPointer)^, FAppCode.MetaData[PSE2OpREC_COPY_TO(OpCode).MetaIndex]);
+        (*
+        CompareInt := PSE2OpREC_COPY_TO(OpCode).Target;
+
         if PSE2OpREC_COPY_TO(OpCode).Static then
            r1 { VarDat[0] } := FStack[CompareInt]
         else
@@ -998,7 +1054,11 @@ begin
            (FStack.Top.AType <> btRecord) then
            raise ESE2RunTimeError.Create('Record copy not possible');
 
-        FRunClasses.CopyScriptRecord(PPointer(FStack.Top.tPointer)^, PPointer(r1 { VarDat[0] }.tPointer)^);
+        //if PSE2OpREC_COPY_TO(OpCode).UseRef then
+        //  FRunClasses.CopyScriptRecord(PPointer(FStack.Top.tPointer)^, r1.tPointer)
+        //else
+          FRunClasses.CopyScriptRecord(PPointer(FStack.Top.tPointer)^, PPointer(r1 { VarDat[0] }.tPointer)^);
+        *)
       end;
   soREC_MARK_DEL  :
       begin
@@ -1567,7 +1627,7 @@ var MetaEntry  : TSE2MetaEntry;
                   raise ESE2CallParameterError.Create(SParamNotCompatible);
 
                Pointer(newEntry.tPointer^) := FRunClasses.CreateScriptRecord(RecMeta, FAppCode);
-               FRunClasses.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^));
+               FRunClasses.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^), RecMeta);
              end;
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
@@ -1611,7 +1671,7 @@ var MetaEntry  : TSE2MetaEntry;
        FStack.PushNew(MetaEntry.ResultType);
 
     if MetaEntry.ResultType = btRecord then
-    begin                                
+    begin
       i := MetaEntry.RTTI.FindSize(btRecord, -1);
       if i < 0 then
          raise ESE2CallParameterError.Create(SParamNotCompatible);
@@ -1688,6 +1748,7 @@ var MetaEntry  : TSE2MetaEntry;
       bIsVarParam : boolean;
       Parameter   : TVarRec;
       Data        : PSE2VarData;
+      tMeta       : TSE2MetaEntry;
   begin
     // return address
        // already pop-ed by OP_FLOW_RET
@@ -1718,14 +1779,21 @@ var MetaEntry  : TSE2MetaEntry;
         btArray        : PPointer(Parameter.VPointer)^    := Pointer(Data^.tPointer^);
         btRecord       :
             begin
-              Self.FRunClasses.ScriptToDelphiRecord(PPointer(Data^.tPointer)^, Parameter.VPointer);
+              tMeta := FAppCode.MetaData[MetaEntry.RTTI.FindSize(btRecord, i)];
+                Self.FRunClasses.ScriptToDelphiRecord(PPointer(Data^.tPointer)^, Parameter.VPointer,
+                                     tMeta );
+
+
+              //Self.FRunClasses.ScriptToDelphiRecord(PPointer(Data^.tPointer)^, Parameter.VPointer);
             end;
         end;
       end;
 
       if Data^.AType = btRecord then
         if Pointer(Data^.tPointer^) <> nil then
+        begin
           FRunClasses.DestroyScriptRecord(Pointer(Data^.tPointer^));
+        end;
 
 
       FStack.Pop;
@@ -1753,8 +1821,24 @@ var MetaEntry  : TSE2MetaEntry;
       btObject     : result := cardinal(FStack.Top^.tPointer^);
       btRecord     :
           begin
-            result := cardinal(FRunClasses.ScriptToDelphiRecord(Pointer(FStack.Top^.tPointer^)));
-            FRunClasses.DestroyScriptRecord(Pointer(FStack.Top^.tPointer^));
+            {index := MetaEntry.RTTI.FindSize(btRecord, ParamIndex);
+               if index < 0 then
+                  raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+               RecMeta := FAppCode.MetaData[index];
+               if RecMeta = nil then
+                  raise ESE2CallParameterError.Create(SParamNotCompatible);
+
+               Pointer(newEntry.tPointer^) := FRunClasses.CreateScriptRecord(RecMeta, FAppCode);
+               FRunClasses.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^));
+            }
+
+            tMeta := FAppCode.MetaData[MetaEntry.RTTI.FindSize(btRecord, -1)];
+              result := cardinal(FRunClasses.ScriptToDelphiRecord(Pointer(FStack.Top^.tPointer^),
+                                    tMeta));
+              FRunClasses.DestroyScriptRecord(Pointer(FStack.Top^.tPointer^));
+            {result := cardinal(FRunClasses.ScriptToDelphiRecord(Pointer(FStack.Top^.tPointer^)));
+            FRunClasses.DestroyScriptRecord(Pointer(FStack.Top^.tPointer^));}
           end;
       end;
       FStack.Pop;

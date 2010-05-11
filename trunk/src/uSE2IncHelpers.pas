@@ -19,7 +19,8 @@ const
           '  protected' + #13#10 +
           '    function GetChar(index: integer): string;' + #13#10 +
           '  public' + #13#10 +
-          '    function Copy(Start, Count: integer): string;' + #13#10 +
+          '    function Copy(Start, Count: integer): string; overload;' + #13#10 +   
+          '    function Copy(Start: integer): string; overload;' + #13#10 +
           '    function Insert(Position: integer; value: string): string;' + #13#10 +
           '    function IndexOf(value: string): integer; overload;' + #13#10 +
           '    function IndexOf(value: string; SearchStart: integer): integer; overload;' + #13#10 +
@@ -36,13 +37,15 @@ const
           '    function StartsWith(const value: string): boolean; overload;' + #13#10 +
           '    function StartsWith(const value: string; CaseSensitive: boolean): boolean; overload;' + #13#10 +
           '    function LastIndexOf(const value: string): integer;'+#13#10+
+          '    function ToASCIIIndex: word;'+#13#10+
           '    property Chars[index: integer]: string read GetChar;' + #13#10 +
           '  end;' + #13#10 +
           '  TWideStringHelper = helper for WideString' + #13#10 +
           '  protected' + #13#10 +
           '    function GetChar(index: integer): WideString;' + #13#10 +
           '  public' + #13#10 +
-          '    function Copy(Start, Count: integer): WideString;' + #13#10 +
+          '    function Copy(Start, Count: integer): WideString; overload;' + #13#10 +      
+          '    function Copy(Start: integer): WideString; overload;' + #13#10 +
           '    function Insert(Position: integer; value: WideString): WideString;' + #13#10 +
           '    function IndexOf(value: WideString): integer; ' + #13#10 +
           '    function Length: integer;' + #13#10 +
@@ -70,6 +73,8 @@ const
           '    function Trunc: int64;' + #13#10 +
           '    function Floor: integer;' + #13#10 +
           '    function ToString: string;' + #13#10 +
+          '    function Negate: double; ' + #13#10 +
+          '    function Abs: double; ' + #13#10 +
           '  end;' + #13#10 +
           '  TSingleHelper = helper for single' + #13#10 +
           '  public' + #13#10 +
@@ -80,6 +85,8 @@ const
           '    function Trunc: int64;' + #13#10 +
           '    function Floor: integer;' + #13#10 +
           '    function ToString: string;' + #13#10 +
+          '    function Negate: single; ' + #13#10 +
+          '    function Abs: single; ' + #13#10+
           '  end;' + #13#10 +
           '  TColorHelper = helper for TColor' + #13#10 +
           '  public' + #13#10 +
@@ -96,37 +103,52 @@ const
           #13#10+
           '  TByteHelper = helper for byte' + #13#10 +
           '  public' + #13#10 +
-          '    function ToString: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 +
+          '    function ToString(Digits: integer): string; overload;'+#13#10+
           '  end;' + #13#10 +
           #13#10 +
           '  TShortIntHelper = helper for shortint' + #13#10 +
           '  public' + #13#10 +
-          '    function ToString: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 +
+          '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function Negate: shortint;' + #13#10+
+          '    function Abs: shortint;'+#13#10+
           '  end;' + #13#10 +
           #13#10 +
           '  TWordHelper = helper for word' + #13#10 +
           '  public' + #13#10 +
-          '    function ToString: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 +
+          '    function ToString(Digits: integer): string; overload;'+#13#10+
           '  end;' + #13#10 +
           #13#10 +
           '  TSmallIntHelper = helper for smallint' + #13#10 +
           '  public' + #13#10 +
-          '    function ToString: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 +  
+          '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function Negate: smallint;' + #13#10 +
+          '    function Abs: smallint;'+#13#10 +
           '  end;' + #13#10 +
           #13#10 +
           '  TIntegerHelper = helper for integer' + #13#10 +
           '  public' + #13#10 +
-          '    function ToString: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 + 
+          '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function Negate: integer;' + #13#10 +
+          '    function Abs: integer; ' +#13#10 +
           '  end;' + #13#10 +
           #13#10 +
           '  TCardinalHelper = helper for cardinal' + #13#10 +
           '  public' + #13#10 +
-          '    function ToString: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 + 
+          '    function ToString(Digits: integer): string; overload;'+#13#10+
           '  end;' + #13#10 +
           #13#10 +
           '  TInt64Helper = helper for int64' + #13#10 +
           '  public' + #13#10 +
-          '    function ToString: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 +  
+          '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function Negate: int64; ' + #13#10 +
+          '    function Abs: int64; ' + #13#10 +
           '  end;' + #13#10 +
           #13#10 +
           '  TBooleanHelper = helper for boolean' + #13#10 +
@@ -155,8 +177,8 @@ const
           '    function Seconds: integer;' + #13#10 +
           '    function Milliseconds: integer;  ' + #13#10 +
           {$IFNDEF SEII_FPC}
-          '    function DateTimeToUTCTime: TDateTime;' +#13#10+
-          '    function UTCTimeToDateTime: TDateTime;' +#13#10+
+          '    function ToUTCTime: TDateTime;' +#13#10+
+          '    function ToLocalTime: TDateTime;' +#13#10+
           {$ENDIF}
           '  end;' + #13#10 +
           
@@ -212,11 +234,11 @@ const
           'end;' + #13#10 +
 
           {$IFNDEF SEII_FPC}
-          'function TDateTimeHelper.DateTimeToUTCTime: TDateTime;' +#13#10+
+          'function TDateTimeHelper.ToUTCTime: TDateTime;' +#13#10+
           'begin'+#13#10+
           '  result := DateTime.DateTimeToUTCTime(Self);'+#13#10+
           'end;'+#13#10+
-          'function TDateTimeHelper.UTCTimeToDateTime: TDateTime;' +#13#10+
+          'function TDateTimeHelper.ToLocalTime: TDateTime;' +#13#10+
           'begin'+#13#10+
           '  result := DateTime.UTCTimeToDateTime(Self);'+#13#10+
           'end;'+#13#10+
@@ -298,6 +320,10 @@ const
           'function TStringHelper.Copy(Start, Count: integer): string;' + #13#10 +
           'begin' + #13#10 +
           '  result := Strings.Copy(Self, Start, Count);' + #13#10 +
+          'end;' + #13#10 +  
+          'function TStringHelper.Copy(Start: integer): string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := Strings.Copy(Self, Start, $7FFFFFFF);' + #13#10 +
           'end;' + #13#10 +
           'function TStringHelper.IndexOf(value: string): integer;' + #13#10 +
           'begin' + #13#10 +
@@ -358,6 +384,10 @@ const
           '    iSearchStart := iPos + 1;' + #13#10 +
           '  until iPos = 0;' + #13#10 +
           'end;' + #13#10 +
+          'function TStringHelper.ToASCIIIndex: word;'+#13#10+
+          'begin'+#13#10+
+          '  result := Strings.ToASCIIIndex(Self);'+#13#10+
+          'end;'+#13#10+
           'function TWideStringHelper.Insert(Position: integer; value: WideString): WideString;' + #13#10 +
           'begin' + #13#10 +
           '  WideStrings.Insert(value, Self, Position);' + #13#10 +
@@ -366,7 +396,7 @@ const
           'function TWideStringHelper.GetChar(index: integer): WideString;' + #13#10 +
           'begin' + #13#10 +
           '  result := WideStrings.Copy(Self, index, 1);' + #13#10 +
-          'end;' + #13#10 +
+          'end;' + #13#10 +   
           'function TWideStringHelper.ToUpper: WideString;' + #13#10 +
           'begin' + #13#10 +
           '  result := WideStrings.UpperCase(Self);' + #13#10 +
@@ -378,6 +408,10 @@ const
           'function TWideStringHelper.Copy(Start, Count: integer): WideString;' + #13#10 +
           'begin' + #13#10 +
           '  result := WideStrings.Copy(Self, Start, Count);' + #13#10 +
+          'end;' + #13#10 +    
+          'function TWideStringHelper.Copy(Start: integer): WideString;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := WideStrings.Copy(Self, Start, $7FFFFFFF);' + #13#10 +
           'end;' + #13#10 +
           'function TWideStringHelper.IndexOf(value: WideString): integer;' + #13#10 +
           'begin' + #13#10 +
@@ -499,55 +533,168 @@ const
           '  result := Colors.RGB(result, result, result);' + #13#10 + 
           'end;' + #13#10 +
           #13#10 + 
-          'function TByteHelper.ToString: string;' + #13#10 + 
+          'function TByteHelper.ToString: string;' + #13#10 +
+          'begin' + #13#10 + 
+          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          'end;' + #13#10 +
+          #13#10 +
+          'function TByteHelper.ToString(Digits: integer): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TShortIntHelper.ToString: string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := Convert.IntToStr(Self);' + #13#10 +
+          'end;' + #13#10 +
+          #13#10 +
+          'function TShortIntHelper.ToString(Digits: integer): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TShortIntHelper.Negate: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := -Self;' + #13#10 +
+          'end;' + #13#10 +
+          #13#10 +
+          'function TShortIntHelper.Abs: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  if Self > 0 then'+#13#10 +
+          '     result := Self'+#13#10 +
+          '  else'+#13#10+
+          '     result := -Self;'+#13#10+
+          'end;' + #13#10 +
+          #13#10 +
+          'function TWordHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Convert.IntToStr(Self);' + #13#10 + 
           'end;' + #13#10 + 
-          #13#10 + 
-          'function TShortIntHelper.ToString: string;' + #13#10 + 
+          #13#10 +
+          'function TWordHelper.ToString(Digits: integer): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TSmallIntHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Convert.IntToStr(Self);' + #13#10 + 
           'end;' + #13#10 + 
-          #13#10 + 
-          'function TWordHelper.ToString: string;' + #13#10 + 
+          #13#10 +
+          'function TSmallIntHelper.ToString(Digits: integer): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TSmallIntHelper.Negate: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := -Self;' + #13#10 +
+          'end;' + #13#10 +
+          #13#10 +
+          'function TSmallIntHelper.Abs: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  if Self > 0 then'+#13#10 +
+          '     result := Self'+#13#10 +
+          '  else'+#13#10+
+          '     result := -Self;'+#13#10+
+          'end;' + #13#10 +
+          #13#10 +
+          'function TCardinalHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Convert.IntToStr(Self);' + #13#10 + 
           'end;' + #13#10 + 
-          #13#10 + 
-          'function TSmallIntHelper.ToString: string;' + #13#10 + 
+          #13#10 +
+          'function TCardinalHelper.ToString(Digits: integer): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TIntegerHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Convert.IntToStr(Self);' + #13#10 + 
           'end;' + #13#10 + 
-          #13#10 + 
-          'function TCardinalHelper.ToString: string;' + #13#10 + 
+          #13#10 +
+          'function TIntegerHelper.ToString(Digits: integer): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TIntegerHelper.Negate: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := -Self;' + #13#10 +
+          'end;' + #13#10 +
+          #13#10 +
+          'function TIntegerHelper.Abs: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  if Self > 0 then'+#13#10 +
+          '     result := Self'+#13#10 +
+          '  else'+#13#10+
+          '     result := -Self;'+#13#10+
+          'end;' + #13#10 +
+          #13#10 +
+          'function TInt64helper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Convert.IntToStr(Self);' + #13#10 + 
           'end;' + #13#10 + 
-          #13#10 + 
-          'function TIntegerHelper.ToString: string;' + #13#10 + 
-          'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self);' + #13#10 + 
-          'end;' + #13#10 + 
-          #13#10 + 
-          'function TInt64helper.ToString: string;' + #13#10 + 
-          'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self);' + #13#10 + 
-          'end;' + #13#10 + 
-          #13#10 + 
+          #13#10 +
+          'function TInt64helper.ToString(Digits: integer): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TInt64helper.Negate: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := -Self;' + #13#10 +
+          'end;' + #13#10 +
+          #13#10 +
+          'function TInt64helper.Abs: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  if Self > 0 then'+#13#10 +
+          '     result := Self'+#13#10 +
+          '  else'+#13#10+
+          '     result := -Self;'+#13#10+
+          'end;' + #13#10 +
+          #13#10 +
           'function TBooleanHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
           '  result := Convert.BoolToStr(Self, True);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TSingleHelper.ToString: string;' + #13#10 + 
+          'function TSingleHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Convert.FloatToStr(Self);' + #13#10 + 
           'end;' + #13#10 + 
-          #13#10 + 
-          'function TDoubleHelper.ToString: string;' + #13#10 + 
+          #13#10 +
+          'function TSingleHelper.Negate: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := -Self;' + #13#10 +
+          'end;' + #13#10 +
+          #13#10 +
+          'function TSingleHelper.Abs: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  if Self > 0 then'+#13#10 +
+          '     result := Self'+#13#10 +
+          '  else'+#13#10+
+          '     result := -Self;'+#13#10+
+          'end;' + #13#10 +
+          #13#10 +
+          'function TDoubleHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Convert.FloatToStr(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TDoubleHelper.Negate: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := -Self;' + #13#10 +
           'end;' + #13#10 +
+          #13#10 +
+          'function TDoubleHelper.Abs: shortint;' + #13#10 +
+          'begin' + #13#10 +
+          '  if Self > 0 then'+#13#10 +
+          '     result := Self'+#13#10 +
+          '  else'+#13#10+
+          '     result := -Self;'+#13#10+
+          'end;' + #13#10 +
+          #13#10 +
           'end.';
 
 
@@ -570,6 +717,7 @@ begin
   p.DoRegisterMethods := Unit_RegisterMethods;
   p.DoGetUnitSource   := Unit_GetSource;
   p.UnitName          := C_UnitName;
+  p.Priority          := 500;
   TSE2UnitManager.RegisterUnit(p);
 end;
 

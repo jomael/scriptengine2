@@ -149,6 +149,9 @@ const
      '    class function MonthsBetween(const ANow, AThen: TDateTime): Integer; external;'+#13#10+
      '    class function MonthSpan(const ANow, AThen: TDateTime): Double; external;'+#13#10+
      '    class function Now: TDateTime; external;'+#13#10+
+     {$IFNDEF SEII_FPC}
+     '    class function UtcNow: TDateTime; external;'+#13#10+
+     {$ENDIF}
      '    class function RecodeDate(const AValue: TDateTime; const AYear, AMonth, ADay: Word): TDateTime; external;'+#13#10+
      '    class function RecodeDateTime(const AValue: TDateTime; const AYear, AMonth, ADay, AHour, AMinute, ASecond, AMilliSecond: Word): TDateTime; external;'+#13#10+
      '    class function RecodeDay(const AValue: TDateTime; const ADay: Word): TDateTime; external;'+#13#10+
@@ -374,6 +377,9 @@ type
     class function MonthsBetween(const ANow, AThen: TDateTime): Integer;
     class function MonthSpan(const ANow, AThen: TDateTime): Double;
     class function Now: TDateTime;
+    {$IFNDEF SEII_FPC}
+    class function UtcNow: TDateTime;
+    {$ENDIF}
     class function RecodeDate(const AValue: TDateTime; const AYear, AMonth, ADay: Word): TDateTime;
     class function RecodeDateTime(const AValue: TDateTime; const AYear, AMonth, ADay, AHour, AMinute, ASecond, AMilliSecond: Word): TDateTime;
     class function RecodeDay(const AValue: TDateTime; const ADay: Word): TDateTime;
@@ -573,6 +579,9 @@ begin
     Target.Method['DateTime.MonthsBetween[0]', C_UnitName] := @            DateTime.MonthsBetween;
     Target.Method['DateTime.MonthSpan[0]', C_UnitName] := @                DateTime.MonthSpan;
     Target.Method['DateTime.Now[0]', C_UnitName] := @                      DateTime.Now;
+    {$IFNDEF SEII_FPC}
+    Target.Method['DateTime.UtcNow[0]', C_UnitName] := @                   DateTime.UtcNow;
+    {$ENDIF}
     Target.Method['DateTime.RecodeDate[0]', C_UnitName] := @               DateTime.RecodeDate;
     Target.Method['DateTime.RecodeDateTime[0]', C_UnitName] := @           DateTime.RecodeDateTime;
     Target.Method['DateTime.RecodeDay[0]', C_UnitName] := @                DateTime.RecodeDay;
@@ -682,7 +691,7 @@ procedure RegisterUnit;
 var p : TSE2MethodUnit;
 begin
   p := TSE2MethodUnit.Create;               
-  p.Priority          := 4;
+  p.Priority          := 5;
   p.DoRegisterMethods := Unit_RegisterMethods;
   p.DoGetUnitSource   := Unit_GetSource;
   p.UnitName          := C_UnitName;
@@ -888,7 +897,7 @@ end;
 class function DateTime.EncodeDateTime(const AYear, AMonth, ADay, AHour,
   AMinute, ASecond, AMilliSecond: Word): TDateTime;
 begin
-  result := DateUtils.EncodeDateTime(AYear, AMonth, ADay, AHour, AMonth, ASecond, AMilliSecond);
+  result := DateUtils.EncodeDateTime(AYear, AMonth, ADay, AHour, AMinute, ASecond, AMilliSecond);
 end;
 
 class function DateTime.EncodeDateWeek0(const AYear, AWeekOfYear,
@@ -1732,6 +1741,16 @@ class function DateTime.Yesterday: TDateTime;
 begin
   result := DateUtils.Yesterday;
 end;
+
+{$IFNDEF SEII_FPC}
+class function DateTime.UtcNow: TDateTime;
+var aTime : _SYSTEMTIME;
+begin
+  GetSystemTime(aTime);
+  with aTime do
+    result := DateUtils.EncodeDateTime(wYear, wMonth, wDay, wHour, wMinute, wSecond, wMilliseconds);
+end;
+{$ENDIF}
 
 initialization
   RegisterUnit;

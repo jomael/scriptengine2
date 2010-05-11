@@ -24,7 +24,7 @@ uses
 
   { YOU ARE NOT ALLOWED TO CHANGE AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING LINE }
   uSE2IncDateTime, uSE2IncInfo, uSE2IncConsole, uSE2IncConvert, uSE2IncMath, uSE2IncStrings, uSE2IncTypes, uSE2IncSCriptInfo,
-  uSE2IncScriptExceptions, uSE2IncExceptions,
+  uSE2IncScriptExceptions, uSE2IncExceptions, uSE2IncHelpers, uSE2IncTimeSpan,
   SysUtils;
 
 { TSE2SystemUnit }
@@ -375,6 +375,44 @@ begin
   method.ReturnValue.AUnitName := C_SE2SystemUnitName;
   method.ReturnValue.AType    := FindType('string');
   method.ReturnValue.Visibility := visPublic;
+
+       (*
+  { TypeName }
+
+  method := TSE2Method.Create;
+  AUnit.ElemList.Add(method);
+  method.Parent       := aClass;
+  method.Name         := C_SE2TObjectTypeName;
+  method.AUnitName    := C_SE2SystemUnitName;
+  method.IsStatic     := True;
+  method.MethodType   := mtFunction;
+  method.IsExternal   := False;
+  method.Visibility   := visPublic;
+
+  method.ReturnValue          := TSE2Variable.Create;
+  method.ReturnValue.Name     := 'result';
+  method.ReturnValue.AUnitName := C_SE2SystemUnitName;
+  method.ReturnValue.AType    := FindType('string');
+  method.ReturnValue.Visibility := visPublic;
+
+  Param := TSE2Parameter.Create;
+  param.Name := 'Self';
+  param.AUnitName := C_SE2SystemUnitName;
+  Param.Visibility  := visPublic;
+  Param.Parent := Method;
+  Param.AType  := aClass;
+  Param.Visibility := visPrivate;
+  Param.IsStatic   := False;
+  Param.Visibility := visProtected;
+  Method.Params.Insert(0, Param);
+
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btString), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_LOADRES(0), ''));
+                           *)
+  (*
+  PUSH [string]
+  MAKE STR [ ... class name ... ]
+  *)
 end;
 
 class procedure TSE2SystemUnit.FillTExternalObject(AUnit: TSE2Unit;
