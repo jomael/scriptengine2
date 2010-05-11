@@ -18,7 +18,7 @@ const
         'interface' + #13#10 + 
         #13#10 + 
         'uses' + #13#10 + 
-        '  Streams;' + #13#10 +
+        '  IO.Streams;' + #13#10 +
         #13#10 + 
         'type' + #13#10 + 
         '  File = partial class(TExternalObject)' + #13#10 +
@@ -217,13 +217,13 @@ end;
 
 class function TFile.OpenWrite(const FileName: string): TStream;
 begin
-  result := TFileStream.Create(FileName, fmOpenWrite);
+  result := TFileStream.Create(fmOpenWrite);
 end;
 
 class function TFile.OpenWrite(const FileName: string;
   Share: integer): TStream;
 begin
-  result := TFileStream.Create(FileName, fmOpenWrite or Share);
+  result := TFileStream.Create(fmOpenWrite or Share);
 end;
 
 class function TFile.Rename(const OldName, NewName: string): boolean;
