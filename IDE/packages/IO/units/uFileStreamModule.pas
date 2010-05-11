@@ -1,4 +1,4 @@
-unit uFileStreamModule;
+unit uFileStreamModule;           
 
 {$IFDEF FPC}
 {$MODE OBJFPC}{$H+}
@@ -10,22 +10,28 @@ uses
   SysUtils, Classes, uSE2PackageAPI;
 
 const
-  CFileStreamModuleName   = 'Streams';
+  CFileStreamModuleName   = 'IO.Streams';
   CFileStreamModuleSource =
-        'unit Streams;'+#13#10+
+        'unit IO.Streams;'+#13#10+
         #13#10+
         'interface'+#13#10+
         #13#10+
-        'const'+#13#10+
-        '  fmCreate         = $FFFF;'+#13#10+
-        '  fmOpenRead       = $0000;'+#13#10+
-        '  fmOpenWrite      = $0001;'+#13#10+
-        '  fmOpenReadWrite  = $0002;'+#13#10+
+        'type'+#13#10+
+        '  FileMode = class'+#13#10+
+        '  public'+#13#10+
+        '    const CreateFile = $FFFF;'+#13#10+
+        '    const Read       = $0000;'+#13#10+
+        '    const Write      = $0001;'+#13#10+
+        '    const ReadWrite  = $0002;'+#13#10+
+        '  end;'+#13#10+
         #13#10+
-        '  fmShareExclusive = $0010;'+#13#10+
-        '  fmShareDenyWrite = $0020;'+#13#10+
-        '  fmShareDenyRead  = $0030;'+#13#10+
-        '  fmShareDenyNone  = $0040;'+#13#10+
+        '  FileShare = class'+#13#10+
+        '  public'+#13#10+
+        '    const Exclusive = $0010;'+#13#10+
+        '    const DenyWrite = $0020;'+#13#10+
+        '    const DenyRead  = $0030;'+#13#10+
+        '    const DenyNone  = $0040;'+#13#10+
+        '  end;'+#13#10+
         #13#10+
         'type'+#13#10+
         '  THandleStream = class(TStream)'+#13#10+
@@ -75,11 +81,7 @@ end;
 
 function TFileStream_Create2(Self: TFileStream; AHandle: integer): TFileStream;
 begin
-  {$IFDEF FPC}
-    //nothing? :(
-  {$ELSE}
   result := TFileStream.Create(AHandle);
-  {$ENDIF}
 end;
 
 procedure CFileStreamModuleRegister(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister);
