@@ -114,6 +114,7 @@ const
   C_SE2SystemUnitName           = 'System';
   C_SE2TObjectName              = 'TObject';
   C_SE2TExternalObjectName      = 'TExternalObject';
+  C_SE2ThreadingUnit            = 'System.Threading';
   C_SE2Boolean                  = 'boolean';
   C_SE2Int64                    = 'int64';   
   C_SE2String                   = 'string';
@@ -177,7 +178,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 1; Build: 0);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 2; Build: 0);
 
 
 function SE2SplitFullQualifiedName(const Input: string; var AUnitName, ATypeName: string): boolean;
@@ -373,7 +374,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 05, 11);
+  result := EncodeDate(2010, 05, 21);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }

@@ -17,7 +17,7 @@ implementation
 {$ENDIF}
 
 uses
-  uSE2RunTime, uSE2OpCode, uSE2PEData, uSE2SystemUnit, uSE2RunType;
+  uSE2ExecutionContext, uSE2RunTime, uSE2OpCode, uSE2PEData, uSE2SystemUnit, uSE2RunType;
 
 function InternalMethodHandler(MethodPtr: Pointer; const AStackPtr: Pointer; _EDX: Pointer): integer; forward;
 
@@ -77,7 +77,7 @@ end;
 
 function InternalMethodHandler(MethodPtr: Pointer; const AStackPtr: Pointer; _EDX: Pointer): integer;
 var CallInfo     : PSE2NativeCallEntry;
-    RunTime      : TSE2RunTime;
+    RunTime      : TSE2ExecutionContext;
     ClassPtr     : Pointer;
     ScriptMethod : TSE2MetaEntry;
     OldCodePos   : integer;       
@@ -430,12 +430,12 @@ var CallInfo     : PSE2NativeCallEntry;
                if index < 0 then
                   raise ESE2CallParameterError.Create(SParamNotCompatible);
 
-               RecMeta := RunTime.AppCode.MetaData[index];
+               RecMeta := RunTime.ExecutionData.AppCode.MetaData[index];
                if RecMeta = nil then
                   raise ESE2CallParameterError.Create(SParamNotCompatible);
 
-               Pointer(newEntry.tPointer^) := RunTime.RunTimeClasses.CreateScriptRecord(RecMeta, RunTime.AppCode);
-               RunTime.RunTimeClasses.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^), RecMeta);
+               Pointer(newEntry.tPointer^) := RunTime.PackedData.CreateScriptRecord(RecMeta, RunTime.ExecutionData.AppCode);
+               RunTime.PackedData.DelphiToScriptRecord(PPointer(Data)^, Pointer(newEntry.tPointer^), RecMeta);
                if bAddToList then
                begin
                  if pVarRecords = nil then
@@ -489,11 +489,11 @@ var CallInfo     : PSE2NativeCallEntry;
       if i < 0 then
          raise ESE2CallParameterError.Create(SParamNotCompatible);
 
-      RecMeta := RunTime.AppCode.MetaData[i];
+      RecMeta := RunTime.ExecutionData.AppCode.MetaData[i];
       if RecMeta = nil then
          raise ESE2CallParameterError.Create(SParamNotCompatible);
 
-      Pointer(RunTime.Stack.Top.tPointer^) := RunTime.RunTimeClasses.CreateScriptRecord(RecMeta, RunTime.AppCode);
+      Pointer(RunTime.Stack.Top.tPointer^) := RunTime.PackedData.CreateScriptRecord(RecMeta, RunTime.ExecutionData.AppCode);
     end;
 
     // parameters
@@ -604,8 +604,8 @@ var CallInfo     : PSE2NativeCallEntry;
             begin
               if pVarRecords <> nil then
               begin
-                RunTime.RunTimeClasses.ScriptToDelphiRecord(pVarRecords.Last, PPointer(Parameter)^,
-                           RunTime.AppCode.MetaData[ ScriptMethod.RTTI.FindSize(btRecord, i) ]);
+                RunTime.PackedData.ScriptToDelphiRecord(pVarRecords.Last, PPointer(Parameter)^,
+                           RunTime.ExecutionData.AppCode.MetaData[ ScriptMethod.RTTI.FindSize(btRecord, i) ]);
                 pVarRecords.Delete(pVarRecords.Count - 1);
               end;
             end;
@@ -614,7 +614,7 @@ var CallInfo     : PSE2NativeCallEntry;
 
       if Data^.AType = btRecord then
         if Pointer(Data^.tPointer^) <> nil then
-          RunTime.RunTimeClasses.DestroyScriptRecord(Pointer(Data^.tPointer^));
+          RunTime.PackedData.DestroyScriptRecord(Pointer(Data^.tPointer^));
 
       RunTime.Stack.Pop;
     end;
@@ -684,9 +684,9 @@ var CallInfo     : PSE2NativeCallEntry;
             //Parameter := @_EDX;
             //if _EDX = nil then
             //   Parameter := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 2);
-            RunTime.RunTimeClasses.ScriptToDelphiRecord(Pointer(RunTime.Stack.Top^.tPointer^), Pointer(Parameter^),
-                 RunTime.AppCode.MetaData[ ScriptMethod.RTTI.FindSize(btRecord, -1) ]);
-            RunTime.RunTimeClasses.DestroyScriptRecord(Pointer(RunTime.Stack.Top^.tPointer^));
+            RunTime.PackedData.ScriptToDelphiRecord(Pointer(RunTime.Stack.Top^.tPointer^), Pointer(Parameter^),
+                 RunTime.ExecutionData.AppCode.MetaData[ ScriptMethod.RTTI.FindSize(btRecord, -1) ]);
+            RunTime.PackedData.DestroyScriptRecord(Pointer(RunTime.Stack.Top^.tPointer^));
           end;
 
       end;
@@ -703,8 +703,8 @@ begin
   ScriptMethod  := CallInfo^.MethodInfo;
   result := ParamsInStack(ScriptMethod) * SizeOf(Pointer);
 
-  if not RunTime.Initialized then
-     RunTime.Initialize;
+  if not RunTime.ExecutionData.PInitialized^ then
+     TSE2RunTime(RunTime.ExecutionData.RunTime).Initialize;
 
   OldStackSize := MaxInt;
   OldCodePos   := RunTime.CodePos;
@@ -721,17 +721,15 @@ begin
 
     if (ScriptMethod.DynIndex > -1) and (ClassPtr <> nil) then
     begin
-      Methods  := RunTime.RunTimeClasses.GetClassMethods(ClassPtr);
+      Methods  := RunTime.PackedData.GetClassMethods(ClassPtr);
       Index    := Methods[ScriptMethod.DynIndex];
       if Index > 0 then
       begin
-        RunTime.CodePos := index;
-        RunTime.Process;
+        RunTime.Run(index);
       end;
     end else
     begin
-      RunTime.CodePos   := ScriptMethod.CodePos;
-      RunTime.Process;
+      RunTime.Run(ScriptMethod.CodePos);
     end;
   finally
     while RunTime.Stack.Size > OldStackSize do

@@ -182,7 +182,9 @@ begin
 end;
 
 function TSE2PackageUnit.InitializePackage: boolean;
-var MM             : TMemoryManager;
+var {$Warnings off} // we want to be backward compatible
+    MM             : TMemoryManager;
+    {$Warnings on}
     {$IFDEF DELPHI2005UP}
     MMEx           : TMemoryManagerEx;
     {$ENDIF}
@@ -309,7 +311,9 @@ begin
   {$ENDIF}
   if Assigned(PackMM) then
   begin
+    {$Warnings off} // we want to be backward compatible
     GetMemoryManager(MM);
+    {$Warnings on}
     PackMM(MM);
   end;
 

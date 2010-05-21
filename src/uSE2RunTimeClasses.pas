@@ -29,6 +29,7 @@ type
     function  CreateScriptRecord(const Meta: TSE2MetaEntry; PE: TSE2PE): Pointer;
     procedure DestroyScriptRecord(ARecord: Pointer);
     function  DuplicateScriptRecord(ARecord: Pointer): Pointer;
+    function  ScriptRecordEqual(ARec1, ARec2: Pointer; Meta: TSE2MetaEntry): boolean;
 
     //procedure CopyScriptRecord(ASource, ADest: Pointer); overload;
     procedure CopyScriptRecord(ASource, ADest: Pointer; Meta: TSE2MetaEntry); overload;
@@ -59,7 +60,7 @@ const
 implementation
 
 uses
-  uSE2RunAccess, uSE2OpCode;
+  uSE2RunAccess, uSE2OpCode, SysUtils;
 
 type
   PSE2ClassPointerEntry = ^TSE2ClassPointerEntry;
@@ -981,7 +982,6 @@ begin
     TSE2PointerList(FPtr).PopPointers(ADest);
     if Meta.RTTI.Count > 0 then
        TSE2ClassPointerList.ScriptToDelphiRecData(ASource, ADest, Meta);
-    // TODO: Move strings
     TSE2PointerList(FPtr).Clear;
   end;
 end;
@@ -996,9 +996,14 @@ begin
     TSE2PointerList(FPtr).PopPointers(ADest);
     if Meta.RTTI.Count > 0 then
        TSE2ClassPointerList.DelphiToScriptRecDat(ASource, ADest, Meta);
-    // TODO: Move strings
     TSE2PointerList(FPtr).Clear;
   end;
+end;
+
+function TSE2RunTimeClasses.ScriptRecordEqual(ARec1, ARec2: Pointer;
+  Meta: TSE2MetaEntry): boolean;
+begin
+  result := CompareMem(ARec1, ARec2, Meta.ParamCount);
 end;
 
 end.

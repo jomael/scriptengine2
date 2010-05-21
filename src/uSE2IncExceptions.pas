@@ -236,6 +236,7 @@ begin
   p.DoGetUnitSource   := Unit_GetSource;
   p.DoRegExceptions   := Unit_RegisterExceptions;
   p.UnitName          := C_UnitName;
+  p.Priority          := 100;
   TSE2UnitManager.RegisterUnit(p);
 end;
 

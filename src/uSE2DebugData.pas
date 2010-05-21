@@ -38,6 +38,9 @@ const
                 'soSTACK_INC', 'soSTACK_INC_COUNT',
                 'soSTACK_DEC', 'soSTACK_DEC_NODEL', 'soSTACK_DEC_COUNT',
 
+                // Memory Methods
+                'soMEM_MAKE', 'soMEM_REC_MAKE', 'soMEM_REC_FREE',
+
                 // Program execution flow
                 'soFLOW_GOTO', 'soFLOW_JIZ', 'soFLOW_JNZ', 'soFLOW_CALL', 'soFLOW_CALLEX', 'soFLOW_CALLDYN', 'soFLOW_CALLPTR',
                 'soFLOW_RET', 'soFLOW_PUSHRET',
@@ -64,6 +67,7 @@ const
 
                 // Record Data
                 'soREC_MAKE', 'soREC_FREE', 'soREC_COPY_TO', 'soREC_MARK_DEL', 'soREC_DEL_RECS',
+                'soREC_EQUAL', 'soREC_UNEQUAL',
 
                 // integer increment
                 'soINT_INCSTATIC', 'soINT_INCSTACK',
@@ -76,7 +80,7 @@ const
                 'soSAFE_INTER', 'soSAFE_STACK', 'soSAFE_PEX',
 
                 // special runtime data
-                'soDEBUG_META', 'soFINIT_STACK',
+                'soDEBUG_META', 'soFINIT_STACK', 'soSAVE_INSTANCE',
 
                 // Meta
                 'soMETA_PUSH', 'soMETA_SHARE', 'soMETA_CNAME', 'soMETA_CAST'
@@ -90,18 +94,15 @@ begin
     exit;
   end;
   case OpCode.OpCode of
-  soFINIT_STACK          : result := 'FSTK';
-  soDEBUG_META           : result := 'META';
-  soMETA_CNAME           : result := 'CNM';
-  soMETA_PUSH            : result := Format('MPUT [%d]', [PSE2OpMETA_PUSH(OpCode).MetaIndex]);
-  soMETA_SHARE           : result := Format('MSHR [%d]', [PSE2OpMETA_SHARE(OpCode).MetaIndex]);
-  soMETA_CAST            : result := Format('MCST [%d]', [PSE2OpMETA_CAST(OpCode).MetaIndex]);
   soNOOP                 : result := 'NOOP';
   soSTACK_INC            : result := Format('PUSH [%s]', [VarTypeToStr(PSE2OpSTACK_INC(OpCode).AType)]);
   soSTACK_INC_COUNT      : result := Format('PUSH [%d %s]', [PSE2OpSTACK_INC_COUNT(OpCode).Count, VarTypeToStr(PSE2OpSTACK_INC_COUNT(OpCode).AType)]);
   soSTACK_DEC            : result := 'POP';
   soSTACK_DEC_NODEL      : result := 'POP [no delete]';
   soSTACK_DEC_COUNT      : result := Format('POP [%d]', [PSE2OpSTACK_DEC_COUNT(OpCode).Count]);
+
+
+
   soFLOW_GOTO            : result := Format('GOTO [%d]', [PSE2OpFLOW_GOTO(OpCode).Position]);
   soFLOW_JIZ             : result := Format('JIZ [%d]', [PSE2OpFLOW_JIZ(OpCode).Position]);
   soFLOW_JNZ             : result := Format('JNZ [%d]', [PSE2OpFLOW_JNZ(OpCode).Position]);
@@ -139,8 +140,19 @@ begin
   soREC_COPY_TO          : result := Format('REC.POP TO [%d %s]', [PSE2OpREC_COPY_TO(OpCode).Target, IfThen(PSE2OpREC_COPY_TO(OpCode).Target >= 0, 'Static', 'Dynamic')]);
   soREC_MARK_DEL         : result := 'REC.UNUSE';
   soREC_DEL_RECS         : result := Format('REC.GC [%d]', [PSE2OpREC_DEL_RECS(OpCode).MaxRecords]);
+  soREC_EQUAL            : result := 'REC.SAME';
+  soREC_UNEQUAL          : result := 'REC.DIFF';
 
+  soMEM_MAKE             : result := Format('MEM.MAKE [%s]', [VarTypeToStr(PSE2OpMEM_MAKE(OpCode).AType)]);
+  soMEM_REC_MAKE         : result := Format('MEM.REC [%d %s.%s]', [PSE2OpMEM_REC_MAKE(OpCode).Variables, PE.MetaData[PSE2OpMEM_REC_MAKE(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpMEM_REC_MAKE(OpCode).MetaIndex].Name]);
+  soMEM_REC_FREE         : result := Format('MEM.FREE [%d]', [PSE2OpMEM_REC_FREE(OpCode).Offset]);
 
+  soFINIT_STACK          : result := 'FSTK';
+  soDEBUG_META           : result := 'META';
+  soMETA_CNAME           : result := 'CNM';
+  soMETA_PUSH            : result := Format('MPUT [%d]', [PSE2OpMETA_PUSH(OpCode).MetaIndex]);
+  soMETA_SHARE           : result := Format('MSHR [%d]', [PSE2OpMETA_SHARE(OpCode).MetaIndex]);
+  soMETA_CAST            : result := Format('MCST [%d]', [PSE2OpMETA_CAST(OpCode).MetaIndex]);
 
 
   soINT_INCSTATIC        : result := Format('INC STATIC [%d %d]', [PSE2OpINT_INCSTATIC(OpCode).Offset, PSE2OpINT_INCSTATIC(OpCode).Value]);
@@ -156,6 +168,8 @@ begin
   soSAFE_INTER           : result := 'ITRP';
   soSAFE_STACK           : result := 'ISCK';
   soSAFE_PEX             : result := 'PEX';
+
+  soSAVE_INSTANCE        : result := 'INST';
 
 
   else                     result := '[unknown] {'+TSE2OpCodeStr[OpCode.OpCode]+'}';
@@ -207,9 +221,9 @@ var aRun : TSE2RunTime;
 begin
   result := '';
   aRun := RunTime;
-  if aRun.ScriptClassList.IndexOf(Ptr) > -1 then
+  if aRun.ClassList.IndexOf(Ptr) > -1 then
   begin
-    meta := aRun.RunTimeClasses.GetClassMeta(Ptr); // TSE2MetaEntry( Pointer(integer(Ptr) + uSE2SystemUnit.vmtScriptMetaEntry) );
+    meta := aRun.ExecutionData.PackedData.GetClassMeta(Ptr); // TSE2MetaEntry( Pointer(integer(Ptr) + uSE2SystemUnit.vmtScriptMetaEntry) );
     try
       //result := '0x' +IntToHex(Integer(Ptr), 8);
       result := '['+meta.AUnitName + '.' + meta.Name +']';

@@ -113,8 +113,8 @@ begin
   LinkInitialization(result);
   LinkFinalization(result);
   LinkMain(result);
-
 end;
+
 
 procedure TSE2Linker.LinkString(PE: TSE2PE; value: TSE2LinkString);
 begin
@@ -242,7 +242,9 @@ var i, j  : integer;
     Index : integer;
     pVar  : TSE2Variable;
     aType : TSE2TypeIdent;
+    bFirst: boolean;
 begin
+  bFirst := True;
   Index := 0;
   for i:=0 to FUnitList.Count-1 do
   begin
@@ -255,11 +257,16 @@ begin
           pVar.CodePos := Index;
           aType := TSE2Type(TSE2Variable(AUnit.ElemList[j]).AType.InheritRoot).AType;
           SetCodePos(pVar.GenLinkerName, Index, TSE2Variable(AUnit.ElemList[j]).AType);
-          GenCode(PE, TSE2OpCodeGen.STACK_INC(aType));
+          GenCode(PE, TSE2OpCodeGen.MEM_MAKE(aType));
           if TSE2Variable(AUnit.ElemList[j]).AType is TSE2Record then
-            GenCode(PE, TSE2OpCodeGen.REC_MAKE(0, GetIndexOfRecord(PE, TSE2Record(TSE2Variable(AUnit.ElemList[j]).AType))))
+            GenCode(PE, TSE2OpCodeGen.MEM_REC_MAKE(0, GetIndexOfRecord(PE, TSE2Record(TSE2Variable(AUnit.ElemList[j]).AType))))
           else
-            GenCode(PE, TSE2OpCodeGen.DAT_CLEAR);
+          if (i = 0) and bFirst then
+            GenCode(PE, TSE2OpCodeGen.SAVE_INSTANCE)
+          else
+            GenCode(PE, TSE2OpCodeGen.DAT_CLEAR(True));
+
+          bFirst := False;
           Index := Index + 1;
         end;
   end;
@@ -429,29 +436,15 @@ begin
     if OpCode.OpCode.OpCode = soFLOW_CALLEX then
        PSE2OpFLOW_CALLEX(OpCode.OpCode).MetaIndex := PE.MetaData.Count - 1;
 
-    if OpCode.OpCode.OpCode = soSPEC_CREATE then
-    begin
-      PSE2OpSPEC_CREATE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
-    end;
-    if OpCode.OpCode.OpCode = soMETA_PUSH then
-    begin
-      PSE2OpMETA_PUSH(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
-    end;
-    if OpCode.OpCode.OpCode = soMETA_SHARE then
-    begin
-      PSE2OpMETA_SHARE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
-    end;
-    if OpCode.OpCode.OpCode = soMETA_CAST then
-    begin           
-      PSE2OpMETA_CAST(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
-    end;
-    if OpCode.OpCode.OpCode = soREC_MAKE then
-    begin
-      PSE2OpREC_MAKE(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
-    end;
-    if OpCode.OpCode.OpCode = soREC_COPY_TO then
-    begin
-      PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex, PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex);
+    case OpCode.OpCode.OpCode of
+    soSPEC_CREATE          : PSE2OpSPEC_CREATE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+    soMETA_PUSH            : PSE2OpMETA_PUSH(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+    soMETA_SHARE           : PSE2OpMETA_SHARE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+    soMETA_CAST            : PSE2OpMETA_CAST(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+    soREC_MAKE             : PSE2OpREC_MAKE(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
+    soREC_EQUAL            : PSE2OpREC_EQUAL(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
+    soREC_UNEQUAL          : PSE2OpREC_UNEQUAL(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
+    soREC_COPY_TO          : PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex, PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex);
     end;
   end;
 end;
@@ -664,7 +657,7 @@ begin
           begin
             iPos := TSE2Variable(TSE2Unit(FUnitList[i]).ElemList[j]).CodePos;
             iPos := numStatic - iPos;
-            GenCode(PE, TSE2OpCodeGen.REC_FREE( -iPos + 1 ));
+            GenCode(PE, TSE2OpCodeGen.MEM_REC_FREE( -iPos + 1 ));
           end;
 
   // no unlink of global variables - this is done by the runtime automatically
