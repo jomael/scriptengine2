@@ -1,8 +1,8 @@
 object MainForm: TMainForm
-  Left = 376
-  Top = 233
-  Width = 640
-  Height = 432
+  Left = 231
+  Top = 123
+  Width = 867
+  Height = 540
   Caption = 'ScriptEngineII'
   Color = clBtnFace
   Font.Charset = ANSI_CHARSET
@@ -19,25 +19,25 @@ object MainForm: TMainForm
   PixelsPerInch = 96
   TextHeight = 13
   object hSplitter1: TSplitter
-    Left = 185
+    Left = 237
     Top = 0
     Width = 7
-    Height = 355
+    Height = 463
     AutoSnap = False
   end
   object mainClient: TPanel
-    Left = 192
+    Left = 244
     Top = 0
-    Width = 432
-    Height = 355
+    Width = 607
+    Height = 463
     Align = alClient
     BevelOuter = bvNone
     BorderWidth = 5
     TabOrder = 0
     object panelDebugging: TPanel
       Left = 5
-      Top = 164
-      Width = 422
+      Top = 272
+      Width = 597
       Height = 186
       Align = alBottom
       BevelOuter = bvNone
@@ -49,7 +49,7 @@ object MainForm: TMainForm
         Height = 186
       end
       object Splitter2: TSplitter
-        Left = 140
+        Left = 315
         Top = 0
         Height = 186
         Align = alRight
@@ -66,7 +66,7 @@ object MainForm: TMainForm
         OnDrawItem = stepDebugInstructionsDrawItem
       end
       object stepCallStack: TListView
-        Left = 143
+        Left = 318
         Top = 0
         Width = 279
         Height = 186
@@ -97,7 +97,7 @@ object MainForm: TMainForm
       object panelStackInfo: TPanel
         Left = 184
         Top = 0
-        Width = 41
+        Width = 131
         Height = 186
         Align = alClient
         BevelOuter = bvNone
@@ -105,7 +105,7 @@ object MainForm: TMainForm
         object stepDebugStack: TListView
           Left = 0
           Top = 0
-          Width = 41
+          Width = 131
           Height = 160
           Align = alClient
           Columns = <
@@ -135,7 +135,7 @@ object MainForm: TMainForm
         object panelStackInfoOptions: TPanel
           Left = 0
           Top = 160
-          Width = 41
+          Width = 131
           Height = 26
           Align = alBottom
           TabOrder = 1
@@ -156,16 +156,16 @@ object MainForm: TMainForm
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Top = 355
-    Width = 624
+    Top = 463
+    Width = 851
     Height = 19
     Panels = <>
   end
   object panelLeft: TPanel
     Left = 0
     Top = 0
-    Width = 185
-    Height = 355
+    Width = 237
+    Height = 463
     Align = alLeft
     BevelOuter = bvNone
     BorderWidth = 2
@@ -173,9 +173,9 @@ object MainForm: TMainForm
     object mainLeft: TPageControl
       Left = 2
       Top = 2
-      Width = 181
-      Height = 351
-      ActivePage = tabProject
+      Width = 233
+      Height = 459
+      ActivePage = Packages
       Align = alClient
       Images = ImgListProject
       TabOrder = 0
@@ -185,8 +185,8 @@ object MainForm: TMainForm
         object tvProjectTree: TTreeView
           Left = 0
           Top = 0
-          Width = 173
-          Height = 322
+          Width = 225
+          Height = 430
           Align = alClient
           BorderStyle = bsNone
           Color = clWhite
@@ -209,18 +209,17 @@ object MainForm: TMainForm
       end
       object tabProjects: TTabSheet
         Caption = 'Projects'
-        ImageIndex = 7
         object listProjects: TListView
           Left = 0
           Top = 0
-          Width = 173
-          Height = 322
+          Width = 225
+          Height = 430
           Align = alClient
           BorderStyle = bsNone
           Columns = <
             item
               Caption = 'Name'
-              Width = 100
+              Width = 150
             end
             item
               Caption = 'Folder'
@@ -229,6 +228,46 @@ object MainForm: TMainForm
           Ctl3D = False
           ReadOnly = True
           RowSelect = True
+          SmallImages = ImgListProject
+          TabOrder = 0
+          ViewStyle = vsReport
+          OnDblClick = listProjectsDblClick
+          OnKeyDown = listProjectsKeyDown
+        end
+      end
+      object Packages: TTabSheet
+        Caption = 'Packages'
+        ImageIndex = 7
+        object listLoadedPackages: TListView
+          Left = 0
+          Top = 0
+          Width = 225
+          Height = 430
+          Align = alClient
+          BorderStyle = bsNone
+          Columns = <
+            item
+              Caption = 'Name'
+              Width = 150
+            end
+            item
+              Alignment = taRightJustify
+              Caption = 'min. Version'
+              Width = 70
+            end
+            item
+              Caption = 'Guid'
+              Width = 200
+            end
+            item
+              Caption = 'Folder'
+            end>
+          ColumnClick = False
+          Ctl3D = False
+          MultiSelect = True
+          ReadOnly = True
+          RowSelect = True
+          PopupMenu = packagesPopup
           SmallImages = ImgListProject
           TabOrder = 0
           ViewStyle = vsReport
@@ -463,7 +502,7 @@ object MainForm: TMainForm
     Left = 78
     Top = 84
     Bitmap = {
-      494C010115001800400010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010115001800580010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000006000000001002000000000000060
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1266,7 +1305,7 @@ object MainForm: TMainForm
     Left = 44
     Top = 84
     Bitmap = {
-      494C010108000900400010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010108000900580010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1699,5 +1738,17 @@ object MainForm: TMainForm
   object SynEditSearch: TSynEditSearch
     Left = 12
     Top = 148
+  end
+  object packagesPopup: TPopupMenu
+    Left = 14
+    Top = 183
+    object packagePopupLoad: TMenuItem
+      Caption = 'Add package...'
+      OnClick = packagePopupLoadClick
+    end
+    object packagePopupUnload: TMenuItem
+      Caption = 'Unload packages'
+      OnClick = packagePopupUnloadClick
+    end
   end
 end
