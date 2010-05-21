@@ -10,6 +10,7 @@ uses
   uFormCodeEditor, uFormCompileMessages, uScriptProject, SynHighlighterSE2,
   uPackageInfo,
 
+  uSE2Packages,
   uSE2Compiler, uSE2PEData, uSE2Reader, uSE2RunTime, uSE2UnitCacheMngr, uSE2OpCode, uSE2DebugData,
   SynEditMiscClasses, SynEditSearch, SynEdit, Buttons;
 
@@ -85,6 +86,11 @@ type
     panelStackInfoOptions: TPanel;
     checkReverseStackDisplay: TCheckBox;
     GenUnit_Generic: TMenuItem;
+    Packages: TTabSheet;
+    listLoadedPackages: TListView;
+    packagesPopup: TPopupMenu;
+    packagePopupLoad: TMenuItem;
+    packagePopupUnload: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure File_CloseClick(Sender: TObject);
@@ -119,6 +125,10 @@ type
     procedure GenUnit_PackageClick(Sender: TObject);
     procedure listProjectsDblClick(Sender: TObject);
     procedure checkReverseStackDisplayClick(Sender: TObject);
+    procedure packagePopupLoadClick(Sender: TObject);
+    procedure packagePopupUnloadClick(Sender: TObject);
+    procedure listProjectsKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
   private
     { Private-Deklarationen }
     FUnitCache      : TSE2UnitCacheMngr;
@@ -153,6 +163,9 @@ type
     procedure ShowOpCodes(Data: TSE2PE; DebugPanel: boolean);
     procedure ShowCurrentStack(Data: TSE2RunTime);
 
+    procedure Packages_Load(const FileName: string);
+    procedure Packages_Unload(Package: TSE2PackageUnit);
+    procedure Packages_LoadDefault;
   protected
     // Search
     FPackageInspector      : TIDEPackageInspector;
@@ -188,7 +201,7 @@ implementation
 
 uses
   ConsoleForm, uSE2RunType, Math, uSE2RunAccess, uPackageLoader,
-  uSE2Packages, uSE2UnitManager, uSE2ScriptImporter, uSE2Tokenizer,
+  uSE2UnitManager, uSE2ScriptImporter, uSE2Tokenizer,
 
   uSE2IncHelpers;
 
@@ -236,7 +249,7 @@ procedure TMainForm.FormCreate(Sender: TObject);
 begin
   FUnitCache := TSE2UnitCacheMngr.Create;
   FUnitCache.OnGetCacheStream := GetCacheStream;
-  LoadPackages(ExtractFilePath(Application.ExeName) + 'packages\', '.dll');
+  Packages_LoadDefault;
 
 
   FPackageInspector := TIDEPackageInspector.Create(mainClient);
@@ -560,6 +573,8 @@ begin
   else
     FProjectFile.RemoveFile(FileName);
 
+  FUnitCache.Clear;
+
   Node.Free;
 end;
 
@@ -595,6 +610,8 @@ begin
     begin
       FProjectFile.ProjectFile.UnitPath.Add(s);
       FProjectFile.ProjectFile.UnitList.Add(Name);
+
+      FUnitCache.ClearCache(Name);
 
       NewNode := tvProjectTree.Items.AddChild(Parent, Name + '.script');
       NewNode.Data := nil;
@@ -921,17 +938,22 @@ var i        : integer;
 begin
   // First Check if none of the required units are marked as
   // changed
-  bChanged := False;
-  for i:=0 to FProjectFile.ProjectFile.UnitList.Count-1 do
-    if SameText(FProjectFile.ProjectFile.UnitList[i], Name) then
-      if not FProjectFile.Files[FProjectFile.ProjectFile.UnitPath[i]].Compiled then
-      begin
-        bChanged := True;
-        break;
-      end;
+  bChanged := not FUnitCache.HasUnit(Name);
+  if not bChanged then
+    for i:=0 to FProjectFile.ProjectFile.UnitList.Count-1 do
+      if SameText(FProjectFile.ProjectFile.UnitList[i], Name) then
+        if not FProjectFile.Files[FProjectFile.ProjectFile.UnitPath[i]].Compiled then
+        begin
+          bChanged := True;
+          break;
+        end;
+
+  if not bChanged then
+     bChanged := True;
 
   if not bChanged then
      exit;
+
 
   for i:=0 to FProjectFile.ProjectFile.UnitList.Count-1 do
   begin
@@ -1011,7 +1033,7 @@ begin
   begin
     FLastIDLETime := GetTickCount;
     Application.ProcessMessages;
-  end;
+  end;                
 end;
 
 procedure TMainForm.EditorGetUnitMngr(Sender: TObject;
@@ -1299,8 +1321,8 @@ end.
 
 procedure TMainForm.DoRunScript(Data: TSE2PE; Stepping: boolean);
 var c, t1, t2: int64;
-    p        : TSE2OpCode;
-   // s        : string;
+    //p        : TSE2OpCode;
+    //s        : string;
 begin
   UpdateCaption(SExecutingAction);
   Run_Run.Enabled  := Stepping;
@@ -1335,20 +1357,24 @@ begin
     FCodeEditorMngr.Messages.RunTime.Messages.Lines.Add(Format(SExecutedIn, [FloatToStrF((t2 - t1) / c, ffNumber, 8, 3)]));
 
 
+    {FCodeEditorMngr.Messages.RunTime.Messages.Lines.Add('');
     for p := soNOOP to soSAFE_SJUMP do
     begin
-             {
+
       if FRunTime.PerfMonitor[p] > 0 then
       begin
-        s := TSE2DebugHelper.OpCodeToStr(p) + ': '+FloatToStrF(FRunTime.PerfMonitor[p] * 1000, ffNumber, 8, 0) + ' ms';
+        s := TSE2DebugHelper.OpCodeToStr(p) + ':'#9#9;
+        if length(s) < 18 then
+           s := s + #9;
+        s := s + FloatToStrF(FRunTime.PerfMonitor[p] * 1000, ffNumber, 8, 0) + ' ms';
         s := s + ' ('+FloatToStrF(FRunTime.PerfMonitor.Count[p], ffNumber, 8, 0)+') -> ';
         s := s + FloatToStrF(FRunTime.PerfMonitor[p] * 1000 * 1000 / FRunTime.PerfMonitor.Count[p], ffNumber, 8, 3) + ' us/op';
 
          FCodeEditorMngr.Messages.RunTime.Messages.Lines.Add(s);
 
       end;
-      }
-    end;
+
+    end;  }
 
 
     ConsoleForm.CloseConsole;
@@ -1425,6 +1451,7 @@ begin
       if Pos('.', ExtractFileName(FileName)) = 0 then
          FileName := FileName + '.sproject';
       FProjectFile.SaveProject( ChangeFileExt(FileName, '.sproject'));
+      ProjectsAdd(ChangeFileExt(FileName, '.sproject'));
     end;
   finally
     dlg.Free;
@@ -1806,7 +1833,7 @@ begin
   c := -1;
   for i:=0 to listProjects.Items.Count-1 do
   begin
-    if AnsiSameText(listProjects.Items[i].SubItems[0], FileName) then
+    if AnsiSameText(listProjects.Items[i].SubItems[1], FileName) then
     begin
       c := i;
       break;
@@ -1820,6 +1847,7 @@ begin
 
     Item := listProjects.Items.Insert(0);
     Item.Caption := ExtractFileName(FileName);
+    Item.SubItems.Add(ExtractRelativePath(ExtractFilePath(Application.ExeName) + 'Projects\', FileName));
     Item.SubItems.Add(FileName);
     Item.ImageIndex := 3;
   finally
@@ -1865,7 +1893,7 @@ begin
   files := TStringList.Create;
   try              
     for i:=0 to listProjects.Items.Count-1 do
-      files.Add(listProjects.Items[i].SubItems[0]);
+      files.Add(listProjects.Items[i].SubItems[1]);
 
     try
       files.SaveToFile(FileName);
@@ -1882,7 +1910,7 @@ begin
   if listProjects.Selected = nil then
      exit;
      
-  if AnsiSameText(listProjects.Selected.SubItems[0], FProjectFile.ProjectFile.FileName) then
+  if AnsiSameText(listProjects.Selected.SubItems[1], FProjectFile.ProjectFile.FileName) then
      exit;
 
   if Run_Stop.Enabled then
@@ -1892,7 +1920,7 @@ begin
   if not CheckUnsavedDocuments then
      exit;
 
-  DoOpenProject(listProjects.Selected.SubItems[0]);
+  DoOpenProject(listProjects.Selected.SubItems[1]);
   mainLeft.ActivePageIndex := 0;
 end;
 
@@ -1909,11 +1937,11 @@ begin
   ForceDirectories(basePath);
 
   try
-    Cache := TFileStream.Create(basePath + aUnitName + '.cache', fmCreate);
+    Cache := TFileStream.Create(basePath + aUnitName + '.cache', fmCreate or fmShareDenyNone);
   except
     Cache := nil;
-  end;
-   }
+  end;  }
+
   //
 end;
 
@@ -1923,6 +1951,130 @@ begin
   if Editor <> nil then
     if Editor.Data is TScriptUnit then
        TScriptUnit(Editor.Data).Compiled := False;
+end;
+
+procedure TMainForm.Packages_Load(const FileName: string);
+var aPackage : TSE2PackageUnit;
+    i        : integer;
+begin
+  try
+    for i:=0 to TSE2UnitManager.Instance.Count-1 do
+      if TSE2UnitManager.Instance.Units[i] is TSE2PackageUnit then
+        if SameFileName(TSE2PackageUnit(TSE2UnitManager.Instance.Units[i]).FileName, FileName) then
+          exit;
+
+    aPackage := TSE2PackageUnit.Create(FileName);
+    TSE2UnitManager.RegisterUnit(aPackage);
+    with listLoadedPackages.Items.Add do
+    begin
+      Caption := ExtractFileName(FileName);
+
+      SubItems.Add(Format('%d.%d.%d.%d', [aPackage.MinVersion.Major, aPackage.MinVersion.Minor,
+                                          aPackage.MinVersion.Patch, aPackage.MinVersion.Build]));
+      SubItems.Add(GUIDToString(aPackage.GUID));
+      SubItems.Add(FileName);
+      Data := aPackage;
+      ImageIndex := 7;
+    end;
+    if FPackageInspector <> nil then
+       FPackageInspector.FillTree;
+    if FUnitCache <> nil then
+       FUnitCache.Clear;
+  except
+  end;
+end;
+
+procedure TMainForm.Packages_LoadDefault;
+var basePath: string;
+begin
+  basePath := ExtractFilePath(Application.ExeName) + 'packages\';
+  if FileExists(basePath + 'libCollections.dll') then
+     Packages_Load(basePath + 'libCollections.dll');
+  if FileExists(basePath + 'libStreams.dll') then
+     Packages_Load(basePath + 'libStreams.dll');    
+  if FileExists(basePath + 'libIO.dll') then
+     Packages_Load(basePath + 'libIO.dll');
+
+
+  
+  //LoadPackages(ExtractFilePath(Application.ExeName) + 'packages\', '.dll');
+
+end;
+
+procedure TMainForm.Packages_Unload(Package: TSE2PackageUnit);
+var i: integer;
+begin
+  if Package <> nil then
+  begin
+    for i:=listLoadedPackages.Items.Count-1 downto 0 do
+      if listLoadedPackages.Items[i].Data = Package then
+        listLoadedPackages.Items.Delete(i);
+
+    TSE2UnitManager.UnRegisterUnit(Package);
+    FPackageInspector.FillTree;
+
+    Package.Free;
+
+    FUnitCache.Clear;
+  end;
+end;
+
+procedure TMainForm.packagePopupLoadClick(Sender: TObject);
+var dlg: TOpenDialog;
+    i  : integer;
+begin
+  dlg := TOpenDialog.Create(Self);
+  try
+    dlg.InitialDir := ExtractFilePath(Application.ExeName) + 'packages\';
+    dlg.Filter     := 'Packages (*.dll)|*.dll|Every file (*.*)|*.*';
+    dlg.FilterIndex := 1;
+    dlg.Options    := dlg.Options + [ofAllowMultiSelect];
+
+    if dlg.Execute then
+    begin
+      listLoadedPackages.Items.BeginUpdate;
+      try
+        for i:=0 to dlg.Files.Count-1 do
+          Packages_Load(dlg.Files[i]);
+      finally
+        listLoadedPackages.Items.EndUpdate;
+      end;
+    end;
+  finally
+    dlg.Free;
+  end;
+  //
+end;
+
+procedure TMainForm.packagePopupUnloadClick(Sender: TObject);
+var i: integer;
+begin
+  if listLoadedPackages.SelCount = 0 then
+     exit;
+
+  listLoadedPackages.Items.BeginUpdate;
+  try
+    for i:=listLoadedPackages.Items.Count-1 downto 0 do
+    begin
+      if listLoadedPackages.Items[i].Selected then
+      begin
+        Packages_Unload(listLoadedPackages.Items[i].Data);
+      end;
+    end;
+  finally
+    listLoadedPackages.Items.EndUpdate;
+  end;
+  //
+end;
+
+procedure TMainForm.listProjectsKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+  begin
+    Key := 0;
+    listProjectsDblClick(Sender);
+  end;
 end;
 
 end.
