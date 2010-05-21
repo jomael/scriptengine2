@@ -234,7 +234,7 @@ type
   TConsoleLineBreak = (CRLF, CR, LF);
 
   TProcessControlCodes = procedure (Sender: TConsole;
-				    Buffer: PChar; Count: Cardinal) of object;
+				    Buffer: PAnsiChar; Count: Cardinal) of object;
 
   TConsole = class(TCustomControl)
   private
@@ -267,14 +267,14 @@ type
     FFirstLine: Integer;           { First visible line in circular buffer }
     FKeyCount: Integer;                    { Count of keys in KeyBuffer }
     FDoAbort: boolean;
-    FBuffer: PChar;                        { Screen buffer pointer }
+    FBuffer: PAnsiChar;                        { Screen buffer pointer }
     FRange: TPoint;                        { Scroll bar ranges }
     FOrigin: TPoint;                       { Client/scroll origin }
     FClientSize: TPoint;                   { Number of visible whole cells }
     FCharSize: TPoint;                     { Character cell size }
     FCharAscent: Integer;                  { Baseline location (for caret) }
     FOverhang: Integer;                    { Extra space needed for chars }
-    FKeyBuffer: array[0..63] of Char;      { Keyboard type-ahead buffer }
+    FKeyBuffer: array[0..63] of AnsiChar;      { Keyboard type-ahead buffer }
     Cursor: TPoint;                        { Cursor location }
     procedure CreateParams(var P: TCreateParams); override;
     procedure FontChanged(Sender: TObject);
@@ -283,10 +283,10 @@ type
     procedure SetMetrics(const Metrics: TTextMetric); virtual;
     procedure RecalibrateFont;
     procedure RecalcSizeAndRange;
-    function  ScreenPtr(X, Y: Integer): PChar;
+    function  ScreenPtr(X, Y: Integer): PAnsiChar;
     procedure ShowText(L, R: Integer);
-    procedure WriteBlock(X,Y: Integer; Buffer: PChar; Count: Cardinal); virtual;
-    procedure WriteBuf(Buffer: PChar; Count: Cardinal);
+    procedure WriteBlock(X,Y: Integer; Buffer: PAnsiChar; Count: Cardinal); virtual;
+    procedure WriteBuf(Buffer: PAnsiChar; Count: Cardinal);
     procedure SetScrollbars;
     procedure Paint; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
@@ -300,14 +300,14 @@ type
   public
     constructor Create(AnOwner: TComponent); override;
     destructor Destroy; override;
-    procedure DefaultProcessControlCodes(Buffer: PChar; Count: Cardinal);
-    procedure WriteCodedBuf(Buffer: PChar; Count: Cardinal);
-    procedure WriteChar(Ch: Char);
-    procedure WriteFill(X,Y: Integer; Ch: Char; Count: Cardinal); virtual;
-    procedure WriteString(const S: String);
+    procedure DefaultProcessControlCodes(Buffer: PAnsiChar; Count: Cardinal);
+    procedure WriteCodedBuf(Buffer: PAnsiChar; Count: Cardinal);
+    procedure WriteChar(Ch: AnsiChar);
+    procedure WriteFill(X,Y: Integer; Ch: AnsiChar; Count: Cardinal); virtual;
+    procedure WriteString(const S: AnsiString);
     function  KeyPressed: Boolean;
-    function  ReadKey: Char;
-    function  ReadBuf(Buffer: PChar; Count: Cardinal): Cardinal;
+    function  ReadKey: AnsiChar;
+    function  ReadBuf(Buffer: PAnsiChar; Count: Cardinal): Cardinal;
     procedure ClrScr;
     procedure ClrEol;
     procedure CursorTo(X, Y: Integer);
@@ -381,8 +381,8 @@ type
     function  IndexPtr(X,Y: Integer): PInteger;
     procedure ResizeBuffer; override;
     procedure SetMetrics(const Metrics: TTextMetric); override;
-    procedure WriteFill(X,Y: Integer; Ch: Char; Count: Cardinal); override;
-    procedure WriteBlock(X,Y: Integer; Buffer: PChar; Count: Cardinal); override;
+    procedure WriteFill(X,Y: Integer; Ch: AnsiChar; Count: Cardinal); override;
+    procedure WriteBlock(X,Y: Integer; Buffer: PAnsiChar; Count: Cardinal); override;
     procedure Paint; override;
   public
     constructor Create(Owner: TComponent); override;
@@ -552,7 +552,7 @@ begin
   P.WindowClass.Style := P.WindowClass.Style and not (cs_HRedraw or cs_VRedraw);
 end;
 
-procedure TConsole.DefaultProcessControlCodes(Buffer: PChar; Count: Cardinal);
+procedure TConsole.DefaultProcessControlCodes(Buffer: PAnsiChar; Count: Cardinal);
 begin
   WriteBuf(Buffer, Count);
 end;
@@ -564,9 +564,13 @@ begin
 end;
 
 procedure TConsole.ResizeBuffer;
-var Temp: PChar;
+var Temp: PAnsiChar;
 begin
+  {$IFDEF Unicode}
+  Temp := AnsiStrAlloc(Cols * Rows);
+  {$ELSE}
   Temp := StrAlloc(Cols * Rows);
+  {$ENDIF}
   StrDispose(FBuffer);
   FBuffer := Temp;
   FillChar(FBuffer^,Cols * Rows,' ');
@@ -600,7 +604,7 @@ var
   DC: HDC;
   Save: THandle;
   Metrics: TTextMetric;
-  Temp: String;
+  Temp: AnsiString;
 begin
   if Font.Handle <> FOldFont.Handle then
   begin
@@ -664,7 +668,7 @@ end;
   circular text buffer may wrap around between lines N and N+1.
   For the same reason, do not do pointer arithmetic between rows. }
 
-function TConsole.ScreenPtr(X, Y: Integer): PChar;
+function TConsole.ScreenPtr(X, Y: Integer): PAnsiCHar;
 begin
   Inc(Y, FFirstLine);
   if Y >= Rows then Dec(Y, Rows);
@@ -897,7 +901,7 @@ begin
 end;
 
 
-procedure TConsole.WriteBlock(X,Y: Integer; Buffer: PChar; Count: Cardinal);
+procedure TConsole.WriteBlock(X,Y: Integer; Buffer: PAnsiChar; Count: Cardinal);
 begin
   Move(Buffer^, ScreenPtr(X,Y)^, Count);
 end;
@@ -907,7 +911,7 @@ end;
    - Process any special characters in buffer
    - Insert line breaks
 }
-procedure TConsole.WriteBuf(Buffer: PChar; Count: Cardinal);
+procedure TConsole.WriteBuf(Buffer: PAnsiChar; Count: Cardinal);
 var
   L, R: Integer;
 
@@ -936,7 +940,7 @@ var
 
 var
   BlockEnd, BlockLen, BlockStart: Integer;
-  P: PChar;
+  P: PAnsiChar;
 
 begin
   L := Cursor.X;
@@ -1025,7 +1029,7 @@ begin
     ShowCursor;
 end;
 
-procedure TConsole.WriteCodedBuf(Buffer: PChar; Count: Cardinal);
+procedure TConsole.WriteCodedBuf(Buffer: PAnsiChar; Count: Cardinal);
 begin
   if Assigned(FProcessControlCodes) then
     FProcessControlCodes(Self, Buffer, Count)
@@ -1035,17 +1039,17 @@ end;
 
 { Write character to CRT window }
 
-procedure TConsole.WriteChar(Ch: Char);
+procedure TConsole.WriteChar(Ch: AnsiChar);
 begin
   WriteCodedBuf(@Ch, 1);
 end;
 
-procedure TConsole.WriteString(const S: String);
+procedure TConsole.WriteString(const S: AnsiString);
 begin
   WriteCodedBuf(@S[1], Length(S));
 end;
 
-procedure TConsole.WriteFill(X,Y: Integer; Ch: Char; Count: Cardinal);
+procedure TConsole.WriteFill(X,Y: Integer; Ch: AnsiChar; Count: Cardinal);
 var
   I: Integer;
 begin
@@ -1080,7 +1084,7 @@ end;
 
 { Read key from CRT window }
 
-function TConsole.ReadKey: Char;
+function TConsole.ReadKey: AnsiChar;
 begin
   TrackCursor;
   if not KeyPressed then
@@ -1113,9 +1117,9 @@ end;
 
 { Read text buffer from CRT window }
 
-function TConsole.ReadBuf(Buffer: PChar; Count: Cardinal): Cardinal;
+function TConsole.ReadBuf(Buffer: PANsiChar; Count: Cardinal): Cardinal;
 var
-  Ch: Char;
+  Ch: AnsiChar;
   I: Cardinal;
 begin
   I := 0;
@@ -1158,7 +1162,7 @@ begin
   if F.BufPos <> 0 then
   with TObject((@F.UserData)^) as TConsole do
   begin
-    WriteCodedBuf(PChar(F.BufPtr), F.BufPos);
+    WriteCodedBuf(PAnsiChar(F.BufPtr), F.BufPos);
     F.BufPos := 0;
   end;
   CrtOutput := 0;
@@ -1169,7 +1173,7 @@ end;
 function CrtInput(var F: TTextRec): Integer; far;
 begin
   with TObject((@F.UserData)^) as TConsole do
-    F.BufEnd := ReadBuf(PChar(F.BufPtr), F.BufSize);
+    F.BufEnd := ReadBuf(PAnsiChar(F.BufPtr), F.BufSize);
   F.BufPos := 0;
   CrtInput := 0;
 end;
@@ -1340,7 +1344,7 @@ begin
       DoCtrlBreak;
     if FKeyCount < SizeOf(FKeyBuffer) then
     begin
-      FKeyBuffer[FKeyCount] := Key;
+      FKeyBuffer[FKeyCount] := AnsiChar(Key);
       Inc(FKeyCount);
     end;
   end;
@@ -1694,7 +1698,7 @@ begin
 end;
 
 
-procedure TColorConsole.WriteFill(X,Y: Integer; Ch: Char; Count: Cardinal);
+procedure TColorConsole.WriteFill(X,Y: Integer; Ch: AnsiChar; Count: Cardinal);
 begin
   if Count = 0 then Exit;
   FillAttr(X,Y,Count);
@@ -1771,7 +1775,7 @@ begin
     ReplaceAttr(A, IndexPtr(X,Y), Count);
 end;
 
-procedure TColorConsole.WriteBlock(X,Y: Integer; Buffer: PChar; Count: Cardinal);
+procedure TColorConsole.WriteBlock(X,Y: Integer; Buffer: PAnsiChar; Count: Cardinal);
 begin
   if Count = 0 then Exit;
   FillAttr(X,Y,Count);                     { fill range with current attr }
@@ -1783,7 +1787,7 @@ var
   X1, X2, Y1, Y2, RunValue, RunStart, RunEnd, Len, Count, Prev: Integer;
   R: TRect;
   P: PInteger;
-  Buf: PChar;
+  Buf: PAnsiChar;
   A: TAttr;
   C: TPoint;
   DC: HDC;
