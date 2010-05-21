@@ -29,7 +29,7 @@ type
                      
     procedure Clear;
 
-    function  GenEntry(RunTime, MethodInfo, ClassData: Pointer): PSE2NativeCallEntry;
+    function  GenEntry(const RunTime, MethodInfo, ClassData: Pointer): PSE2NativeCallEntry;
     function  FindEntry(Data: Pointer; MethodPos, ClassPtr: Pointer): boolean;
     procedure Add(Entry: PSE2NativeCallEntry);
     procedure ClearForClass(ClassData: Pointer);
@@ -109,7 +109,7 @@ begin
   end;
 end;
 
-function TSE2NativeCallList.GenEntry(RunTime, MethodInfo,
+function TSE2NativeCallList.GenEntry(const RunTime, MethodInfo,
   ClassData: Pointer): PSE2NativeCallEntry;
 var i: integer;
 begin

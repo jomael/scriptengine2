@@ -11,19 +11,19 @@ You can set up the options for the ScriptEngine II here.
 {Enable this option to suppress the generation of debug info for the
  ScriptEngine II files. This will prevent the integrated debugger from stepping
  into the ScriptEngine II Code.}
-{$define SEII_NoDebugInfo}    
+{.$define SEII_NoDebugInfo}    
 
 {This option will disable Range-Checking for the ScriptEngine II - Source. This
  allows faster execution and smaller program sizes. If you do not define this
  value, the default handling of range-checking will be used.} 
 {$define SEII_DisableRangeCheck}
 
-{The runtime has an event, which is raised before every opcode is executed. This
- is very usefull to keep the program alive while executing a script (e.g. by
- calling "Application.ProcessMessage" in the event). If you do not want to use
- this event, you can set this define. This will save a few milliseconds of
- CPU-Time.} 
-{.$define SEII_NoOpCodeEvent}
+
+{This option will disable threading-support for the scripts. If this define is
+ active, the System.Threading-Namespace will not be available for scripts -
+ already compiled scripts will not be able to create a thread. This is only
+ for security}
+{.$define SEII_DisableThreadingSupport}
 
 {This define will enable the caching for stack data during the execution of the
  script. If you enable this define, the runtime will execute faster and causes
@@ -86,8 +86,7 @@ You can set up the options for the ScriptEngine II here.
     {$DEFINE SEII_FPC_STRING_EAX}
   {$ENDIF}
   
-  {$DEFINE SEII_FPC_METHOD_AS_POINTER}
-  
+  {$DEFINE SEII_FPC_METHOD_AS_POINTER}    
 {$ENDIF} 
 
 {$IFDEF SEII_NoDebugInfo}
@@ -96,10 +95,10 @@ You can set up the options for the ScriptEngine II here.
 
 {$IFDEF SEII_DisableRangeCheck}
   {$R-}
-{$ENDIF}     
+{$ENDIF}
 
-{$IFDEF SEII_NoOpCodeEvent}
-  {$DEFINE SEII_NO_RUN_EVENT}
+{$IFDEF SEII_DisableThreadingSupport}
+  {$DEFINE SEII_NO_SCRIPT_THREAD}
 {$ENDIF}
 
 {$IFDEF FPC}

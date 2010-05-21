@@ -24,7 +24,8 @@ uses
 
   { YOU ARE NOT ALLOWED TO CHANGE AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING LINE }
   uSE2IncDateTime, uSE2IncInfo, uSE2IncConsole, uSE2IncConvert, uSE2IncMath, uSE2IncStrings, uSE2IncTypes, uSE2IncSCriptInfo,
-  uSE2IncScriptExceptions, uSE2IncExceptions, uSE2IncHelpers, uSE2IncTimeSpan,
+  uSE2IncScriptExceptions, uSE2IncExceptions, uSE2IncHelpers, uSE2IncTimeSpan, uSE2IncVersion, uSE2IncGuid,
+  uSE2IncSystemThreading, uSE2IncSyncObjs,
   SysUtils;
 
 { TSE2SystemUnit }
@@ -653,6 +654,12 @@ begin
   '    constructor Create; external;'+#13#10+
   '    procedure Assign(Source: TPersistent);  external;'+#13#10+
   '    function  GetNamePath: string;  external;'+#13#10+
+  '  end;'+#13#10+          
+  '  ScriptRunTime = record'+#13#10+
+  '  private'+#13#10+
+  '    class var FInstance : pointer;'+#13#10+
+  '  public'+#13#10+
+  '    class property Instance : Pointer read FInstance;'+#13#10+
   '  end;'+#13#10+
   #13#10+
   'implementation end.';

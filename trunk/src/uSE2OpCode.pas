@@ -124,6 +124,9 @@ type
                 soSTACK_INC, soSTACK_INC_COUNT,
                 soSTACK_DEC, soSTACK_DEC_NODEL, soSTACK_DEC_COUNT,
 
+                // Memory Methods
+                soMEM_MAKE, soMEM_REC_MAKE, soMEM_REC_FREE,
+
                 // Program execution flow
                 soFLOW_GOTO, soFLOW_JIZ, soFLOW_JNZ, soFLOW_CALL, soFLOW_CALLEX, soFLOW_CALLDYN, soFLOW_CALLPTR,
                 soFLOW_RET, soFLOW_PUSHRET,
@@ -150,6 +153,7 @@ type
 
                 // Record Data
                 soREC_MAKE, soREC_FREE, soREC_COPY_TO, soREC_MARK_DEL, soREC_DEL_RECS,
+                soREC_EQUAL, soREC_UNEQUAL,
 
                 // integer increment
                 soINT_INCSTATIC, soINT_INCSTACK,
@@ -162,7 +166,7 @@ type
                 soSAFE_INTER, soSAFE_STACK, soSAFE_PEX,
 
                 // special runtime data
-                soDEBUG_META, soFINIT_STACK,
+                soDEBUG_META, soFINIT_STACK, soSAVE_INSTANCE,
 
                 // Meta
                 soMETA_PUSH, soMETA_SHARE, soMETA_CNAME, soMETA_CAST
@@ -359,6 +363,7 @@ type
   PSE2OpDAT_CLEAR = ^TSE2OpDAT_CLEAR;
   TSE2OpDAT_CLEAR = packed record
     OpCode     : TSE2OpCode;
+    Static     : boolean;
   end;
 
   PSE2OpDAT_PTR_LOAD = ^TSE2OpDAT_PTR_LOAD;
@@ -444,6 +449,18 @@ type
   TSE2OpREC_DEL_RECS = packed record
     OpCode     : TSE2OpCode;
     MaxRecords : integer;
+  end;
+
+  PSE2OpREC_EQUAL = ^TSE2OpREC_EQUAL;
+  TSE2OpREC_EQUAL = packed record
+    OpCode     : TSE2OpCode;
+    MetaIndex  : integer;
+  end;
+
+  PSE2OpREC_UNEQUAL = ^TSE2OpREC_UNEQUAL;
+  TSE2OpREC_UNEQUAL = packed record
+    OpCode     : TSE2OpCode;
+    MetaIndex  : integer;
   end;
 
   PSE2OpREC_COPY_TO = ^TSE2OpREC_COPY_TO;
@@ -548,6 +565,25 @@ type
     MetaIndex  : integer;
   end;
 
+  PSE2OpMEM_MAKE = ^TSE2OpMEM_MAKE;
+  TSE2OpMEM_MAKE = packed record
+    OpCode     : TSE2OpCode;
+    AType      : TSE2TypeIdent;
+  end;    
+
+  PSE2OpMEM_REC_MAKE = ^TSE2OpMEM_REC_MAKE;
+  TSE2OpMEM_REC_MAKE = packed record
+    OpCode     : TSE2OpCode;
+    Variables  : integer;
+    MetaIndex  : integer;
+  end;    
+
+  PSE2OpMEM_REC_FREE = ^TSE2OpMEM_REC_FREE;
+  TSE2OpMEM_REC_FREE = packed record
+    OpCode     : TSE2OpCode;
+    Offset     : integer;
+  end;
+
   TSE2OpCodeList = class(TSE2Object)
   private
     FList : TList;
@@ -645,7 +681,7 @@ type
     class function DAT_SetFloat(value: double): PSE2OpDefault;
     class function DAT_SetPtr(value: pointer): PSE2OpDefault;
     class function DAT_LOADRES(index: integer): PSE2OpDefault;
-    class function DAT_CLEAR: PSE2OpDefault;
+    class function DAT_CLEAR(Static: boolean): PSE2OpDefault;
     class function DAT_CONVERT(NewType: TSE2TypeIdent; Index: integer): PSE2OpDefault;
     class function DAT_CHANGETYPE(NewType: TSE2TypeIdent): PSE2OpDefault;
     class function INT_INCSTATIC(Position, value: integer): PSE2OpDefault;
@@ -666,6 +702,12 @@ type
     class function REC_COPY_TO(Target: integer; Meta: integer): PSE2OpDefault;
     class function REC_MARK_DEL: PSE2OpDefault;
     class function REC_DEL_RECS(MaxRecords: integer): PSE2OpDefault;
+    class function REC_EQUAL(Meta: integer): PSE2OpDefault;
+    class function REC_UNEQUAL(Meta: integer): PSE2OpDefault;
+
+    class function MEM_MAKE(AType: TSE2TypeIdent): PSE2OpDefault;
+    class function MEM_REC_MAKE(Variables: integer; MetaIndex: integer): PSE2OpDefault;
+    class function MEM_REC_FREE(Offset: integer): PSE2OpDefault;
 
     class function SAFE_TRYFIN(SavePos, LeavePos: integer): PSE2OpDefault;
     class function SAFE_TRYEX(SavePos, LeavePos: integer): PSE2OpDefault;
@@ -683,6 +725,8 @@ type
     class function META_PUSH(index: integer): PSE2OpDefault;
     class function META_SHARE(index: integer): PSE2OpDefault;
     class function META_CAST(index: integer): PSE2OpDefault;
+
+    class function SAVE_INSTANCE: PSE2OpDefault;
   end;
 
   TSE2ParamHelper = class(TSE2Object)
@@ -918,9 +962,10 @@ begin
   PSE2OpSAFE_TRYEX(result)^.LeavePos := LeavePos;
 end;
 
-class function TSE2OpCodeGen.DAT_CLEAR: PSE2OpDefault;
+class function TSE2OpCodeGen.DAT_CLEAR(Static: boolean): PSE2OpDefault;
 begin
   result := DefaultOP(soDAT_CLEAR);
+  PSE2OpDAT_CLEAR(result)^.Static := Static;
 end;
 
 class function TSE2OpCodeGen.INT_DECSTACK(Position,
@@ -988,14 +1033,14 @@ begin
 end;
 
 class function TSE2OpCodeGen.REC_FREE(Offset: integer): PSE2OpDefault;
-begin   
+begin
   result := DefaultOP(soREC_FREE);
   PSE2OpREC_FREE(result)^.Offset := Offset;
 end;
 
 class function TSE2OpCodeGen.REC_MAKE(Variables,
   MetaIndex: integer): PSE2OpDefault;
-begin              
+begin
   result := DefaultOP(soREC_MAKE);
   PSE2OpREC_MAKE(result)^.Variables := Variables;
   PSE2OpREC_MAKE(result)^.MetaIndex := MetaIndex;
@@ -1044,6 +1089,18 @@ class function TSE2OpCodeGen.REC_DEL_RECS(MaxRecords: integer): PSE2OpDefault;
 begin
   result := DefaultOP(soREC_DEL_RECS);
   PSE2OpREC_DEL_RECS(result)^.MaxRecords := MaxRecords;
+end;          
+
+class function TSE2OpCodeGen.REC_EQUAL(Meta: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soREC_EQUAL);
+  PSE2OpREC_EQUAL(result)^.MetaIndex := Meta;
+end;
+
+class function TSE2OpCodeGen.REC_UNEQUAL(Meta: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soREC_UNEQUAL);
+  PSE2OpREC_UNEQUAL(result)^.MetaIndex := Meta;
 end;
 
 class function TSE2OpCodeGen.META_PUSH(index: integer): PSE2OpDefault;
@@ -1082,6 +1139,31 @@ end;
 class function TSE2OpCodeGen.SAFE_PEX: PSE2OpDefault;
 begin
   result := DefaultOP(soSAFE_PEX);
+end;
+
+class function TSE2OpCodeGen.MEM_MAKE(AType: TSE2TypeIdent): PSE2OpDefault;
+begin
+  result := DefaultOP(soMEM_MAKE);
+  PSE2OpMEM_MAKE(result)^.AType := AType;
+end;
+
+class function TSE2OpCodeGen.MEM_REC_FREE(Offset: integer): PSE2OpDefault;
+begin                              
+  result := DefaultOP(soMEM_REC_FREE);
+  PSE2OpMEM_REC_FREE(result)^.Offset := Offset;
+end;
+
+class function TSE2OpCodeGen.MEM_REC_MAKE(Variables,
+  MetaIndex: integer): PSE2OpDefault;
+begin               
+  result := DefaultOP(soMEM_REC_MAKE);
+  PSE2OpMEM_REC_MAKE(result)^.Variables := Variables;
+  PSE2OpMEM_REC_MAKE(result)^.MetaIndex := MetaIndex;
+end;
+
+class function TSE2OpCodeGen.SAVE_INSTANCE: PSE2OpDefault;
+begin
+  result := DefaultOP(soSAVE_INSTANCE);
 end;
 
 { TSE2OpCodeList }

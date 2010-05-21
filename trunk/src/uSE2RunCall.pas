@@ -82,7 +82,7 @@ type
 implementation
 
 uses
-  uSE2RunTime, uSE2SystemUnit;
+  uSE2ExecutionContext, uSE2SystemUnit;
 
 function CallMethod(const ACallType : TSE2CallType; const AMethodPointer : Pointer; const AParameters : array of LongWord; const AResultPointer : LongInt; const AUseResultPointer : Boolean; var ASafecallErrorCode : LongInt; SndResultData: PInteger) : LongWord; stdcall;
   type
@@ -474,8 +474,8 @@ constructor TSE2MethodCall.Create(RunTime: Pointer);
 begin
   inherited Create;
 
-  FClasses      := TSE2RunTime(RunTime).RunTimeClasses;
-  FScriptStack  := TSE2RunTime(RunTime).Stack;
+  FClasses      := TSE2ExecutionContext(RunTime).PackedData;
+  FScriptStack  := TSE2ExecutionContext(RunTime).Stack;
   FRunTime      := RunTime;
 
   FRegister := TList.Create;
@@ -598,7 +598,7 @@ begin
                 pVarRecords := TList.Create;
 
              pVarRecords.Add(Self.AddRecord(PPointer(Param.tPointer)^,
-                              TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]));
+                              TSE2ExecutionContext(FRunTime).ExecutionData.AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]));
            end;
         btString, btUTF8String, btWideString, btPChar :
            Self.AddPointer(PPointer(Param.tString)^);
@@ -615,7 +615,7 @@ begin
         btS64         : Self.AddS64(Param^.ts64^);
         btSingle      : Self.AddSingle(Param^.tSingle^);
         btDouble      : Self.AddDouble(Param^.tDouble^);
-        btRecord      : Self.AddRecord(Pointer(Param^.tPointer^), TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]);
+        btRecord      : Self.AddRecord(Pointer(Param^.tPointer^), TSE2ExecutionContext(FRunTime).ExecutionData.AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]);
         btString,
         btWideString,
         btUTF8String,
@@ -631,7 +631,7 @@ begin
 
               if Pointer(Param^.tPointer^) <> nil then
               begin
-                MethPtr^ := TSE2RunTime(FRunTime).ScriptAsMethod(
+                MethPtr^ := TSE2ExecutionContext(FRunTime).ScriptAsMethod(
                             PPointer(Param^.tPointer)^,
                             PPointer( integer(Param^.tPointer) + SizeOf(Pointer) )^
                           );
@@ -660,7 +660,7 @@ begin
         btProcPtr       : Self.SetResultPointer(Pointer(ReturnVar.tPointer));
         btRecord        :
             begin
-              RetVarData := FClasses.ScriptToDelphiRecord(PPointer(ReturnVar.tPointer)^, TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, -1) ]);
+              RetVarData := FClasses.ScriptToDelphiRecord(PPointer(ReturnVar.tPointer)^, TSE2ExecutionContext(FRunTime).ExecutionData.AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, -1) ]);
               //RetVarData := FClasses.ScriptToDelphiRecord(PPointer(ReturnVar.tPointer)^);
               Self.SetResultPointer(RetVarData);
             end;
@@ -679,7 +679,7 @@ begin
         if TSE2ParamHelper.IsVarParam(ParamDecl) then
           if TSE2ParamHelper.GetParamType(ParamDecl) = btRecord then
           begin
-            Self.FClasses.DelphiToScriptRecord(pVarRecords.Last, Pointer(Param.tPointer^), TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]);
+            Self.FClasses.DelphiToScriptRecord(pVarRecords.Last, Pointer(Param.tPointer^), TSE2ExecutionContext(FRunTime).ExecutionData.AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]);
             pVarRecords.Delete(pVarRecords.Count - 1);
           end;
       end;
@@ -702,7 +702,7 @@ begin
           begin
             if PPointer(ReturnVar.tPointer)^ <> nil then
             begin
-              if not TSE2RunTime(FRunTime).MethodAsScript(PPointer(integer(ReturnVar.tPointer) + SizeOf(Pointer))^,
+              if not TSE2ExecutionContext(FRunTime).MethodAsScript(PPointer(integer(ReturnVar.tPointer) + SizeOf(Pointer))^,
                    PPointer(ReturnVar.tPointer),
                    PPointer(integer(ReturnVar.tPointer) + SizeOf(Pointer))
                  ) then
@@ -711,7 +711,7 @@ begin
           end;
       btRecord             :
           begin
-            FClasses.DelphiToScriptRecord(RetVarData, PPointer(ReturnVar.tPointer)^, TSE2RunTime(FRunTime).AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, -1) ]);
+            FClasses.DelphiToScriptRecord(RetVarData, PPointer(ReturnVar.tPointer)^, TSE2ExecutionContext(FRunTime).ExecutionData.AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, -1) ]);
             //FClasses.MM.FreeMem(RetVarData);
             FClasses.MM.FreeMem(RetVarData);
             //FClasses.DelphiToScriptRecord(Self.AsPointer, PPointer(ReturnVar.tPointer)^);

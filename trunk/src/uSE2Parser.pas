@@ -111,6 +111,7 @@ type
     function  Expression(State: TSE2ParseState; Method: TSE2Method; TargetType: TSE2Type): TSE2Type;
     function  FindMatchingMethod(State: TSE2ParseState; Method: TSE2Method; MethodList, ParamExpression: TSE2BaseTypeList; IgnoreFirst: boolean): TSE2Method;
 
+    procedure GenerateComparison(Method: TSE2Method; t1, t2: TSE2Type; Operation: TSE2TokenType);
 
     procedure UsesDeclaration(State: TSE2ParseState);
     procedure MainBodyDeclaration(State: TSE2ParseState);
@@ -1109,8 +1110,11 @@ begin
 
                 //TSE2Record(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(NewVar.AType));
               end else
-              begin
-                TSE2Record(State.CurrentOwner).RecordSize := TSE2Record(State.CurrentOwner).RecordSize + TSE2Type(NewVar.AType).DataSize;
+              begin                        
+                if TSE2Type(NewVar.AType.InheritRoot).DataSize = 0 then
+                   RaiseError(petError, 'Internal error: data size can not be 0');
+
+                TSE2Record(State.CurrentOwner).RecordSize := TSE2Record(State.CurrentOwner).RecordSize + TSE2Type(NewVar.AType.InheritRoot).DataSize;
                 case TSE2Type(NewVar.AType).AType of
                 btString     : TSE2Record(State.CurrentOwner).RTTI.Add(btString, NewVar.CodePos, SizeOf(Pointer));
                 btUTF8String : TSE2Record(State.CurrentOwner).RTTI.Add(btUTF8String, NewVar.CodePos, SizeOf(Pointer));
@@ -2025,6 +2029,9 @@ begin
          
       DeclareType(State, newType, TypeName);
       NewType.InheritFrom := BaseType;
+      newType.DataSize := TSE2Type(BaseType).DataSize;
+      if newType is TSE2Record then
+         TSE2Record(newType).RecordSize := TSE2Record(BaseType).RecordSize;
 
 
       //if IsStrict then
@@ -3475,7 +3482,7 @@ begin
           if TSE2Method(FindItem).HasSelfParam then
           begin
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btPointer), ''));
-            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_CLEAR, ''));
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_CLEAR(False), ''));
           end;
         
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_GetProcPtr(0, TSE2Method(FindItem).HasSelfParam), TSE2Method(FindItem).GenLinkerName()));
@@ -4006,13 +4013,10 @@ begin
           sesMinus  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(3), ''));
           sesOr     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(7), ''));
           sesXor    : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(8), ''));
-
-          sesEqual        : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(1), '')); 
-          sesSmaller      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(2), ''));
-          sesBigger       : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(3), ''));
-          sesBiggerEqual  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(4), ''));
-          sesSmallerEqual : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(5), ''));
-          sesUnEqual      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
+          else
+              begin
+                GenerateComparison(Method, Result, FacType, Token);
+              end;
           end;
 
           if Token in [sesEqual, sesSmaller, sesBigger, sesBiggerEqual, sesSmallerEqual, sesUnEqual] then
@@ -6928,6 +6932,31 @@ begin
                         TSE2Variable(FUnit.ElemList[i]).DeclLine);
         end;
       end;
+end;
+
+procedure TSE2Parser.GenerateComparison(Method: TSE2Method; t1,
+  t2: TSE2Type; Operation: TSE2TokenType);
+begin
+  if (t1 is TSE2Record) and (t2 is TSE2Record) then
+  begin
+    if TSE2Record(t1).RTTI.Count > 0 then
+       RaiseError(petWarning, 'The comparison will always return false, because records with strings are not supported for comparisons');
+
+    case Operation of
+    sesEqual        : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_EQUAL(0), 'META_' + t1.GenLinkerName)); 
+    sesUnEqual      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_UNEQUAL(0), 'META_' + t1.GenLinkerName));
+    end;
+  end else
+  begin
+    case Operation of
+    sesEqual        : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(1), ''));
+    sesSmaller      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(2), ''));
+    sesBigger       : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(3), ''));
+    sesBiggerEqual  : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(4), ''));
+    sesSmallerEqual : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(5), ''));
+    sesUnEqual      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
+    end;
+  end;
 end;
 
 end.

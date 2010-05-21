@@ -72,7 +72,8 @@ const
           '    function RoundTo(digits: integer): double;' + #13#10 +
           '    function Trunc: int64;' + #13#10 +
           '    function Floor: integer;' + #13#10 +
-          '    function ToString: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 +
+          '    function ToString(Digits: integer): string; overload;'+#13#10+
           '    function Negate: double; ' + #13#10 +
           '    function Abs: double; ' + #13#10 +
           '  end;' + #13#10 +
@@ -84,7 +85,8 @@ const
           '    function RoundTo(digits: integer): double;' + #13#10 +
           '    function Trunc: int64;' + #13#10 +
           '    function Floor: integer;' + #13#10 +
-          '    function ToString: string;' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 +  
+          '    function ToString(Digits: integer): string; overload;'+#13#10+
           '    function Negate: single; ' + #13#10 +
           '    function Abs: single; ' + #13#10+
           '  end;' + #13#10 +
@@ -105,12 +107,14 @@ const
           '  public' + #13#10 +
           '    function ToString: string; overload;' + #13#10 +
           '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function ToString(Digits: integer; PrefixStr: string): string; overload;'+#13#10+
           '  end;' + #13#10 +
           #13#10 +
           '  TShortIntHelper = helper for shortint' + #13#10 +
           '  public' + #13#10 +
           '    function ToString: string; overload;' + #13#10 +
-          '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function ToString(Digits: integer): string; overload;'+#13#10+ 
+          '    function ToString(Digits: integer; PrefixStr: string): string; overload;'+#13#10+
           '    function Negate: shortint;' + #13#10+
           '    function Abs: shortint;'+#13#10+
           '  end;' + #13#10 +
@@ -118,13 +122,15 @@ const
           '  TWordHelper = helper for word' + #13#10 +
           '  public' + #13#10 +
           '    function ToString: string; overload;' + #13#10 +
-          '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function ToString(Digits: integer): string; overload;'+#13#10+      
+          '    function ToString(Digits: integer; PrefixStr: string): string; overload;'+#13#10+
           '  end;' + #13#10 +
           #13#10 +
           '  TSmallIntHelper = helper for smallint' + #13#10 +
           '  public' + #13#10 +
           '    function ToString: string; overload;' + #13#10 +  
-          '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function ToString(Digits: integer): string; overload;'+#13#10+   
+          '    function ToString(Digits: integer; PrefixStr: string): string; overload;'+#13#10+
           '    function Negate: smallint;' + #13#10 +
           '    function Abs: smallint;'+#13#10 +
           '  end;' + #13#10 +
@@ -133,6 +139,7 @@ const
           '  public' + #13#10 +
           '    function ToString: string; overload;' + #13#10 + 
           '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function ToString(Digits: integer; PrefixStr: string): string; overload;'+#13#10+
           '    function Negate: integer;' + #13#10 +
           '    function Abs: integer; ' +#13#10 +
           '  end;' + #13#10 +
@@ -140,13 +147,15 @@ const
           '  TCardinalHelper = helper for cardinal' + #13#10 +
           '  public' + #13#10 +
           '    function ToString: string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function ToString(Digits: integer): string; overload;'+#13#10+   
+          '    function ToString(Digits: integer; PrefixStr: string): string; overload;'+#13#10+
           '  end;' + #13#10 +
           #13#10 +
           '  TInt64Helper = helper for int64' + #13#10 +
           '  public' + #13#10 +
           '    function ToString: string; overload;' + #13#10 +  
-          '    function ToString(Digits: integer): string; overload;'+#13#10+
+          '    function ToString(Digits: integer): string; overload;'+#13#10+  
+          '    function ToString(Digits: integer; PrefixStr: string): string; overload;'+#13#10+
           '    function Negate: int64; ' + #13#10 +
           '    function Abs: int64; ' + #13#10 +
           '  end;' + #13#10 +
@@ -543,6 +552,11 @@ const
           '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
           'end; ' + #13#10+
           #13#10 +
+          'function TByteHelper.ToString(Digits: integer; PrefixStr: string): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
           'function TShortIntHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 +
           '  result := Convert.IntToStr(Self);' + #13#10 +
@@ -551,6 +565,11 @@ const
           'function TShortIntHelper.ToString(Digits: integer): string;'+#13#10+
           'begin'+#13#10+
           '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TShortIntHelper.ToString(Digits: integer; PrefixStr: string): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 +
           'end; ' + #13#10+
           #13#10 +
           'function TShortIntHelper.Negate: shortint;' + #13#10 +
@@ -576,6 +595,11 @@ const
           '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
           'end; ' + #13#10+
           #13#10 +
+          'function TWordHelper.ToString(Digits: integer; PrefixStr: string): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
           'function TSmallIntHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Convert.IntToStr(Self);' + #13#10 + 
@@ -584,6 +608,11 @@ const
           'function TSmallIntHelper.ToString(Digits: integer): string;'+#13#10+
           'begin'+#13#10+
           '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TSmallIntHelper.ToString(Digits: integer; PrefixStr: string): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 +
           'end; ' + #13#10+
           #13#10 +
           'function TSmallIntHelper.Negate: shortint;' + #13#10 +
@@ -609,6 +638,11 @@ const
           '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
           'end; ' + #13#10+
           #13#10 +
+          'function TCardinalHelper.ToString(Digits: integer; PrefixStr: string): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
           'function TIntegerHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Convert.IntToStr(Self);' + #13#10 + 
@@ -617,6 +651,11 @@ const
           'function TIntegerHelper.ToString(Digits: integer): string;'+#13#10+
           'begin'+#13#10+
           '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
+          'function TIntegerHelper.ToString(Digits: integer; PrefixStr: string): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 +
           'end; ' + #13#10+
           #13#10 +
           'function TIntegerHelper.Negate: shortint;' + #13#10 +
@@ -642,6 +681,11 @@ const
           '  result := Convert.IntToStr(Self, Digits);' + #13#10 +
           'end; ' + #13#10+
           #13#10 +
+          'function TInt64helper.ToString(Digits: integer; PrefixStr: string): string;'+#13#10+
+          'begin'+#13#10+
+          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 +
+          'end; ' + #13#10+
+          #13#10 +
           'function TInt64helper.Negate: shortint;' + #13#10 +
           'begin' + #13#10 +
           '  result := -Self;' + #13#10 +
@@ -654,16 +698,21 @@ const
           '  else'+#13#10+
           '     result := -Self;'+#13#10+
           'end;' + #13#10 +
-          #13#10 +
+          #13#10 +                     
           'function TBooleanHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
           '  result := Convert.BoolToStr(Self, True);' + #13#10 + 
-          'end;' + #13#10 + 
-          #13#10 + 
+          'end;' + #13#10 +
+          #13#10 +
           'function TSingleHelper.ToString: string;' + #13#10 +
-          'begin' + #13#10 + 
-          '  result := Convert.FloatToStr(Self);' + #13#10 + 
-          'end;' + #13#10 + 
+          'begin' + #13#10 +
+          '  result := Convert.FloatToStr(Self);' + #13#10 +
+          'end;' + #13#10 +
+          #13#10 +
+          'function TSingleHelper.ToString(Digits: integer): string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := Convert.FloatToStr(Self, ffFixed, 7, Digits);' + #13#10 +
+          'end;' + #13#10 +
           #13#10 +
           'function TSingleHelper.Negate: shortint;' + #13#10 +
           'begin' + #13#10 +
@@ -680,8 +729,14 @@ const
           #13#10 +
           'function TDoubleHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
-          '  result := Convert.FloatToStr(Self);' + #13#10 + 
-          'end;' + #13#10 + 
+          '  result := Convert.FloatToStr(Self);' + #13#10 +
+          'end;' + #13#10 +   
+          #13#10 +
+          'function TDoubleHelper.ToString(Digits: integer): string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := Convert.FloatToStr(Self, ffFixed, 15, Digits);' + #13#10 +
+          'end;' + #13#10 +
+          #13#10+
           'function TDoubleHelper.Negate: shortint;' + #13#10 +
           'begin' + #13#10 +
           '  result := -Self;' + #13#10 +

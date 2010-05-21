@@ -23,6 +23,7 @@ const
      '  public'+#13#10+
      '    class function IntToStr(i: int64): string; overload; external;'+#13#10+
      '    class function IntToStr(i: int64; digits: integer): string; overload;'+#13#10+
+     '    class function IntToStr(i: int64; digits: integer; PrefixStr: string): string; overload;'+#13#10+
      '    class function IntToHex(i: int64; Digits: int64): string; external;'+#13#10+
      '    class function IsInteger(s: string): boolean; external;'+#13#10+
      '    class function StrToInt(s: string): int64; external;'+#13#10+
@@ -62,6 +63,19 @@ const
      '  result := Convert.IntToStr(i);'+#13#10+
      '  while Strings.Length(result) < digits do'+#13#10+
      '     result := ''0'' + result;'+#13#10+
+     '  if isNeg then'+#13#10+
+     '     result := ''-'' + result;'+#13#10+
+     'end;'+#13#10+
+     #13#10 +
+     'class function Convert.IntToStr(i: int64; digits: integer; PrefixStr: string): string;'+#13#10+
+     'var isNeg: boolean;'+#13#10+
+     'begin'+#13#10+
+     '  isNeg  := i < 0;'+#13#10+
+     '  if i < 0 then'+#13#10+
+     '     i := -i;'+#13#10+
+     '  result := Convert.IntToStr(i);'+#13#10+
+     '  while Strings.Length(result) < digits do'+#13#10+
+     '     result := PrefixStr + result;'+#13#10+
      '  if isNeg then'+#13#10+
      '     result := ''-'' + result;'+#13#10+
      'end;'+#13#10+
