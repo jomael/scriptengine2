@@ -271,8 +271,23 @@ begin
   soFLOW_JIZ :
       begin
         CompareInt := 0;
-        if FStackHelper.VarHasValue(FStack.Top, @CompareInt) then
-           FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
+        r1 := FStack.Top;
+
+        case r1.AType of
+        btU8, btS8, btU16, btS16, btU32, btS32,
+        btObject, btPointer :
+            if FStackHelper.VarHasValue(r1, @CompareInt) then
+               FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
+        btS64 :
+            if r1^.ts64^ = 0 then
+               FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
+        btSingle :
+            if r1^.tSingle^ = 0 then   
+               FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
+        btDouble :
+            if r1^.tDouble^ = 0 then
+               FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
+        end;
         FStack.Pop;           
       end;
   soFLOW_JNZ :
@@ -335,11 +350,10 @@ begin
         begin
           r3 { VarDat[2] } := FStack.Items[FStack.Size - Meta.ParamCount - 2];
 
-          r2 { VarDat[1] } := FStackHelper.CreateVarData(btProcPtr);
-          FStackHelper.CreateVarContent(r2 { VarDat[1] });
+          r2 { VarDat[1] } := FStackHelper.CreateVarData(btObject);
           PPointer(r2 { VarDat[1] }^.tPointer)^ := PPointer(Integer(r3 { VarDat[2] }^.tPointer) + SizeOf(Pointer))^;
 
-          FStack.Items[FStack.Size - Meta.ParamCount - 2] := r2 { VarDat[1] };
+          FStack.ITems[FStack.Size - Meta.ParamCount - 2] := r2 { VarDat[1] };
           FStack.Pool.Push(r3 { VarDat[2] });
 
           if Meta.DynIndex > -1 then
@@ -1165,7 +1179,10 @@ begin
         index := (p^.tS64^ shr 32);
         if index > 0 then
         begin
-          sl.Add('at ' + MetaEntryToStr(FExecutionData.AppCode.MetaData[index-1], i));
+          if sl.Count > 0 then
+             sl.Add('at ' + MetaEntryToStr(FExecutionData.AppCode.MetaData[index-1], i))
+          else
+             sl.Add('at ' + MetaEntryToStr(FExecutionData.AppCode.MetaData[index-1], i) + ' ['+IntToStr(FCodePos)+']')
         end;
       end;
       if sl.Count > 300 then
@@ -1197,7 +1214,12 @@ begin
       begin
         index := (p^.tS64^ shr 32);
         if index > 0 then
-           sl.Add(MetaEntryToStr(FExecutionData.AppCode.MetaData[index-1], i));
+        begin
+          if sl.Count > 0 then
+             sl.Add(MetaEntryToStr(FExecutionData.AppCode.MetaData[index-1], i))
+          else
+             sl.Add(MetaEntryToStr(FExecutionData.AppCode.MetaData[index-1], i) + ' ['+IntToStr(FCodePos)+']');
+        end;
       end;
 
       if limit > -1 then
@@ -1814,6 +1836,7 @@ procedure TSE2ExecutionContext.BuildScriptExceptions(TryBlock: TSE2TryBlock;
   ex: Exception);
 var p1, p2       : Pointer;
     Meta         : TSE2MetaEntry;
+    isUnknown    : boolean;
 begin
   if (ex is ESE2ScriptException) then
   begin
@@ -1821,7 +1844,7 @@ begin
     exit;
   end;
 
-  Meta := FExecutionData.CodeAccess.Exceptions.GetException(ex.ClassType);
+  Meta := FExecutionData.CodeAccess.Exceptions.GetException(ex.ClassType, isUnknown);
   if Meta <> nil then
   begin
     TryBlock.ScriptExcept := FPackedData.CreateScriptClassObject(Meta, FExecutionData.AppCode );
@@ -1838,6 +1861,12 @@ begin
       PString(p1^)^ := '';
     end;
     PString(p2^)^ := TryBlock.ErrorStack;
+
+    if isUnknown then
+    begin
+      p1 := Pointer(cardinal(TryBlock.ScriptExcept) + 8);
+      PString(p1^)^ := ex.ClassName;
+    end;
   end;
 end;
 

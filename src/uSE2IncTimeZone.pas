@@ -39,7 +39,7 @@ const
         'interface' + #13#10 + 
         #13#10 + 
         'type' + #13#10 + 
-        '  TimeZone = class(TExternalObject)' + #13#10 +
+        '  TimeZone = record' + #13#10 +
         '  public' + #13#10 + 
         '    class function Bias : TTimeSpan; external;' + #13#10 +
         #13#10 + 

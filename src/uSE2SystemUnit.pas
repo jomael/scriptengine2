@@ -37,7 +37,7 @@ class procedure TSE2SystemUnit.FillBaseTypes(AUnit: TSE2Unit);
     result := AUnit.TypeList.FindItem(Name, '');
   end;
 
-  procedure DoAddType(const Name: string; BaseType: TSE2TypeIdent; Size: integer; Visibility: TSE2Visibility; Parent: TSE2BaseType);
+  procedure DoAddType(const Name: string; BaseType: TSE2TypeIdent; Size: integer; Visibility: TSE2Visibility; Parent: TSE2BaseType; const Doc: string = '');
   var aType : TSE2Type;
   begin
     aType := TSE2Type.Create;
@@ -45,6 +45,7 @@ class procedure TSE2SystemUnit.FillBaseTypes(AUnit: TSE2Unit);
     aType.AUnitName    := AUnit.Name;
     aType.DataSize    := Size;
     aType.AType       := BaseType;
+    aType.InlineDoc   := Doc;
     if Parent <> nil then
     begin
       aType.InheritFrom := Parent;
@@ -89,14 +90,14 @@ begin
 
 
 
-  DoAddType('boolean', btBoolean, SizeOf(TbtU8), visPublic, nil);
-  DoAddType('byte', btU8, SizeOf(TbtU8), visPublic, nil);
-  DoAddType('shortint', btS8, SizeOf(TbtS8), visPublic, nil);
-  DoAddType('word', btU16, SizeOf(TbtU16), visPublic, nil);
-  DoAddType('smallint', btS16, SizeOf(TbtS16), visPublic, nil);
-  DoAddType('cardinal', btU32, SizeOf(TbtU32), visPublic, nil);  
-  DoAddType('integer', btS32, SizeOf(TbtS32), visPublic, nil);
-  DoAddType('int64', btS64, SizeOf(TbtS64), visPublic, nil);
+  DoAddType('boolean', btBoolean, SizeOf(TbtU8), visPublic, nil, 'Represents a boolean value');
+  DoAddType('byte', btU8, SizeOf(TbtU8), visPublic, nil, 'Represents an unsigned 8 bit integer value');
+  DoAddType('shortint', btS8, SizeOf(TbtS8), visPublic, nil, 'Represents a signed 8 bit integer value');
+  DoAddType('word', btU16, SizeOf(TbtU16), visPublic, nil, 'Represents an unsigned 16 bit integer value');
+  DoAddType('smallint', btS16, SizeOf(TbtS16), visPublic, nil, 'Represents a signed 16 bit integer value');
+  DoAddType('cardinal', btU32, SizeOf(TbtU32), visPublic, nil, 'Represents an unsigned 32 bit integer value');
+  DoAddType(c_SE2Int32, btS32, SizeOf(TbtS32), visPublic, nil, 'Represents a signed 32 bit integer value');
+  DoAddType(C_SE2Int64, btS64, SizeOf(TbtS64), visPublic, nil, 'Represents a signed 64 bit integer value');
   
   DoAddType('LongWord', 0, 0, visPublic, FindType('cardinal'));
   DoAddType('Longint', 0, 0, visPublic, FindType('integer'));
@@ -121,15 +122,15 @@ begin
 
 
 
-  DoAddType('string', btString, SizeOf(Pointer), visPublic, nil);
-  DoAddType('UTF8String', btUTF8String, SizeOf(Pointer), visPublic, nil);
-  DoAddType('WideString', btWideString, SizeOf(Pointer), visPublic, nil);
-  DoAddType('PChar', btPChar, SizeOf(Pointer), visPublic, nil);
+  DoAddType('string', btString, SizeOf(Pointer), visPublic, nil, 'Represents a list of chars');
+  DoAddType('UTF8String', btUTF8String, SizeOf(Pointer), visPublic, nil, 'Represents a list of utf-8 encoded chars');
+  DoAddType('WideString', btWideString, SizeOf(Pointer), visPublic, nil, 'Represents a list of utf-16 encoded chars');
+  DoAddType('PChar', btPChar, SizeOf(Pointer), visPublic, nil, 'Represents a pointer to a list of chars');
 
-  DoAddType('single', btSingle, SizeOf(Single), visPublic, nil);
-  DoAddType('double', btDouble, SizeOf(Double), visPublic, nil);
+  DoAddType('single', btSingle, SizeOf(Single), visPublic, nil, 'Represents a single precision floating point value');
+  DoAddType('double', btDouble, SizeOf(Double), visPublic, nil, 'Represents a double precision floating point value');
 
-  DoAddType('pointer', btPointer, SizeOf(Pointer), visPublic, nil);
+  DoAddType('pointer', btPointer, SizeOf(Pointer), visPublic, nil, 'Represents a pointer to any value');
 
   (*SetCompatible('byte'    , ['shortint', 'word', 'smallint', 'cardinal', 'integer', 'int64']);
   SetCompatible('shortint', ['byte', 'word', 'smallint', 'cardinal', 'integer', 'int64']);
@@ -167,10 +168,12 @@ begin
   aClass.Visibility  := visPublic;
   aClass.DataSize    := SizeOf(Pointer);
   AUnit.TypeList.Add(aClass);
+  aClass.InlineDoc   := 'The basic class definition for every script class';
 
   // CONSTRUCTOR
   method := TSE2Method.Create;
   AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Create an instance of the given class type';
   method.Parent       := aClass;
   method.Name         := 'Create';
   method.AUnitName     := C_SE2SystemUnitName;
@@ -205,6 +208,7 @@ begin
   // Destructor
   method := TSE2Method.Create;
   AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Delete the current class instance';
   method.Parent       := aClass;
   method.Name         := 'Destroy';
   method.AUnitName     := C_SE2SystemUnitName;
@@ -233,6 +237,7 @@ begin
   // FREE
   method := TSE2Method.Create;
   AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Deletes the current class instance if it is present';
   method.Parent       := aClass;
   method.Name         := 'Free';
   method.AUnitName     := C_SE2SystemUnitName;
@@ -289,6 +294,7 @@ begin
   // Assigned
   method := TSE2Method.Create;
   AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Returns true if the class instance is valid, otherwise false';
   method.Parent       := aClass;
   method.Name         := 'Assigned';
   method.AUnitName     := C_SE2SystemUnitName;
@@ -337,6 +343,7 @@ begin
 
   method := TSE2Method.Create;
   AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Returns the strong class type name of the current instance';
   method.Parent       := aClass;
   method.Name         := 'ClassName';
   method.AUnitName    := C_SE2SystemUnitName;
@@ -442,11 +449,13 @@ begin
   aClass.AType       := btObject;
   aClass.Visibility  := visPublic;
   aClass.DataSize    := SizeOf(Pointer);
+  aClass.InlineDoc   := 'Represents the basic class for every imported class';
   AUnit.TypeList.Add(aClass);
 
   // CONSTRUCTOR
   method := TSE2Method.Create;
   AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Creates an instance of the current external class';
   method.Parent       := aClass;
   method.Name         := 'Create';
   method.AUnitName     := C_SE2SystemUnitName;
@@ -479,6 +488,7 @@ begin
   // FREE
   method := TSE2Method.Create;
   AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Deletes the current instance if present';
   method.Parent       := aClass;
   method.Name         := 'Free';
   method.AUnitName     := C_SE2SystemUnitName;
@@ -504,6 +514,7 @@ begin
   // CLASS NAME
   method := TSE2Method.Create;
   AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Returns the class type name of the instance';
   method.Parent       := aClass;
   method.Name         := 'ClassName';
   method.AUnitName     := C_SE2SystemUnitName;
@@ -535,6 +546,7 @@ begin
   // Assigned
   method := TSE2Method.Create;
   AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Returns true if the instance is valid, otherwise false';
   method.Parent       := aClass;
   method.Name         := 'Assigned';
   method.AUnitName     := C_SE2SystemUnitName;
@@ -647,6 +659,7 @@ begin
   'interface'+#13#10+
   #13#10+
   'type'+#13#10+
+  '  /// The basic notify event for internal and external events'+#13#10+
   '  TNotifyEvent = procedure(Sender: TObject) of object;'+#13#10+
   #13#10+
   '  TPersistent = class(TExternalObject)'+#13#10+
@@ -654,13 +667,23 @@ begin
   '    constructor Create; external;'+#13#10+
   '    procedure Assign(Source: TPersistent);  external;'+#13#10+
   '    function  GetNamePath: string;  external;'+#13#10+
-  '  end;'+#13#10+          
+  '  end;'+#13#10+
+  '  /// Only for internal usage'+#13#10+
   '  ScriptRunTime = record'+#13#10+
   '  private'+#13#10+
   '    class var FInstance : pointer;'+#13#10+
   '  public'+#13#10+
   '    class property Instance : Pointer read FInstance;'+#13#10+
   '  end;'+#13#10+
+  #13#10+
+  '  int8   = shortint;'+#13#10+
+  '  int16  = smallint;'+#13#10+
+  '  int32  = integer;'+#13#10+
+  '  uint8  = byte;'+#13#10+
+  '  uint16 = word;'+#13#10+
+  '  uint32 = cardinal;'+#13#10+
+  '  int    = int32;'+#13#10+
+  '  IntPtr = int64;'+#13#10+
   #13#10+
   'implementation end.';
 end;

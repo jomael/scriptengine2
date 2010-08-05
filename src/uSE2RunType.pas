@@ -157,7 +157,7 @@ type
     procedure Sort;
 
     procedure Add(Ex: TClass; Meta: TSE2MetaEntry);
-    function  GetException(Ex: TClass): TSE2MetaEntry;
+    function  GetException(Ex: TClass; var isUnknown: boolean): TSE2MetaEntry;
   end;
 
   TSE2ClassGC = class(TObject)
@@ -1354,10 +1354,11 @@ begin
   inherited;
 end;
 
-function TSE2RegisteredExceptions.GetException(Ex: TClass): TSE2MetaEntry;
+function TSE2RegisteredExceptions.GetException(Ex: TClass; var isUnknown: boolean): TSE2MetaEntry;
 var i: integer;
     p: PSE2RegisteredException;
 begin
+  isUnknown := False;
   for i := FList.Count-1 downto 0 do
   begin
     p := FList[i];
@@ -1376,6 +1377,18 @@ begin
       result := p^.Meta;
       exit;
     end;
+  end;
+
+  for i := 0 to FList.Count-1 do
+  begin
+    p := FList[i];
+    if SameText(p^.Meta.AUnitName, C_SE2SystemUnitName) then
+      if SameText(p^.Meta.Name, C_SE2ExceptUnknown) then
+      begin        
+        isUnknown := True;
+        result := p^.Meta;
+        exit;
+      end;
   end;
 
   result := nil;

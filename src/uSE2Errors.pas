@@ -34,7 +34,7 @@ const
                     'try', 'finally', 'except', 'on', 'deprecated', 'raise', 'sizeof',
                     // Class Definitions
                     'class', 'private', 'protected', 'public', 'property', 'virtual', 'abstract', 'override', 'overload',
-                    'inherited', 'reintroduce', 'partial', 'helper',
+                    'inherited', 'reintroduce', 'partial', 'helper', 'sealed',
                     // Method definitions
                     'procedure', 'function', 'constructor', 'destructor', 'forward', 'object',
                     // External Methods

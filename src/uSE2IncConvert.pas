@@ -19,14 +19,22 @@ const
      'type'+#13#10+
      '  TFloatFormat = (ffGeneral, ffExponent, ffFixed, ffNumber, ffCurrency);'+#13#10+
      #13#10+
-     '  Convert = partial class(TExternalObject)'+#13#10+
+     '  /// Provides convertion functions between different data types'+#13#10+
+     '  Convert = sealed partial class(TExternalObject)'+#13#10+
      '  public'+#13#10+
      '    class function IntToStr(i: int64): string; overload; external;'+#13#10+
      '    class function IntToStr(i: int64; digits: integer): string; overload;'+#13#10+
+     '    /// Convert an integer value to string'+#13#10+
      '    class function IntToStr(i: int64; digits: integer; PrefixStr: string): string; overload;'+#13#10+
+     '    /// Convert an integer value to string with 16 as base value'+#13#10+
      '    class function IntToHex(i: int64; Digits: int64): string; external;'+#13#10+
+     '    /// Returns true if the given string is a valid integer value'+#13#10+
      '    class function IsInteger(s: string): boolean; external;'+#13#10+
+     '    /// Converts a string to an integer value'+#13#10+
+     '    /// Raises an EConvertError-Exception if the string value is not a valid integer'+#13#10+
      '    class function StrToInt(s: string): int64; external;'+#13#10+
+     '    /// Converts a string to an integer value'+#13#10+
+     '    /// If the string value is not a valid integer, the default value is returned instead'+#13#10+
      '    class function StrToIntDef(s: string; def: int64): int64; external;'+#13#10+
 
      '    class function TryStrToInt(s: string; out i: byte): boolean; overload; external;'+#13#10+
@@ -35,6 +43,8 @@ const
      '    class function TryStrToInt(s: string; out i: smallint): boolean; overload; external;'+#13#10+
      '    class function TryStrToInt(s: string; out i: cardinal): boolean; overload; external;'+#13#10+
      '    class function TryStrToInt(s: string; out i: integer): boolean; overload; external;'+#13#10+
+     '    /// Tries to convert a string value to an integer value'+#13#10+
+     '    /// If the string value is not a valid integer value, the function returns false, otherwise true'+#13#10+
      '    class function TryStrToInt(s: string; out i: int64): boolean; overload; external;'+#13#10+
 
      '    class function FloatToStr(d: double): string; overload; external;'+#13#10+

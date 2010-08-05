@@ -5,15 +5,17 @@ unit uSE2UnitCacheMngr;
 interface
 
 uses
-  Classes, uSE2BaseTypes, uSE2Types, uSE2UnitCache, uSE2NameWeaver;
+  Classes, SysUtils, uSE2BaseTypes, uSE2Types, uSE2UnitCache, uSE2NameWeaver;
 
 type
   TSE2GetCacheStream = procedure(Sender: TObject; const aUnitName: string; var Cache: TStream) of object;
+  TSE2GetChangedUnits = procedure(Sender: TObject; const Target: TStrings) of object;
 
   TSE2UnitCacheMngr = class(TSE2Object)
   private
     FList : TList;
-    FOnGetCacheStream : TSE2GetCacheStream;
+    FOnGetCacheStream  : TSE2GetCacheStream;
+    FOnGetChangedUnits : TSE2GetChangedUnits;
   protected
     procedure PublishEntry(Entry: TSE2BaseType; Weaver: TSE2NameWeaver);
     procedure PublishUnit(AUnit: TSE2Unit; Weaver: TSE2NameWeaver);
@@ -21,19 +23,24 @@ type
     function  IndexOf(const Name: string): integer;
 
     function  DoGetCacheStream(const aUnitName: string): TStream;
+    function  InternGetUnit(Cache: TSE2UnitCache; UnitList: TSE2BaseTypeList; Filter: TStrings): TSE2Unit;
   public
     constructor Create; override;
     destructor Destroy; override;
+
+    procedure CheckForChanges;
 
     procedure Clear;
     procedure Add(aUnit: TSE2Unit);
     function  GetCache(const Name: string): TSE2UnitCache;
     procedure ClearCache(const Name: string);
+    procedure ClearCacheForRecompile(const Name: string);
     function  HasUnit(const Name: string): boolean;
     function  GetUnit(const Name: string; UnitList: TSE2BaseTypeList): TSE2Unit; overload;
     function  GetUnit(Cache: TSE2UnitCache; UnitList: TSE2BaseTypeList): TSE2Unit; overload;
 
-    property  OnGetCacheStream : TSE2GetCacheStream read FOnGetCacheStream write FOnGetCacheStream;
+    property  OnGetChangedUnits : TSE2GetChangedUnits read FOnGetChangedUnits write FOnGetChangedUnits;
+    property  OnGetCacheStream  : TSE2GetCacheStream read FOnGetCacheStream write FOnGetCacheStream;
   end;
 
 implementation
@@ -85,6 +92,30 @@ begin
   FList.Delete(i);
 end;
 
+procedure TSE2UnitCacheMngr.ClearCacheForRecompile(const Name: string);
+var i: integer;
+    p: TSE2UnitCache;
+    c: integer;
+begin
+  ClearCache(Name);
+  if FList.Count > 0 then
+  begin
+    repeat
+      i := FList.Count-1;
+      c := 0;
+      repeat
+        p := FList[i];
+        if p.DependsOn.IndexOf(Name) >= 0 then
+        begin
+          ClearCacheForRecompile(p.AUnitName);
+          c := c + 1;
+        end;
+        i := i - 1;
+      until i < 0;
+    until (c = 0) or (FList.Count = 0);
+  end;
+end;
+
 constructor TSE2UnitCacheMngr.Create;
 begin
   inherited;
@@ -115,18 +146,21 @@ begin
   result := GetUnit(GetCache(Name), UnitList);
 end;
 
-function TSE2UnitCacheMngr.GetUnit(Cache: TSE2UnitCache;
-  UnitList: TSE2BaseTypeList): TSE2Unit;
+function TSE2UnitCacheMngr.InternGetUnit(Cache: TSE2UnitCache;
+  UnitList: TSE2BaseTypeList; Filter: TStrings): TSE2Unit;
 var i: integer;
 begin
   result := nil;
   if Cache = nil then
      exit;
 
+  Filter.Add(Cache.AUnitName);
   for i:=0 to Cache.DependsOn.Count-1 do
     if UnitList.FindItem(Cache.DependsOn[i]) = nil then
     begin
-      result := GetUnit(Cache.DependsOn[i], UnitList);
+      if Filter.IndexOf(Cache.DependsOn[i]) >= 0 then
+         raise Exception.Create('Fatal: recursive dependency detected: ' + Cache.AUnitName + ' and ' + Cache.DependsOn[i]);
+      result := InternGetUnit(GetCache(Cache.DependsOn[i]), UnitList, Filter);
       if result = nil then
          exit;
       UnitList.Add(result);
@@ -140,6 +174,18 @@ begin
 
   // Publish every dependend unit
   PublishUnits(UnitList, Cache.Weaver);
+end;
+
+function TSE2UnitCacheMngr.GetUnit(Cache: TSE2UnitCache;
+  UnitList: TSE2BaseTypeList): TSE2Unit;
+var list: TStringList;
+begin
+  list := TStringList.Create;
+  try
+    result := InternGetUnit(Cache, UnitList, list);
+  finally
+    list.Free;
+  end;
 end;
 
 function TSE2UnitCacheMngr.HasUnit(const Name: string): boolean;
@@ -212,6 +258,28 @@ var i: integer;
 begin
   for i:=0 to UnitList.Count-1 do
     PublishUnit(TSE2Unit(UnitList[i]), Weaver);
+end;
+
+procedure TSE2UnitCacheMngr.CheckForChanges;
+var list: TStringList;
+    i   : integer;
+begin
+  if Assigned(FOnGetChangedUnits) then
+  begin
+    list := TStringList.Create;
+    try
+      list.Sorted := True;
+      list.Duplicates := dupIgnore;
+      list.CaseSensitive := False;
+
+      FOnGetChangedUnits(Self, list);
+      for i:=0 to list.Count-1 do
+        ClearCacheForRecompile(list[i]);
+        
+    finally
+      list.Free;
+    end;
+  end;
 end;
 
 end.

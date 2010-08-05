@@ -39,10 +39,12 @@ const
      'interface'+#13#10+
      #13#10+
      'type'+#13#10+
+     '  /// Represents a 24bit color in BBGGRR - Mode'+#13#10+
      '  TColor = cardinal;'+#13#10+
      #13#10+
      'type'+#13#10+
-     '  Console = partial class(TExternalObject)'+#13#10+
+     '  /// The default Output System to the host application'+#13#10+
+     '  Console = sealed partial class(TExternalObject)'+#13#10+
      '  protected'+#13#10+
      '    class function  GetForegroundColor: TColor; external;'+#13#10+
      '    class function  GetBackgroundColor: TColor; external;'+#13#10+
@@ -53,14 +55,21 @@ const
      '    class function  GetLine(line: integer): string; external;'+#13#10+
      '    class procedure SetLine(line: integer; s: string); external;'+#13#10+
      '  public'+#13#10+
+     '    /// Clear the output window content'+#13#10+
      '    class procedure Clear; external;'+#13#10+
+     '    /// Clear the current line and reset the cursor to the first line index'+#13#10+
      '    class procedure ClearLine; external;'+#13#10+
 
-     '    class property  ForegroundColor : TColor  read GetForegroundColor  write SetForegroundColor;'+#13#10+ 
+     '    /// Get or Set the font color of the output window'+#13#10+
+     '    class property  ForegroundColor : TColor  read GetForegroundColor  write SetForegroundColor;'+#13#10+
+     '    /// Get or Set the background color of the output window'+#13#10+
      '    class property  BackgroundColor : TColor  read GetBackgroundColor  write SetBackgroundColor;'+#13#10+
+     '    /// Get or Set a specific line of the output window'+#13#10+
      '    class property  Lines[index: integer]: string read GetLine write SetLine;'+#13#10+
 
+     '    /// Move the cursor to the specific position'+#13#10+
      '    class procedure CursorTo(x, y: integer); external;'+#13#10+
+     '    /// Make the point (x,y) visible'+#13#10+
      '    class procedure ScrollTo(x, y: integer); external;'+#13#10+
 
      '    class procedure WriteLine(i: byte); external; overload;'+#13#10+
@@ -78,6 +87,7 @@ const
      '    class procedure WriteLine(const s: UTF8String); external; overload;'+#13#10+
      '    class procedure WriteLine(const s: WideString); external; overload;'+#13#10+
      '    class procedure WriteLine(const s: PChar); external; overload;'+#13#10+
+     '    /// Appends the content to the output window and adds a line break'+#13#10+
      '    class procedure WriteLine; external; overload;'+#13#10+
 
      '    class procedure Write(i: byte); external; overload;'+#13#10+
@@ -94,12 +104,18 @@ const
      '    class procedure Write(const s: string); external; overload;'+#13#10+
      '    class procedure Write(const s: UTF8String); external; overload;'+#13#10+
      '    class procedure Write(const s: WideString); external; overload;'+#13#10+
+     '    /// Appends the content to the output window'+#13#10+
      '    class procedure Write(const s: PChar); external; overload;'+#13#10+
 
+     '    /// Returns true if the user is pressing any key at the moment, otherwise false'+#13#10+
      '    class function  KeyPressed: boolean; external;'+#13#10+
+     '    /// Promt the user to enter some text. This method returns after the user presses return'+#13#10+
      '    class function  ReadLine: string; external;'+#13#10+
+     '    /// Promt the user to enter a integer value. Returns 0 if the input was invalid'+#13#10+
      '    class function  ReadInt: int64; external;'+#13#10+
+     '    /// Promt the user to enter a floating point value. Returns 0.0 if the input was invalid'+#13#10+
      '    class function  ReadFloat: double; external;'+#13#10+
+     '    /// Promt the user to press any key. Returns the pressed key'+#13#10+
      '    class function  ReadKey: string; external;'+#13#10+
      'end;'+#13#10+
      #13#10+
@@ -128,7 +144,8 @@ const
      '  clMedGray    : TColor = $A4A0A0;'+#13#10+ }
      #13#10+
      'type'+#13#10+
-     '  Colors = class(TExternalObject)'+#13#10+
+     '  /// A collection of default color values and some basic color routines'+#13#10+
+     '  Colors = record'+#13#10+
      '  public'+#13#10+
      '    const Black      : TColor = $000000;' + #13#10 +
      '    const Maroon     : TColor = $000080;' + #13#10 +
@@ -153,9 +170,13 @@ const
      '    const Cream      : TColor = $F0FBFF;' + #13#10 +
      '    const MediumGray : TColor = $A4A0A0;' + #13#10 +
      #13#10 +
+     '    /// Create the corresponding TColor-Value from the input r, g, b - levels (values: 0..255)'+#13#10+
      '    class function RGB(red, green, blue: byte): TColor; external;'+#13#10+
+     '    /// Returns the red part of a given TColor-Value between 0..255'+#13#10+
      '    class function RedValue(aColor: TColor): byte; external;'+#13#10+
+     '    /// Returns the green part of a given TColor-Value between 0..255'+#13#10+
      '    class function GreenValue(aColor: TColor): byte; external;'+#13#10+
+     '    /// Returns the blue part of a given TColor-Value between 0..255'+#13#10+
      '    class function BlueValue(aColor: TColor): byte; external;'+#13#10+
      '  end;'+#13#10+
      #13#10+
@@ -212,7 +233,7 @@ type
     class procedure SetLine(i: integer; s: string);
 
     class procedure SetForegroundColor(value: TColor);
-    class procedure SetBackgroundColor(value: TColor); 
+    class procedure SetBackgroundColor(value: TColor);
 
     class function  KeyPressed: boolean;
     class function  ReadLine: string;   

@@ -46,7 +46,8 @@ type
     function  Compile(const Tokenizer: TSE2Tokenizer): TSE2PE; overload;
     function  Compile(const Reader: TSE2Reader): TSE2PE; overload;
     function  Compile(const ScriptSource: string): TSE2PE; overload;
-    procedure CodeComplete(const Source: string; CallBack: TSE2CompileCallBack; Position: integer);
+    procedure CodeComplete(const Source: string; CallBack: TSE2CompileCallBack; Position: integer); overload;
+    procedure CodeComplete(const Reader: TSE2ReaderList; CallBack: TSE2CompileCallBack; Position: integer); overload;
 
     property UnitList         : TSE2BaseTypeList   read FUnitList;
     property UseUnitCache     : boolean            read FUseUnitCache      write SetUseUnitCache;
@@ -68,6 +69,10 @@ begin
   result := nil;
   FCompiledUnits.Clear;
   FLines := 0;
+
+  if FUnitCache <> nil then
+     FUnitCache.CheckForChanges;
+
   if DoCompile(Tokenizer) <> nil then
   begin
     Linker := TSE2Linker.Create(FUnitList);
@@ -350,9 +355,30 @@ begin
   UnitData := TSE2Unit(Entry);
 end;
 
+procedure TSE2Compiler.CodeComplete(const Reader: TSE2ReaderList;
+  CallBack: TSE2CompileCallBack; Position: integer);
+var i: integer;
+begin
+  if Reader.Count = 0 then
+     exit;
+
+  Reader.OwnsObjects := False;
+  if FUnitCache <> nil then
+     FUnitCache.CheckForChanges;
+
+  for i:=0 to Reader.Count-2 do
+     DoCompile(TSE2Tokenizer.Create(Reader[i]));
+
+  DoCompile(TSE2Tokenizer.Create(Reader.Last), CallBack, Position);
+  Reader.Clear;
+end;
+
 procedure TSE2Compiler.CodeComplete(const Source: string;
   CallBack: TSE2CompileCallBack; Position: integer);
-begin
+begin            
+  if FUnitCache <> nil then
+     FUnitCache.CheckForChanges;
+
   DoCompile(TSE2Tokenizer.Create(TSE2StringReader.Create(Source)), CallBack, Position);
 end;
 

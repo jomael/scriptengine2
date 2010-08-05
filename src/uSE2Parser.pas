@@ -17,6 +17,8 @@ type
 
 
 type
+  TSE2Parser = class;
+
   TSE2ParseState = class
   public
     StackSize      : integer;
@@ -38,12 +40,16 @@ type
     NoStaticPointer: boolean;
     RecordsCreated : integer;
     IsInExceptBlock: boolean;
+    IsInUsesBlock  : boolean;
 
     TargetType     : TSE2Type;
     Method         : TSE2Method;
     ParamMethod    : TSE2Method;
     ParamIndex     : integer;
     AParent        : TSE2BaseType;
+    Parser         : TSE2Parser;
+
+    constructor Create(Parent: TSE2Parser);
 
     procedure IncStack;
     procedure DecStack;
@@ -150,12 +156,13 @@ type
     function  MakeCallExOptionMask(Method: TSE2Method): integer;
     function  FindIdentifier(Method: TSE2Method; const IdentName: string; Parent: TSE2BaseType; const UnitName: string = ''; const ClassTypes: TSE2BaseTypeFilter = nil; AcceptSetType: boolean = False): TSE2BaseType;
     function  TypeExpression(Method: TSE2Method): TSE2Type;
+    procedure CheckForDeprecated(aType: TSE2BaseType);
 
     function  ConvertIntToSingle(State: TSE2ParseState; Method: TSE2Method; aType1, aType2: TSE2Type): TSE2Type;
     function  ConvertVariableCode(State: TSE2ParseState; Method: TSE2Method; aCurrentType, aNewType: TSE2Type; DoAdd: boolean = True): TSE2LinkOpCode;
 
     function  GetBooleanType: TSE2Type;
-    function  GetIntegerType: TSE2Type;
+    function  GetIntegerType(use64Bit: boolean = True): TSE2Type;
     function  GetDoubleType: TSE2Type;
     function  GetStringType: TSE2Type;
     function  GetPointerType: TSE2Type;
@@ -185,6 +192,7 @@ type
     property UnitList     : TSE2BaseTypeList read FUnitList;
     property Tokenizer    : TSE2Tokenizer    read FTokenizer;
     property HasError     : boolean          read FHasError;
+    property State        : TSE2ParseState   read FParserState;
 
     // Events
     property OnCompileCall     : TSE2CompileCallBack  read FCompileCall       write FCompileCall;
@@ -192,18 +200,58 @@ type
     property OnUnitRequest     : TSE2UnitRequest      read FUnitRequest       write FUnitRequest;
     property OnError           : TSE2ErrorEvent       read FErrorEvent        write FErrorEvent;
   end;
-
+         {
+var
+  DEBUG_TimeMeasure : int64;
+                              }
 implementation
 
-uses SysUtils, Math, Dialogs, DateUtils;
+uses SysUtils, Math, Dialogs, DateUtils
+     {
+     , Windows  }
+     ;
+                 {
+var
+  TTimeMeasure_BeginTime    : array[0..1024] of int64;
+  TTimeMeasure_CurrentIndex : integer = 0;
+
+type
+  TTimeMeasure = class
+  public
+    class procedure Start;
+    class procedure Stop;
+  end;
+
+class procedure TTimeMeasure.Start;
+begin
+  QueryPerformanceCounter(TTimeMeasure_BeginTime[TTimeMeasure_CurrentIndex]);
+  TTimeMeasure_CurrentIndex := TTimeMeasure_CurrentIndex + 1;
+end;
+
+class procedure TTimeMeasure.Stop;
+var t: int64;
+begin
+  TTimeMeasure_CurrentIndex := TTimeMeasure_CurrentIndex - 1;
+  QueryPerformanceCounter(t);
+  DEBUG_TimeMeasure := DEBUG_TimeMeasure + (t - TTimeMeasure_BeginTime[TTimeMeasure_CurrentIndex]);
+end;                   }
 
 { TSE2ParseState }
+
+constructor TSE2ParseState.Create(Parent: TSE2Parser);
+begin
+  inherited Create;
+  Self.Parser := Parent;
+end;
 
 procedure TSE2ParseState.DecStack;
 begin
   StackSize := StackSize - 1;
   if (StackSize < 0) then
+  begin
      StackSize := 0;
+     Parser.RaiseError(petError, 'Internal error: stack size calulation failed');
+  end;
 end;
 
 procedure TSE2ParseState.IncStack;
@@ -261,7 +309,7 @@ var Token  : TSE2TokenType;
 begin
   try
     FHasError := False;
-    FParserState := TSE2ParseState.Create;
+    FParserState := TSE2ParseState.Create(Self);
     try
       ReadNextToken;
       if FExpectedName <> '' then
@@ -325,6 +373,12 @@ begin
   aType.DeclLine  := Tokenizer.Reader.Line;
   aType.DeclPos   := Tokenizer.Reader.Position;
   aType.Visibility := State.Visibility;
+
+  if Tokenizer.InlineDoc <> '' then
+  begin
+    aType.InlineDoc  := aType.InlineDoc + Tokenizer.InlineDoc;
+    Tokenizer.InlineDoc := '';
+  end;
 end;
 
 destructor TSE2Parser.Destroy;
@@ -344,7 +398,12 @@ begin
 
   FUnitRequest(Self, UnitName, Result);
   if result <> nil then
-     FUnit.RequiredUnits.Add(UnitName);
+  begin
+    FUnit.RequiredUnits.Add(UnitName);
+
+    if result.RequiredUnits.IndexOf(Self.AUnit.Name) >= 0 then
+       RaiseError(petError, 'Recursive unit dependency detected');
+  end;
 end;
 
 function TSE2Parser.ExpectToken(Symbol: TSE2TokenTypes): boolean;
@@ -687,6 +746,10 @@ begin
 
   if Tokenizer.Token.AType = sesUnknown then
      RaiseError(petError, 'Unkown symbol found: '+Tokenizer.Token.Value);
+
+  if Tokenizer.Token.AType in [sesBegin, sesEnd, sesRepeat, sesDo, sesWhile, sesUntil, sesTry, sesExcept, sesFinally,
+                              sesFor, sesIf, sesThen, sesElse, sesCase] then
+     Tokenizer.InlineDoc := '';
 end;
 
 procedure TSE2Parser.ParseProgram(State: TSE2ParseState);
@@ -778,7 +841,7 @@ begin
       Method := TSE2Method.Create;
       Method.Used := True;
       DeclareType(State, Method, C_SE2FinalizationMethod);
-      FUnit.AFinalization.Add(Method);
+      FUnit.AFinalization.Insert(0, Method);
 
       ReadNextToken;
       StatementSquence(State, Method);
@@ -802,6 +865,12 @@ end;
 procedure TSE2Parser.UsesDeclaration(State: TSE2ParseState);
 var aNewUnit : TSE2Unit;
     fName    : string;
+
+  function RecursiveUnitUsage(const AUnit: TSE2Unit; const UnitName: string): boolean;
+  begin
+    result := AUnit.RequiredUnits.IndexOf(UnitName) >= 0;
+  end;
+
 begin
   if (not StringIdentical(FUnit.AUnitName, C_SE2SystemUnitName) and State.IsInInterface) then
   begin
@@ -815,9 +884,10 @@ begin
   end;
   if Tokenizer.Token.AType in [sesUses] then
   begin
+    State.IsInUsesBlock := True;
     ExpectToken([sesUses]);
     ReadNextToken;
-    while (not FHasError) and (FTokenizer.Token.AType = sesIdentifier) do
+    while (FTokenizer.Token.AType = sesIdentifier) do
     begin
       fName := '';
       while Tokenizer.Token.AType = sesIdentifier do
@@ -847,6 +917,9 @@ begin
       if aNewUnit = nil then
          RaiseError(petError, Format(C_ERR_CouldNotAddUnit, [fName]))
       else
+      if RecursiveUnitUsage(aNewUnit, Self.FUnit.Name) then
+         RaiseError(petError, 'Recursive unit usage not possible')
+      else
          FUnitList.Add(aNewUnit);
 
       ExpectToken([sesColon, sesSemiColon]);
@@ -856,13 +929,14 @@ begin
         ReadNextToken;
     end;
     ReadNextToken;
+    State.IsInUsesBlock := False;
   end;
 end;
 
 procedure TSE2Parser.MainBodyDeclaration(State: TSE2ParseState);
 var Method: TSE2Method;
 begin
-  while not FHasError do
+  while True do
   begin
 
     State.CurrentOwner := nil;
@@ -888,9 +962,12 @@ begin
             if not Method.IsExternal then
               if not Method.IsForwarded then
                 if not Method.IsAbstract then
-                  MethodBodyDeclaration(State, Method);
+                   MethodBodyDeclaration(State, Method);
 
-          end;
+
+          end else
+          if not Assigned(Method) then
+             break;
 
           State.IsStatic := False;
         end;
@@ -905,8 +982,10 @@ begin
             if not Method.IsExternal then
               if not Method.IsForwarded then
                 if not Method.IsAbstract then
-                  MethodBodyDeclaration(State, Method);
-          end;
+                   MethodBodyDeclaration(State, Method);
+          end else
+          if not Assigned(Method) then
+             break;
         end;
     else
         break;
@@ -945,11 +1024,11 @@ begin
          RaiseError(petError, 'External classes can not have any variables');
 
 
-  while not FHasError do
+  while True do
   begin
     NewVaribles := TSE2BaseTypeList.Create;
     try
-      while (Tokenizer.Token.AType in [sesIdentifier]) and (not FHasError) do
+      while (Tokenizer.Token.AType in [sesIdentifier]) do
       begin
         if FUnit.ElemList.FindItem(Tokenizer.Token.Value, FUnit.AUnitName, State.CurrentOwner, nil, nil, CAllVisibilities) <> nil then
         begin
@@ -1003,13 +1082,7 @@ begin
             exit;
           end;
 
-          if VarType.IsDeprecated then
-          begin
-            if VarType.DeprecatedValue <> '' then
-               RaiseError(petWarning, VarType.AUnitName + '.' + VarType.Name + ' is deprecated. ' + VarType.DeprecatedValue)
-            else
-               RaiseError(petWarning, VarType.AUnitName + '.' + VarType.Name + ' is deprecated.');
-          end;
+          CheckForDeprecated(VarType);
 
           IsPublic   := False;
           IsExternal := False;
@@ -1115,7 +1188,7 @@ begin
                    RaiseError(petError, 'Internal error: data size can not be 0');
 
                 TSE2Record(State.CurrentOwner).RecordSize := TSE2Record(State.CurrentOwner).RecordSize + TSE2Type(NewVar.AType.InheritRoot).DataSize;
-                case TSE2Type(NewVar.AType).AType of
+                case TSE2Type(NewVar.AType.InheritRoot).AType of
                 btString     : TSE2Record(State.CurrentOwner).RTTI.Add(btString, NewVar.CodePos, SizeOf(Pointer));
                 btUTF8String : TSE2Record(State.CurrentOwner).RTTI.Add(btUTF8String, NewVar.CodePos, SizeOf(Pointer));
                 btWideString : TSE2Record(State.CurrentOwner).RTTI.Add(btWideString, NewVar.CodePos, SizeOf(Pointer));
@@ -1141,9 +1214,6 @@ begin
       NewVaribles.Free;
     end;
 
-    if FHasError then
-       break;
-
     if not (Tokenizer.Token.AType in [sesIdentifier]) then
        break;
   end;
@@ -1164,7 +1234,7 @@ begin
 
   ExpectToken([sesType]);
   ReadNextToken;
-  while not FHasError do
+  while True do
   begin
     ExpectToken([sesIdentifier]);
 
@@ -1182,6 +1252,7 @@ begin
     sesSet        : begin
                       SetDeclaration(State, Method, TypeName);
                     end;
+    sesSealed,
     sesPartial,
     sesHelper,
     sesClass      : begin
@@ -1203,9 +1274,6 @@ begin
                     end;
     else ExpectToken([sesIdentifier, sesClass, sesHelper, sesSet, sesOpenRound, sesPartial, sesInterface, sesRecord, sesProcedure, sesFunction]);
     end;
-
-    if FHasError then
-       break;
 
     if not (Tokenizer.Token.AType in [sesIdentifier]) then
        break;
@@ -1398,6 +1466,7 @@ var ClassType : TSE2Class;
     BaseClass : TSE2Type;
     IsPartial : boolean;
     IsHelper  : boolean;
+    IsSealed  : boolean;
     IsFirstPartial : boolean;
 begin
   State.Method     := nil;
@@ -1406,6 +1475,14 @@ begin
 
   IsHelper  := False;
   IsPartial := False;
+  IsSealed  := False;    
+
+  if Tokenizer.Token.AType in [sesSealed] then
+  begin
+    IsSealed := True;
+    ReadNextToken;
+  end;
+
   if Tokenizer.Token.AType in [sesPartial] then
   begin
     IsPartial := True;
@@ -1430,14 +1507,16 @@ begin
 
   ExpectToken([sesClass, sesHelper]);
   if Tokenizer.Token.AType in [sesHelper] then
-     IsHelper := True;
+    if IsSealed then
+       RaiseError(petError, 'Helper classes can not be sealed')
+    else
+       IsHelper := True;
 
   ReadNextToken;
   if (Tokenizer.Token.AType = sesSemiColon) then
   begin
     if IsPartial then
-       RaiseError(petError, 'Partial classes can not be forwarded')
-    else
+       RaiseError(petError, 'Partial classes can not be forwarded');
     if (ClassType = nil) then
     begin
       ClassType := TSE2Class.Create;
@@ -1448,6 +1527,7 @@ begin
          ClassType.Visibility := visPrivate;
       ClassType.IsPartial   := IsPartial;
       ClassType.IsForwarded := True;
+      ClassType.IsSealed    := IsSealed;
       FUnit.TypeList.Add(ClassType);
 
       BaseClass := GetScriptObjectType;
@@ -1470,6 +1550,9 @@ begin
   if IsPartial then
   begin
     ClassType := TSE2Class(FindIdentifier(nil, ClassName, nil, '', TSE2BaseTypeFilter.Create([TSE2Class])));
+    if ClassType <> nil then
+       if IsSealed and not ClassType.IsSealed then
+          RaiseError(petError, 'Partial part of the class can not be sealed, if the first part is not declared as sealed');
   end;
 
   if ClassType = nil then
@@ -1481,6 +1564,7 @@ begin
     else
        ClassType.Visibility := visPrivate;
     ClassType.IsPartial := IsPartial;
+    ClassType.IsSealed  := IsSealed;
     FUnit.TypeList.Add(ClassType);
   end else
   begin
@@ -1519,13 +1603,7 @@ begin
            RaiseError(petError, 'Helper classes can not be made for method types with a return value');
 
 
-      if BaseClass.IsDeprecated then
-      begin
-        if BaseClass.DeprecatedValue <> '' then
-           RaiseError(petWarning, BaseClass.AUnitName + '.' + BaseClass.Name + ' is deprecated. ' + BaseClass.DeprecatedValue)
-        else
-           RaiseError(petWarning, BaseClass.AUnitName + '.' + BaseClass.Name + ' is deprecated.');
-      end;
+      CheckForDeprecated(BaseClass);
 
       ReadNextToken;
     end else
@@ -1544,7 +1622,7 @@ begin
       else
       if not (BaseClass is TSE2Class) then
       begin
-         RaiseError(petError, 'Class parent is not a class: ' + BaseClass.Name);
+         RaiseError(petError, 'Base type is not a class: ' + BaseClass.Name);
          exit;
       end;
       //BaseClass := TSE2Class(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Class])));
@@ -1556,24 +1634,23 @@ begin
 
       if TSE2Class(BaseClass).IsHelper then
       begin
-         RaiseError(petError, 'helper classes can not be parents of real classes');
+         RaiseError(petError, 'Classes can not derive from helper classes');
          exit;
       end;
 
       if BaseClass = ClassType then
       begin
-         RaiseError(petError, 'the class can not inherit from itself');
+         RaiseError(petError, 'The class can not derive from itself');
          exit;
       end;
 
-      if BaseClass.IsDeprecated then
+      if TSE2Class(BaseClass).IsSealed then
       begin
-        if BaseClass.DeprecatedValue <> '' then
-           RaiseError(petWarning, BaseClass.AUnitName + '.' + BaseClass.Name + ' is deprecated. ' + BaseClass.DeprecatedValue)
-        else
-           RaiseError(petWarning, BaseClass.AUnitName + '.' + BaseClass.Name + ' is deprecated.');
+        RaiseError(petError, 'Cannot derive from sealed type ' + BaseClass.GetStrongName);
+        exit;
       end;
 
+      CheckForDeprecated(BaseClass);
 
       ClassType.InheritFrom := BaseClass;
       ReadNextToken;
@@ -1603,7 +1680,7 @@ begin
 
     State.CurrentOwner := ClassType;
     State.AParent      := ClassType;
-    while (Tokenizer.Token.AType in [sesPublic, sesProtected, sesPrivate]) and (not FHasError) do
+    while (Tokenizer.Token.AType in [sesPublic, sesProtected, sesPrivate]) do
     begin
       State.AParent := ClassType;
       case Tokenizer.Token.AType of
@@ -1613,7 +1690,7 @@ begin
       end;
 
       ReadNextToken;
-      while not FHasError do
+      while True do
       begin
         State.IsStatic := False;
         State.AParent  := ClassType;
@@ -1802,7 +1879,7 @@ begin
     State.CurrentOwner := RecordType;
     State.AParent      := RecordType;
     State.Visibility   := visPublic;
-    while not FHasError do
+    while True do
     begin
       State.AParent := RecordType;
       if Tokenizer.Token.AType in [sesPublic, sesProtected, sesPrivate] then
@@ -2001,13 +2078,7 @@ begin
        RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"')
     else
     begin
-      if BaseType.IsDeprecated then
-      begin
-        if BaseType.DeprecatedValue <> '' then
-           RaiseError(petWarning, BaseType.AUnitName + '.' + BaseType.Name + ' is deprecated. ' + BaseType.DeprecatedValue)
-        else
-           RaiseError(petWarning, BaseType.AUnitName + '.' + BaseType.Name + ' is deprecated.');
-      end;
+      CheckForDeprecated(BaseType);
 
       if BaseType is TSE2Class then
          newType := TSE2Class.Create
@@ -2090,7 +2161,7 @@ var Method       : TSE2Method;
          ParamType := ptDefault;
 
       ExpectToken([sesIdentifier]);
-      while (not FHasError) and (Tokenizer.Token.AType = sesIdentifier) do
+      while (Tokenizer.Token.AType = sesIdentifier) do
       begin
         Param := TSE2Parameter.Create;
         DeclareType(State, Param, Tokenizer.Token.Value);
@@ -2102,8 +2173,6 @@ var Method       : TSE2Method;
         if Tokenizer.Token.AType = sesColon then
            ReadNextToken;
       end;
-      if FHasError then
-         exit;
 
       ExpectToken([sesDoublePoint]);
       ReadNextToken;
@@ -2116,6 +2185,7 @@ var Method       : TSE2Method;
           RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
           exit;
         end;
+        CheckForDeprecated(aType);
         if not FHasError then
         begin
           for i:=0 to Params.Count-1 do
@@ -2132,11 +2202,12 @@ var Method       : TSE2Method;
                  (Param.AType <> TSE2Parameter(Method.Params[ParamCount-1]).AType) or
                  (not StringIdentical(Param.Name, TSE2Parameter(Method.Params[ParamCount-1]).Name)) then
                  RaiseError(petError, 'The method declaration is different from the original declaration');
-              
+
             end
             else
               Method.Params.Add(Param);
           end;
+
           if not WasForwarded then
              Params.OwnsObjs := False;
         end;
@@ -2211,6 +2282,8 @@ var aVisibility    : TSE2Visibility;
     i              : integer;
     DeclareForward : boolean;
     MethodClass    : TSE2Type;
+
+    tmpType        : TSE2Type;
 begin
   State.Method     := nil;
   State.TargetType := nil;
@@ -2220,471 +2293,497 @@ begin
   WasForwarded := False;
   Method := TSE2Method.Create;
   try
-    //if State.CurrentOwner <> nil then
-    if IsTypeDeclaration then
-      ExpectToken([sesFunction, sesProcedure])
-    else
-      ExpectToken([sesFunction, sesProcedure, sesConstructor, sesDestructor]);
-    //else
-    //  ExpectToken([sesFunction, sesProcedure]);
-
-    Method.IsStatic    := State.IsStatic;
-    Method.IsForwarded := (State.CurrentOwner <> nil) or State.IsInInterface;
-    Method.Parent      := State.CurrentOwner;
-    if FHasError then
-       exit;
-
-    case Tokenizer.Token.AType of
-    sesProcedure   : Method.MethodType := mtProcedure;
-    sesFunction    : Method.MethodType := mtFunction;
-    sesConstructor : Method.MethodType := mtConstructor;
-    sesDestructor  : Method.MethodType := mtDestructor;
-    end;
-
-    case Method.MethodType of
-    mtConstructor : Method.Used := True;
-    mtDestructor  : Method.Used := True;
-    end;
-
-    if FHasError then
-       exit;
-
-    ReadNextToken;
-    if State.CurrentOwner = nil then
-       State.AParent    := nil;
-    if not IsTypeDeclaration then
-    begin
-       ExpectToken([sesIdentifier]);
-       Name := Tokenizer.Token.Value;
-       ReadNextToken;
-    end;
-    if (Tokenizer.Token.AType in [sesDot]) and (not IsTypeDeclaration) then
-    begin
-      if State.IsInInterface then
-         RaiseError(petError, 'Class methods can not be implemented in the interface part');
-
-      MethodClass := TSE2Class(FindIdentifier(nil, Name, nil, FUnit.Name, TSE2BaseTypeFilter.Create([TSE2Class])));
-      if MethodClass = nil then
-      begin
-        MethodClass := TSE2Class(FindIdentifier(nil, Name, nil, '', TSE2BaseTypeFilter.Create([TSE2Class])));
-        if MethodClass = nil then
-           RaiseError(petError, 'Class name not found: "'+Name+'"');
-        if not TSE2Class(MethodClass).IsPartial then
-           RaiseError(petError, 'Class name not found: "'+Name+'"');
-      end;
-
-      State.AParent      := MethodClass;
-      State.CurrentOwner := MethodClass;
-      ReadNextToken;
-      ExpectToken([sesIdentifier]);
-
-      Name := Tokenizer.Token.Value;
-
-      pMeth := TSE2Method(FindIdentifier(nil, Name, MethodClass, FUnit.AUnitName, TSE2BaseTypeFilter.Create([TSE2Method])));
-      if pMeth = nil then
-         RaiseError(petError, 'Class does not have a method named "'+Name+'"')
+    try
+      //if State.CurrentOwner <> nil then
+      if IsTypeDeclaration then
+        ExpectToken([sesFunction, sesProcedure])
       else
-      if pMeth.Parent <> State.CurrentOwner then
-         RaiseError(petError, 'Class does not have a method named "'+Name+'"');
+        ExpectToken([sesFunction, sesProcedure, sesConstructor, sesDestructor]);
+      //else
+      //  ExpectToken([sesFunction, sesProcedure]);
 
-      if (not pMeth.IsForwarded) and (not pMeth.IsOverload) then
-         RaiseError(petError, 'The method "'+pMeth.Name+'" has already been declared');
+      Method.IsStatic    := State.IsStatic;
+      Method.IsForwarded := (State.CurrentOwner <> nil) or State.IsInInterface;
+      Method.Parent      := State.CurrentOwner;
+    
+
+      case Tokenizer.Token.AType of
+      sesProcedure   : Method.MethodType := mtProcedure;
+      sesFunction    : Method.MethodType := mtFunction;
+      sesConstructor : Method.MethodType := mtConstructor;
+      sesDestructor  : Method.MethodType := mtDestructor;
+      end;
+
+      case Method.MethodType of
+      mtConstructor : Method.Used := True;
+      mtDestructor  : Method.Used := True;
+      end;
 
       ReadNextToken;
-      State.AParent := nil;
-    end;
-    if State.IsStatic and (State.CurrentOwner = nil) then
-    begin
-      RaiseError(petError, 'Static class method does not have an owner');
-      exit;
-    end;
-
-    if IsTypeDeclaration then
-      aVisibility := visPublic
-    else
-      aVisibility := State.Visibility;
-    DeclareForward := False;
-
-    if not IsTypeDeclaration then
-    begin
-      pMeth := TSE2Method(FindIdentifier(nil, Name, State.CurrentOwner, FUnit.Name, TSE2BaseTypeFilter.Create([TSE2Method])));
-      if pMeth <> nil then
+      if State.CurrentOwner = nil then
+         State.AParent    := nil;
+      if not IsTypeDeclaration then
       begin
-        if not pMeth.IsOverload then
+         ExpectToken([sesIdentifier]);
+         Name := Tokenizer.Token.Value;
+         ReadNextToken;
+      end;
+      if (Tokenizer.Token.AType in [sesDot]) and (not IsTypeDeclaration) then
+      begin
+        if State.IsInInterface then
+           RaiseError(petError, 'Class methods can not be implemented in the interface part');
+
+        MethodClass := TSE2Class(FindIdentifier(nil, Name, nil, FUnit.Name, TSE2BaseTypeFilter.Create([TSE2Class, TSE2Record])));
+        if MethodClass = nil then
         begin
-          if (not pMeth.IsForwarded) and (not (pMeth.IsVirtual or pMeth.IsOverride)) and (pMeth.Parent = State.CurrentOwner) then
-             RaiseError(petError, 'A method named "'+Name+'" already exists!');
+          MethodClass := TSE2Class(FindIdentifier(nil, Name, nil, '', TSE2BaseTypeFilter.Create([TSE2Class, TSE2Record])));
+          if MethodClass = nil then
+             RaiseError(petError, 'Class name not found: "'+Name+'"');
+          if MethodClass is TSE2Class then
+            if not TSE2Class(MethodClass).IsPartial then
+               RaiseError(petError, 'Class name not found: "'+Name+'"');
+        end;
 
-          if (((pMeth.IsStatic <> Method.IsStatic) and ((pMeth.MethodType <> mtConstructor) and (Method.MethodType <> mtConstructor))) or
-             (pMeth.MethodType <> Method.MethodType)) and
-             (not (pMeth.IsExternal or Method.IsExternal)) then
-             RaiseError(petError, 'The method is not equal to the forwarded declaration: ' + pMeth.Name);
+        State.AParent      := MethodClass;
+        State.CurrentOwner := MethodClass;
+        ReadNextToken;
+        ExpectToken([sesIdentifier]);
 
-          if pMeth.IsForwarded and (pMeth.Parent = State.CurrentOwner) then
+        Name := Tokenizer.Token.Value;
 
-          //if pMeth.IsForwarded or (not (not (pMeth.IsVirtual or pMeth.IsOverride or pMeth.IsAbstract)) and (pMeth.Parent = State.CurrentOwner)) then
+        pMeth := TSE2Method(FindIdentifier(nil, Name, MethodClass, FUnit.AUnitName, TSE2BaseTypeFilter.Create([TSE2Method])));
+        if pMeth = nil then
+           RaiseError(petError, 'Class does not have a method named "'+Name+'"')
+        else
+        if pMeth.Parent <> State.CurrentOwner then
+           RaiseError(petError, 'Class does not have a method named "'+Name+'"');
+
+        if (not pMeth.IsForwarded) and (not pMeth.IsOverload) then
+           RaiseError(petError, 'The method "'+pMeth.Name+'" has already been declared');
+
+        ReadNextToken;
+        State.AParent := nil;
+      end;
+      if State.IsStatic and (State.CurrentOwner = nil) then
+      begin
+        RaiseError(petError, 'Static class method does not have an owner');
+        exit;
+      end;
+
+      if IsTypeDeclaration then
+        aVisibility := visPublic
+      else
+        aVisibility := State.Visibility;
+      DeclareForward := False;
+
+      if not IsTypeDeclaration then
+      begin
+        pMeth := TSE2Method(FindIdentifier(nil, Name, State.CurrentOwner, FUnit.Name, TSE2BaseTypeFilter.Create([TSE2Method])));
+        if pMeth <> nil then
+        begin
+          if not pMeth.IsOverload then
           begin
-            WasForwarded := True;
-            FreeAndNil(Method);
-            Method := pMeth;
-            Method.Parent      := State.CurrentOwner;
-            Method.IsForwarded := False;
-            aVisibility := Method.Visibility;
+            if (not pMeth.IsForwarded) and (not (pMeth.IsVirtual or pMeth.IsOverride)) and (pMeth.Parent = State.CurrentOwner) then
+               RaiseError(petError, 'A method named "'+Name+'" already exists!');
 
-            if Method.IsAbstract then
-               RaiseError(petError, 'Abstract methods do not have a implementation');
+            if (((pMeth.IsStatic <> Method.IsStatic) and ((pMeth.MethodType <> mtConstructor) and (Method.MethodType <> mtConstructor))) or
+               (pMeth.MethodType <> Method.MethodType)) and
+               (not (pMeth.IsExternal or Method.IsExternal)) then
+               RaiseError(petError, 'The method is not equal to the forwarded declaration: ' + pMeth.Name);
+
+            if pMeth.IsForwarded and (pMeth.Parent = State.CurrentOwner) then
+
+            //if pMeth.IsForwarded or (not (not (pMeth.IsVirtual or pMeth.IsOverride or pMeth.IsAbstract)) and (pMeth.Parent = State.CurrentOwner)) then
+            begin
+              WasForwarded := True;
+              FreeAndNil(Method);
+              Method := pMeth;
+              Method.Parent      := State.CurrentOwner;
+              Method.IsForwarded := False;
+              aVisibility := Method.Visibility;
+
+              if Method.IsAbstract then
+                 RaiseError(petError, 'Abstract methods do not have a implementation');
+            end;
+          end else
+          begin
+            DeclareForward := True;
+            Method.Parent  := State.CurrentOwner;
           end;
-        end else
-        begin
-          DeclareForward := True;
-          Method.Parent  := State.CurrentOwner;
         end;
+        DeclareType(State, Method, Name);
+        Method.Visibility := aVisibility;
       end;
-      DeclareType(State, Method, Name);
-      Method.Visibility := aVisibility;
-    end;
 
-    if WasForwarded and Method.HasSelfParam then
-       MinParam := 1
-    else
-       MinParam := 0;
+      if WasForwarded and Method.HasSelfParam then
+         MinParam := 1
+      else
+         MinParam := 0;
 
-    State.AParent := nil;
+      State.AParent := nil;
 
-    if (Tokenizer.Token.AType = sesOpenRound) or (WasForwarded and (Method.Params.Count > MinParam)) then
-    begin
-      ParamCount := MinParam;
-      ExpectToken([sesOpenRound]);
-      ReadNextToken;
-      if Tokenizer.Token.AType <> sesCloseRound then
+      if (Tokenizer.Token.AType = sesOpenRound) or (WasForwarded and (Method.Params.Count > MinParam)) then
       begin
-        while (not FHasError) do
+        ParamCount := MinParam;
+        ExpectToken([sesOpenRound]);
+        ReadNextToken;
+        if Tokenizer.Token.AType <> sesCloseRound then
         begin
-          ParamListDeclaration(Method);
-          if Tokenizer.Token.AType <> sesSemiColon then
-             break
-          else
-             ReadNextToken;
+          while (True) do
+          begin
+            ParamListDeclaration(Method);
+            if Tokenizer.Token.AType <> sesSemiColon then
+               break
+            else
+               ReadNextToken;
+          end;
         end;
+        ExpectToken([sesCloseRound]);
+        ReadNextToken;
+        if ParamCount <> Method.Params.Count then
+           RaiseError(petError, 'The method declaration is different from the original declaration');
       end;
-      ExpectToken([sesCloseRound]);
-      ReadNextToken;
-      if ParamCount <> Method.Params.Count then
-         RaiseError(petError, 'The method declaration is different from the original declaration');
-    end;
 
-    case Method.MethodType of
-    mtProcedure,
-    mtDestructor    :
-        begin
-          if not IsTypeDeclaration then
+      case Method.MethodType of
+      mtProcedure,
+      mtDestructor    :
+          begin
+            if not IsTypeDeclaration then
+            begin
+              ExpectToken([sesSemiColon]);
+              ReadNextToken;
+            end;
+          end;
+      mtConstructor   :
           begin
             ExpectToken([sesSemiColon]);
             ReadNextToken;
-          end;
-        end;
-    mtConstructor   :
-        begin
-          ExpectToken([sesSemiColon]);
-          ReadNextToken;
-          if Method.ReturnValue = nil then
-          begin
-            Method.ReturnValue := TSE2Variable.Create;
-            DeclareType(State, Method.ReturnValue, '!result');
-            Method.ReturnValue.AType := State.CurrentOwner;
-            Method.ReturnValue.Visibility := visPrivate;
-            if Method.ReturnValue.AType = nil then
-            begin
-              RaiseError(petError, 'Internal error: constructor object not found');
-              exit;
-            end;
-          end;
-        end;
-    mtFunction      :
-        begin
-          ExpectToken([sesDoublePoint]);
-          ReadNextToken;
-          if ExpectToken([sesIdentifier]) then
-          begin
             if Method.ReturnValue = nil then
             begin
               Method.ReturnValue := TSE2Variable.Create;
-              DeclareType(State, Method.ReturnValue, 'result');
-              Method.ReturnValue.IsStatic := False;
-              Method.ReturnValue.AType    := TSE2Type(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
+              DeclareType(State, Method.ReturnValue, '!result');
+              Method.ReturnValue.AType := State.CurrentOwner;
+              Method.ReturnValue.Visibility := visPrivate;
               if Method.ReturnValue.AType = nil then
               begin
-                RaiseError(petError, 'Unkown type as return value: "'+Tokenizer.Token.Value+'"');
+                RaiseError(petError, 'Internal error: constructor object not found');
                 exit;
               end;
             end;
           end;
-          ReadNextToken;
-          if not IsTypeDeclaration then
+      mtFunction      :
           begin
-            ExpectToken([sesSemiColon]);
+            ExpectToken([sesDoublePoint]);
             ReadNextToken;
+            if ExpectToken([sesIdentifier]) then
+            begin
+              if Method.ReturnValue = nil then
+              begin
+                Method.ReturnValue := TSE2Variable.Create;
+                DeclareType(State, Method.ReturnValue, 'result');
+                Method.ReturnValue.InlineDoc := 'The return value of ' + Method.GetStrongName;
+                Method.ReturnValue.IsStatic := False;
+
+                Method.ReturnValue.AType    := TypeExpression(nil);
+                //Method.ReturnValue.AType    := TSE2Type(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
+                if Method.ReturnValue.AType = nil then
+                begin
+                  RaiseError(petError, 'Unkown type as return value: "'+Tokenizer.Token.Value+'"');
+                  exit;
+                end;
+                CheckForDeprecated(Method.ReturnValue.AType);
+              end else
+              begin
+                tmpType := TypeExpression(nil);
+                if tmpType = nil then
+                   RaiseError(petError, 'Type not found');
+                if Method.ReturnValue.AType <> TypeExpression(nil) then
+                   RaiseError(petError, Format('Return value type of "%s" not equal to the forwared declaration: found "%s", required "%s"', [Method.GetStrongName, tmpType.GetStrongName, Method.ReturnValue.AType.GetStrongName]));
+              end;
+            end;
+            ReadNextToken;
+            if not IsTypeDeclaration then
+            begin
+              ExpectToken([sesSemiColon]);
+              ReadNextToken;
+            end;
           end;
-        end;
-    end;
-
-    if DeclareForward then
-    begin
-      Method.IsOverload := True;
-      GetOverloadedMethods(State, Method, MethodList);
-      try
-        pMeth := nil;
-        for i:=0 to MethodList.Count-1 do
-        begin
-          if MethodHeaderEqual(Method, TSE2Method(MethodList[i])) then
-          begin
-            pMeth := TSE2Method(MethodList[i]);
-            break;
-          end;
-        end;
-
-        if pMeth <> nil then
-        begin
-          if not pMeth.IsForwarded then
-             RaiseError(petError, 'Method "'+Method.Name+'" is already fully declared');
-
-          if pMeth.IsExternal then
-             RaiseError(petError, 'The method header is already declared');
-
-          WasForwarded := True;
-          Method.Free;
-          Method := pMeth;
-          Method.IsForwarded := False;
-        end;
-      finally
-        MethodList.Free;
       end;
-    end;
 
-    if FHasError then
-       exit;
-
-    if IsTypeDeclaration then
-    begin
-      ExpectToken([sesSemiColon, sesOf]);
-      if Tokenizer.Token.AType = sesOf then
+      if DeclareForward then
       begin
-        ReadNextToken;
-        ExpectToken([sesObject]);
-        ReadNextToken;
-        Method.AddHasSelfParam := True;
+        Method.IsOverload := True;
+        GetOverloadedMethods(State, Method, MethodList);
+        try
+          pMeth := nil;
+          for i:=0 to MethodList.Count-1 do
+          begin
+            if MethodHeaderEqual(Method, TSE2Method(MethodList[i])) then
+            begin
+              pMeth := TSE2Method(MethodList[i]);
+              break;
+            end;
+          end;
+
+          if pMeth <> nil then
+          begin
+            if not pMeth.IsForwarded then
+               RaiseError(petError, 'Method "'+Method.Name+'" is already fully declared');
+
+            if pMeth.IsExternal then
+               RaiseError(petError, 'The method header is already declared');
+
+            WasForwarded := True;
+            Method.Free;
+            Method := pMeth;
+            Method.IsForwarded := False;
+          end;
+        finally
+          MethodList.Free;
+        end;
       end;
-      ExpectToken([sesSemiColon]);
-      ReadNextToken;
-    end;
 
-    if Method.HasSelfParam and not WasForwarded then
-    begin
-      Param := TSE2Parameter.Create;
-      if Method.IsStatic and (Method.MethodType <> mtConstructor) then
-        DeclareType(State, Param, '!Self')
-      else
-        DeclareType(State, Param, 'Self');
-      Param.Visibility  := visPublic;
-      Param.AType       := State.CurrentOwner;
-      if State.CurrentOwner is TSE2Class then
-        if TSE2Class(State.CurrentOwner).IsHelper then
-          Param.AType := TSE2Type( TSE2Class(State.CurrentOwner).InheritFrom );
-      Param.IsStatic    := False;
-      Method.Params.Insert(0, Param);
-    end;
-
-    while (Tokenizer.Token.AType in [sesExternal, sesForward, sesVirtual, sesAbstract, sesOverride, sesOverload, sesExport]) and
-          (not FHasError) do
-    begin
       if IsTypeDeclaration then
-         ExpectToken([sesExternal]);
+      begin
+        ExpectToken([sesSemiColon, sesOf]);
+        if Tokenizer.Token.AType = sesOf then
+        begin
+          ReadNextToken;
+          ExpectToken([sesObject]);
+          ReadNextToken;
+          Method.AddHasSelfParam := True;
+        end;
+        ExpectToken([sesSemiColon]);
+        ReadNextToken;
+      end;
 
-      if WasForwarded and (not (Tokenizer.Token.AType in [sesExport])) then
-         RaiseError(petError, 'Modificator not allowed here, because method modificators has already been declared in first declaration');
-      case Tokenizer.Token.AType of
-      sesExternal :
-          begin
-            if ((Method.IsForwarded and not State.IsInInterface)) and (State.CurrentOwner = nil) then
-               RaiseError(petError, 'Forwarded methods can not be external')
-            else
-            if Method.IsAbstract then
-               RaiseError(petError, 'Abstract methods can not be external')
-            else
-            if Method.IsOverride then
-               RaiseError(petError, '"'+Method.Parent.Name + '.' + Method.Name+'" external must be set before override')
-            else
+      if Method.HasSelfParam and not WasForwarded then
+      begin
+        Param := TSE2Parameter.Create;
+
+        Param.Name       := Name;
+        Param.AUnitName  := FUnit.Name;
+        Param.DeclLine   := Tokenizer.Reader.Line;
+        Param.DeclPos    := Tokenizer.Reader.Position;
+        Param.Visibility := visPublic;
+        Param.AType      := State.CurrentOwner;
+        Param.InlineDoc  := 'The current class instance, calling ' + Method.GetStrongName;
+
+        if Method.IsStatic and (Method.MethodType <> mtConstructor) then
+           Param.Name := '!Self'
+        else
+           Param.Name := 'Self';
+
+        if State.CurrentOwner is TSE2Class then
+          if TSE2Class(State.CurrentOwner).IsHelper then
+             Param.AType := TSE2Type( TSE2Class(State.CurrentOwner).InheritFrom );
+        Param.IsStatic    := False;
+        Method.Params.Insert(0, Param);
+      end;
+
+      while (Tokenizer.Token.AType in [sesExternal, sesForward, sesVirtual, sesAbstract, sesOverride, sesOverload, sesExport]) and
+            (True) do
+      begin
+        if IsTypeDeclaration then
+           ExpectToken([sesExternal]);
+
+        if WasForwarded and (not (Tokenizer.Token.AType in [sesExport])) then
+           RaiseError(petError, 'Modificator not allowed here, because method modificators has already been declared in first declaration');
+        case Tokenizer.Token.AType of
+        sesExternal :
             begin
-               if State.CurrentOwner <> nil then
-               begin
-                 if State.CurrentOwner is TSE2Class then
+              if ((Method.IsForwarded and not State.IsInInterface)) and (State.CurrentOwner = nil) then
+                 RaiseError(petError, 'Forwarded methods can not be external')
+              else
+              if Method.IsAbstract then
+                 RaiseError(petError, 'Abstract methods can not be external')
+              else
+              if Method.IsOverride then
+                 RaiseError(petError, '"'+Method.GetStrongName+'" external must be set before override')
+              else
+              begin
+                 if State.CurrentOwner <> nil then
                  begin
-                   if TSE2Type(State.CurrentOwner.InheritRoot) <> TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
-                    RaiseError(petError, 'External method "'+Method.Name+'" must be declared in classes which inherits from TExternalObject');
-                 end else
-                 begin
+                   if State.CurrentOwner is TSE2Class then
+                   begin
+                     if TSE2Type(State.CurrentOwner.InheritRoot) <> TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
+                      RaiseError(petError, 'External method "'+Method.Name+'" must be declared in classes which inherits from TExternalObject');
+                   end else
+                   begin
+                   end;
                  end;
-               end;
 
-               Method.IsExternal := True;
-               Method.IsForwarded := False;
+                 Method.IsExternal := True;
+                 Method.IsForwarded := False;
+              end;
             end;
-          end;
-      sesForward :
-          begin
-            if Method.IsExternal then
-               RaiseError(petError, 'External methods can not be forwarded')
-            else
-            if State.CurrentOwner <> nil then
-               RaiseError(petError, 'Methods in classes are forwarded automatically')
-            else
-            if WasForwarded then
-               RaiseError(petError, 'This method is already forwarded')
-            else
-               Method.IsForwarded := True;
-          end;
-      sesVirtual :
-          begin
-            if State.CurrentOwner = nil then
-               RaiseError(petError, 'Normal methods can not be virtual')
-            else
-            if Method.IsStatic and (Method.MethodType <> mtConstructor) then
-               RaiseError(petError, 'Static methods can not be virtual')
-            else
+        sesForward :
             begin
-              if State.CurrentOwner is TSE2Class then
-                if TSE2Class(State.CurrentOwner).IsHelper then
-                  RaiseError(petError, 'Methods of helper classes can not be virtual');
-
-               Method.IsVirtual := True;
-               Method.Used := True;
-
-               Method.DynamicIndex := TSE2Class(State.CurrentOwner).DynMethods;
-               TSE2Class(State.CurrentOwner).DynMethods := TSE2Class(State.CurrentOwner).DynMethods + 1;
+              if Method.IsExternal then
+                 RaiseError(petError, 'External methods can not be forwarded')
+              else
+              if State.CurrentOwner <> nil then
+                 RaiseError(petError, 'Methods in classes are forwarded automatically')
+              else
+              if WasForwarded then
+                 RaiseError(petError, 'This method is already forwarded')
+              else
+                 Method.IsForwarded := True;
             end;
-          end;
-      sesAbstract :
-          begin
-            if not Method.IsVirtual then
-               RaiseError(petError, 'Abstract methods must be virtual')
-            else
-            if State.CurrentOwner = nil then
-               RaiseError(petError, 'Normal methods can not be abstract')
-            else
-            if Method.MethodType in [mtConstructor, mtDestructor] then
-               RaiseError(petError, 'Constructors/destructors can not be abstract')
-            else
+        sesVirtual :
             begin
-              if State.CurrentOwner is TSE2Class then
-                if TSE2Class(State.CurrentOwner).IsHelper then
-                  RaiseError(petError, 'Methods of helper classes can not be abstract');
-
-               Method.IsAbstract := True;
-               Method.Used := True;
-
-               Method.DynamicIndex := TSE2Class(State.CurrentOwner).DynMethods;
-               TSE2Class(State.CurrentOwner).DynMethods := TSE2Class(State.CurrentOwner).DynMethods + 1;
-            end;
-          end;
-      sesOverride :
-          begin
-            if Method.IsStatic and (not (Method.MethodType in [mtConstructor, mtDestructor])) then
-               RaiseError(petError, 'Static methods can not be overwritten')
-            else
-            begin
-              if not (State.CurrentOwner is TSE2Class) then
-                 RaiseError(petError, 'Only class methods can be declared as override')
+              if State.CurrentOwner = nil then
+                 RaiseError(petError, 'Normal methods can not be virtual')
+              else
+              if Method.IsStatic and (Method.MethodType <> mtConstructor) then
+                 RaiseError(petError, 'Static methods can not be virtual')
+              else
+              if State.CurrentOwner is TSE2Record then
+                 RaiseError(petError, 'Record methods can not be virtual')
               else
               begin
                 if State.CurrentOwner is TSE2Class then
                   if TSE2Class(State.CurrentOwner).IsHelper then
                     RaiseError(petError, 'Methods of helper classes can not be virtual');
 
-                Method.IsAbstract := False;
-                Method.IsOverride := True;
+                 Method.IsVirtual := True;
+                 Method.Used := True;
 
-                if not Method.IsExternal then
+                 Method.DynamicIndex := TSE2Class(State.CurrentOwner).DynMethods;
+                 TSE2Class(State.CurrentOwner).DynMethods := TSE2Class(State.CurrentOwner).DynMethods + 1;
+              end;
+            end;
+        sesAbstract :
+            begin
+              if not Method.IsVirtual then
+                 RaiseError(petError, 'Abstract methods must be virtual')
+              else
+              if State.CurrentOwner = nil then
+                 RaiseError(petError, 'Normal methods can not be abstract')
+              else
+              if Method.MethodType in [mtConstructor, mtDestructor] then
+                 RaiseError(petError, 'Constructors/destructors can not be abstract')
+              else
+              begin
+                if State.CurrentOwner is TSE2Class then
+                  if TSE2Class(State.CurrentOwner).IsHelper then
+                    RaiseError(petError, 'Methods of helper classes can not be abstract');
+
+                 Method.IsAbstract := True;
+                 Method.Used := True;
+
+                 Method.DynamicIndex := TSE2Class(State.CurrentOwner).DynMethods;
+                 TSE2Class(State.CurrentOwner).DynMethods := TSE2Class(State.CurrentOwner).DynMethods + 1;
+              end;
+            end;
+        sesOverride :
+            begin
+              if Method.IsStatic and (not (Method.MethodType in [mtConstructor, mtDestructor])) then
+                 RaiseError(petError, 'Static methods can not be overwritten')
+              else
+              begin
+                if not (State.CurrentOwner is TSE2Class) then
+                   RaiseError(petError, 'Only class methods can be declared as override')
+                else
                 begin
-                  Method.Used := True;
+                  if State.CurrentOwner is TSE2Class then
+                    if TSE2Class(State.CurrentOwner).IsHelper then
+                      RaiseError(petError, 'Methods of helper classes can not be virtual');
 
-                  pMeth := GetOverwrittenMethod(Method);
-                  if pMeth = nil then
-                     RaiseError(petError, 'Method to override not found');
+                  Method.IsAbstract := False;
+                  Method.IsOverride := True;
 
-                  Method.DynamicIndex := pMeth.DynamicIndex;
+                  if not Method.IsExternal then
+                  begin
+                    Method.Used := True;
+
+                    pMeth := GetOverwrittenMethod(Method);
+                    if pMeth = nil then
+                       RaiseError(petError, 'Method to override not found');
+
+                    Method.DynamicIndex := pMeth.DynamicIndex;
+                  end;
                 end;
               end;
             end;
-          end;
-      sesOverload :
-          begin
-            Method.IsOverload := True;
-          end;
-      sesExport :
-          begin
-            Method.IsExport := True;
-          end;
-      end;
-      ReadNextToken;
-      ExpectToken([sesSemiColon]);
-      ReadNextToken;
-    end;
-
-    if FHasError then
-       exit;
-
-    if Tokenizer.Token.AType in [sesCdecl, sesPascal, sesRegister, sesSafecall, sesStdCall] then
-    begin
-      if not Method.IsExternal then
-         RaiseError(petError, 'Call convention can only be set for external methods')
-      else
-      begin
-        case Tokenizer.Token.AType of
-        sesCdecl     : Method.CallConvention := callCdecl;
-        sesPascal    : Method.CallConvention := callPascal;
-        sesRegister  : Method.CallConvention := callRegister;
-        sesSafecall  : Method.CallConvention := callSafecall;
-        sesStdCall   : Method.CallConvention := callStdcall;
+        sesOverload :
+            begin
+              Method.IsOverload := True;
+            end;
+        sesExport :
+            begin
+              Method.IsExport := True;
+            end;
         end;
+        ReadNextToken;
+        ExpectToken([sesSemiColon]);
+        ReadNextToken;
       end;
-      ReadNextToken;   
-      ExpectToken([sesSemiColon]);
-      ReadNextToken;
-    end;
 
-    if Tokenizer.Token.AType = sesDeprecated then
-    begin
-      ProcessDeprecatedExpression(State, Method);
-      ExpectToken([sesSemiColon]);
-      ReadNextToken;
-    end;
+      if Tokenizer.Token.AType in [sesCdecl, sesPascal, sesRegister, sesSafecall, sesStdCall] then
+      begin
+        if not Method.IsExternal then
+           RaiseError(petError, 'Call convention can only be set for external methods')
+        else
+        begin
+          case Tokenizer.Token.AType of
+          sesCdecl     : Method.CallConvention := callCdecl;
+          sesPascal    : Method.CallConvention := callPascal;
+          sesRegister  : Method.CallConvention := callRegister;
+          sesSafecall  : Method.CallConvention := callSafecall;
+          sesStdCall   : Method.CallConvention := callStdcall;
+          end;
+        end;
+        ReadNextToken;
+        ExpectToken([sesSemiColon]);
+        ReadNextToken;
+      end;
 
-    if Method.MethodType = mtConstructor then
-      if not Method.IsExternal then
-        if State.CurrentOwner <> nil then
-           if TSE2Type(State.CurrentOwner.InheritRoot) = TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
-             RaiseError(petError, 'Constructors of external classes must be external');
+      if Tokenizer.Token.AType = sesDeprecated then
+      begin
+        ProcessDeprecatedExpression(State, Method);
+        ExpectToken([sesSemiColon]);
+        ReadNextToken;
+      end;
+
+      if Method.MethodType = mtConstructor then
+        if not Method.IsExternal then
+          if State.CurrentOwner <> nil then
+             if TSE2Type(State.CurrentOwner.InheritRoot) = TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
+               RaiseError(petError, 'Constructors of external classes must be external');
 
 
-    if Method.IsExternal then
-    begin
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLEX(0, 0{MakeCallExOptionMask(Method)}), Method.GenLinkerName));
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
-    end;
+      if Method.IsExternal then
+      begin
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLEX(0, 0{MakeCallExOptionMask(Method)}), Method.GenLinkerName));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+      end;
 
-
-    if not FHasError then
-      // if "WasForwarded" = True, Method is already in the list
+      {
+      if not FHasError then
+        // if "WasForwarded" = True, Method is already in the list
+        if not WasForwarded then
+          if not IsTypeDeclaration then
+            FUnit.ElemList.Add(Method);
+      }
       if not WasForwarded then
         if not IsTypeDeclaration then
           FUnit.ElemList.Add(Method);
-  finally
+    except
+      if not WasForwarded then
+      begin
+        FUnit.ElemList.Delete(Method);
+        Method.Free;
+        Method := nil;
+      end;
+    end
+  finally               {
     if FHasError and (not WasForwarded) then
     begin
       FUnit.ElemList.Delete(Method);
       Method.Free;
       Method := nil;
-    end;
+    end;         }
       //if not WasForwarded then
        //FreeAndNil(Method);
     result := Method;
@@ -2694,6 +2793,26 @@ end;
 procedure TSE2Parser.StatementSquence(State: TSE2ParseState; Method: TSE2Method);
 var oldStackSize : integer;
     oldRecords   : integer;
+
+  procedure DoStatement;
+  begin
+    try
+      Statement(State, Method);
+    except
+      on E: ESE2ParserError do
+      begin
+        State.IsExpression := False;
+        State.LastVariable := nil;
+        State.LastProperty := nil;
+        State.LastMethod   := nil;
+        State.LastTargetVar := nil;
+        State.LastSetVariable := nil;
+        while not (Tokenizer.Token.AType in [sesSemiColon, sesEnd, sesNone, sesUnknown]) do
+          ReadNextToken;
+      end;
+    end;
+  end;
+
 begin
   State.Method     := Method;
   State.AParent    := nil;
@@ -2702,8 +2821,8 @@ begin
 
   oldRecords   := State.RecordsCreated;
   oldStackSize := State.StackSize;
-  Statement(State, Method);
-  while (Tokenizer.Token.AType = sesSemiColon) and (not FHasError) do
+  DoStatement;
+  while (Tokenizer.Token.AType = sesSemiColon) {and (not FHasError)} do
   begin
     if oldRecords < State.RecordsCreated then
     begin
@@ -2712,7 +2831,7 @@ begin
     State.RecordsCreated := oldRecords;
 
     ReadNextToken;
-    Statement(State, Method);
+    DoStatement;
   end;
 
   if oldRecords < State.RecordsCreated then
@@ -2731,9 +2850,6 @@ begin
   State.Method     := Method;
   State.TargetType := nil;
   State.AParent    := nil;
-
-  if FHasError then
-     exit;
 
   case Tokenizer.Token.AType of
   sesBegin :
@@ -2870,14 +2986,14 @@ var i          : integer;
            IncreaseMethodStackPositions(State, Method, index + 1, Method.OpCodes.Count-1, -1, iStackSize);
         State.IncStack;
       end else
-      if CallMethod.IsExternal and (CallMethod.ReturnValue <> nil) then
+      if CallMethod.IsExternal and ((CallMethod.ReturnValue <> nil) or CallMethod.IsOverload) then
       begin
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''), Index, Index > -1);
         if Index > -1 then
            IncreaseMethodStackPositions(State, Method, index + 1, Method.OpCodes.Count-1, -1, iStackSize);
         State.IncStack;
       end else
-      if (CallMethod.ReturnValue <> nil) then
+      if (CallMethod.ReturnValue <> nil) or (CallMethod.IsOverload) then
       begin
         if CallMethod.IsStatic then
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, False), ''), Index, Index > -1)
@@ -2898,7 +3014,8 @@ var i          : integer;
     end
   end;
 
-var ResultCodeIndex : integer;
+var ResultCodeIndex  : integer;
+    wasStaticPointer : boolean;
 begin
   State.AParent     := nil;
   State.ParamMethod := CallMethod;
@@ -2925,12 +3042,13 @@ begin
   OldTarget := State.TargetType;
   State.TargetType := nil;
 
-  if not CallMethod.IsOverload then
-  {$IFDEF SEII_SMART_LINKING}
-  Method.UsedMethods.Add(CallMethod);
-  {$ELSE}
-  CallMethod.Used := True;
-  {$ENDIF}
+  if (CallMethod.AUnitName <> '') and (CallMethod.Name <> '') then
+      if not CallMethod.IsOverload then
+      {$IFDEF SEII_SMART_LINKING}
+      Method.UsedMethods.Add(CallMethod);
+      {$ELSE}
+      CallMethod.Used := True;
+      {$ENDIF}
 
   case CallMethod.MethodType of
   mtProcedure   : result := nil;
@@ -2953,14 +3071,25 @@ begin
 
   ResultCodeIndex := Method.OpCodes.Count;
   // Add the return value as a new stack element
-  if result <> nil then
+  if (result <> nil) or (CallMethod.IsOverload) then
   begin
-    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(TSE2Type(result.InheritRoot).AType), ''));
-    if result is TSE2Record then
+    if (result <> nil) then
+       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(TSE2Type(result.InheritRoot).AType), ''))
+    else
+       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btS32), ''));
+     
+    if not CallMethod.IsOverload then
     begin
-      State.RecordsCreated := State.RecordsCreated + 1;
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + result.GenLinkerName));
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MARK_DEL, ''));
+      if result is TSE2Record then
+      begin
+        State.RecordsCreated := State.RecordsCreated + 1;
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + result.GenLinkerName));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MARK_DEL, ''));
+      end;
+    end else
+    begin
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.NOOP, ''));
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.NOOP, ''));
     end;
     State.IncStack;
   end;
@@ -2997,6 +3126,7 @@ begin
         if CallMethod.HasSelfParam then
            ParamDecl.Add(TSE2ParamExpression.Create(TSE2Type(CallMethod.Parent), nil, -1));
 
+        wasStaticPointer := State.NoStaticPointer;
         if Tokenizer.Token.AType = tokOpen then
         begin
           State.ParamIndex := 0;
@@ -3029,6 +3159,7 @@ begin
             end;
           end;
 
+          State.NoStaticPointer := wasStaticPointer;
           CallMethod := FindMatchingMethod(State, Method, MethodList, ParamDecl, CallMethod.HasSelfParam);
           if CallMethod = nil then
           begin
@@ -3036,12 +3167,13 @@ begin
             exit;
           end;
 
-          
+
 
           ExpectToken([tokClose]);
           ReadNextToken;
         end else
         begin
+          State.NoStaticPointer := wasStaticPointer;
           CallMethod := FindMatchingMethod(State, Method, MethodList, ParamDecl, CallMethod.HasSelfParam);
           if CallMethod = nil then
           begin
@@ -3063,7 +3195,16 @@ begin
       if result <> nil then
       begin
         if Method.OpCodes[ResultCodeIndex].OpCode.OpCode = soSTACK_INC then
-           PSE2OpSTACK_INC(Method.OpCodes.Items[ResultCodeIndex].OpCode).AType := TSE2Type(result.InheritRoot).AType;
+        begin
+          PSE2OpSTACK_INC(Method.OpCodes.Items[ResultCodeIndex].OpCode).AType := TSE2Type(result.InheritRoot).AType;
+
+          if result is TSE2Record then
+          begin
+            State.RecordsCreated := State.RecordsCreated + 1;
+            Method.OpCodes.Items[ResultCodeIndex + 1].ChangeOpCode(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + result.GenLinkerName);
+            Method.OpCodes.Items[ResultCodeIndex + 2].ChangeOpCode(TSE2OpCodeGen.REC_MARK_DEL, '');
+          end;
+        end;
       end;
 
       //AddMethodPointerStack(CallMethod, iPushPos);
@@ -3071,6 +3212,7 @@ begin
 
     end else
     begin
+      wasStaticPointer := State.NoStaticPointer;
       // Add the parameters to the stack
       if (iStop > iStart) or (Tokenizer.Token.AType = tokOpen) then
       begin
@@ -3114,7 +3256,7 @@ begin
               end;
           ptVar :
               begin
-                State.ParamMethod := CallMethod;   
+                State.ParamMethod := CallMethod;
                 State.ParamIndex  := i - iStart;    (*
                 ExpectToken([sesIdentifier]);
                 aType := FindIdentifier(Method, Tokenizer.Token.Value, nil, '',
@@ -3144,13 +3286,12 @@ begin
 
                 if TSE2Variable(State.LastTargetVar).AType <> TSE2Parameter(CallMethod.Params[i]).AType then
                    RaiseError(petError, Format('var parameter type "%s" does not match with the given type "%s"',
-                              [TSE2Parameter(CallMethod.Params[i]).AType.AUnitName + '.' +
-                               TSE2Parameter(CallMethod.Params[i]).AType.Name,
-                               TSE2Variable(State.LastTargetVar).AType.AUnitName + '.' + TSE2Variable(State.LastTargetVar).AType.Name]));
+                              [TSE2Parameter(CallMethod.Params[i]).AType.GetStrongName,
+                               TSE2Variable(State.LastTargetVar).AType.GetStrongName]));
 
                 //PushVarToStack(State, Method, TSE2Variable(State.LastTargetVar), True);
 
-                
+
                 State.ParamIndex  := i - iStart + 1;
                 State.ParamMethod := CallMethod;
               end;
@@ -3167,24 +3308,22 @@ begin
         ReadNextToken;
 
       end;
+      State.NoStaticPointer := wasStaticPointer;
     end;
-        
+
+    wasStaticPointer := State.NoStaticPointer;
     if Assigned(LastParamSetter) then
        LastParamSetter(Self, State, Method, TSE2Parameter(CallMethod.Params[iStop]).AType);
+    State.NoStaticPointer := wasStaticPointer;
 
-    {$IFDEF SEII_SMART_LINKING}
-    Method.UsedMethods.Add(CallMethod);
-    {$ELSE}
-    CallMethod.Used := True;
-    {$ENDIF}
+    if (CallMethod.AUnitName <> '') and (CallMethod.Name <> '') then
+        {$IFDEF SEII_SMART_LINKING}
+        Method.UsedMethods.Add(CallMethod);
+        {$ELSE}
+        CallMethod.Used := True;
+        {$ENDIF}
 
-    if CallMethod.IsDeprecated then
-    begin
-      if CallMethod.DeprecatedValue <> '' then
-         RaiseError(petWarning, CallMethod.AUnitName + '.' + CallMethod.Name + ' is deprecated. ' + CallMethod.DeprecatedValue)
-      else
-         RaiseError(petWarning, CallMethod.AUnitName + '.' + CallMethod.Name + ' is deprecated.');
-    end;
+    CheckForDeprecated(CallMethod);
 
     // Add the return position to the stack
     //=========== OLD CODE : BEGIN
@@ -3289,6 +3428,25 @@ begin
       end;
       // Class must be already in stack - so no push
     end;
+
+    if CallMethod.IsOverload then
+    begin
+      if (CallMethod.ReturnValue = nil) then
+      begin
+        if CallMethod.HasSelfParam then
+        begin
+          if not CallMethod.IsStatic then
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+            State.DecStack;
+          end;
+        end;
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        State.DecStack;
+      end;
+      //if (not CallMethod.IsStatic) and (CallMethod.Parent <> nil) then
+      //   State.DecStack;
+    end;
                        (*
     if CallMethod.IsOverload then
     begin
@@ -3375,14 +3533,9 @@ begin
   LastItem      := nil;  
   State.WasFunction := False;
   State.LastProperty := nil;
-  while not FHasError do
+  while True do
   begin
     ExpectToken([sesIdentifier]);
-
-    //if (Tokenizer.Token.Value = 'Self') then //or (Tokenizer.Token.Value = 'GetValue') then
-    //begin
-    //  Sleep(1);
-    //end;
 
     searchString := Tokenizer.Token.Value;
     FindItem := FindIdentifier(Method, Tokenizer.Token.Value, pSearchParent, SearchUnit, nil, AccessSet);
@@ -3392,13 +3545,7 @@ begin
     begin
       // Method deprecated is used in "CallMethod" because of overloads
       if not (FindItem is TSE2Method) then
-        if FindItem.IsDeprecated then
-        begin
-          if FindItem.DeprecatedValue <> '' then
-             RaiseError(petWarning, FindItem.AUnitName + '.' + FindItem.Name + ' is deprecated. ' + FindItem.DeprecatedValue)
-          else
-             RaiseError(petWarning, FindItem.AUnitName + '.' + FindItem.Name + ' is deprecated.');
-        end;
+         CheckForDeprecated(FindItem);
     end;
 
     if not (FindItem is TSE2Unit) then
@@ -3437,8 +3584,12 @@ begin
 
       if TSE2Variable(FindItem).Parent is TSE2Record then
       begin
-        if State.RootRecord = nil then
-          State.RootRecord := TSE2Record(TSE2Variable(FindItem).Parent);
+        if not TSE2Variable(FindItem).IsStatic then
+        begin
+          if State.RootRecord = nil then
+            State.RootRecord := TSE2Record(TSE2Variable(FindItem).Parent);
+        end else
+          State.RootRecord := nil;
       end;
 
       if (TSE2Variable(FindItem).AType is TSE2Class) then
@@ -3592,7 +3743,7 @@ begin
             result         := TSE2Type(FindItem);
             pSearchParent  := FindItem;
           end;
-      else RaiseError(petError, 'Invalid expression: type "'+FindItem.AUnitName + '.' + FindItem.Name +'" can not be used like a variable');
+      else RaiseError(petError, 'Invalid expression: type "'+FindItem.GetStrongName +'" can not be used like a variable');
       end;
     end else
     if FindItem is TSE2Unit then
@@ -3651,7 +3802,7 @@ begin
         end;
       end;
 
-      State.LastVariable := nil; 
+      State.LastVariable := nil;
       if not State.IsExpression then
          State.LastTargetVar := nil;
       //LastItem := nil;
@@ -3936,6 +4087,8 @@ var Token   : TSE2TokenType;
     FacType : TSE2Type;
 begin
   result := MathExpression(State, Method, TargetType);
+  if result = nil then
+     RaiseError(petError, 'Expression did not return a value');
   while Tokenizer.Token.AType in [sesPlus, sesMinus, sesIs, sesAs, sesEqual, sesSmaller, sesBigger, sesSmallerEqual, sesBiggerEqual, sesUnEqual, sesOr, sesXor] do
   begin
     Token   := Tokenizer.Token.AType;
@@ -4001,6 +4154,8 @@ begin
     else
         begin
           FacType := MathExpression(State, Method, TargetType);
+          if FacType = nil then
+             RaiseError(petError, 'Expression did not return a value');
 
           if not IsCompatible(result, FacType, Token, False, Self) then
              RaiseError(petError, GenIncompatibleExpression(FacType, result, Token));
@@ -4151,16 +4306,16 @@ begin
       begin
         if Variable.IsStatic then
         begin
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, 0), Variable.GenLinkerName));
-           MakeRecordPop;
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, 0), Variable.GenLinkerName));
+          MakeRecordPop;
         end else
         begin
-           CodeIndex := -1;
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-           MakeRecordPop;
+          CodeIndex := -1;
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+          MakeRecordPop;
+          State.DecStack;
         end;
-        State.DecStack;
       end else
       begin
         if Variable.IsStatic then
@@ -4169,8 +4324,8 @@ begin
         begin
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+          State.DecStack;
         end;
-        State.DecStack;
       end;
     end else
     if Variable.Parent is TSE2Record then
@@ -4179,16 +4334,16 @@ begin
       begin
         if Variable.IsStatic then
         begin
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, 0), Variable.GenLinkerName));
-           MakeRecordPop;
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(0, 0), Variable.GenLinkerName));
+          MakeRecordPop;
         end else
         begin
-           CodeIndex := -1;
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-           MakeRecordPop;
+          CodeIndex := -1;
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+          MakeRecordPop;
+          State.DecStack;
         end;
-        State.DecStack;
       end else
       begin                  
         if Variable.IsStatic then
@@ -4197,8 +4352,8 @@ begin
         begin
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+          State.DecStack;
         end;
-        State.DecStack;
       end;
     end else
        RaiseError(petError, 'Internal error: variable owner not as expected');
@@ -4216,9 +4371,23 @@ begin
   ReadNextToken;
 
   State.IsExpression := True;
-  Expr := Expression(State, Method, GetBooleanType);
-  if not IsCompatible(GetBooleanType, Expr, sesNone, False, Self) then
-     RaiseError(petError, GenIncompatibleExpression(Expr, GetBooleanType));
+  try
+    Expr := Expression(State, Method, GetBooleanType);
+    if not IsCompatible(GetBooleanType, Expr, sesNone, False, Self) then
+       RaiseError(petError, GenIncompatibleExpression(Expr, GetBooleanType));
+  except
+    on E: ESE2ParserError do
+    begin
+      State.IsExpression := False;
+      State.LastVariable := nil;
+      State.LastProperty := nil;
+      State.LastMethod   := nil;
+      State.LastTargetVar := nil;
+      State.LastSetVariable := nil;
+      while not (Tokenizer.Token.AType in [sesThen, sesElse, sesSemiColon, sesEnd, sesNone, sesUnknown]) do
+        ReadNextToken;
+    end;
+  end;
   State.IsExpression := False;
 
   ExpectToken([sesThen]);
@@ -4228,7 +4397,21 @@ begin
   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
   State.DecStack;
 
-  Statement(State, Method);
+  try
+    Statement(State, Method);
+  except
+    on E: ESE2ParserError do
+    begin
+      State.IsExpression := False;
+      State.LastVariable := nil;
+      State.LastProperty := nil;
+      State.LastMethod   := nil;
+      State.LastTargetVar := nil;
+      State.LastSetVariable := nil;
+      while not (Tokenizer.Token.AType in [sesElse, sesSemiColon, sesEnd, sesNone, sesUnknown]) do
+        ReadNextToken;
+    end;
+  end;
 
   OpCodePos2 := Method.OpCodes.Count;
   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
@@ -4238,7 +4421,21 @@ begin
   if Tokenizer.Token.AType in [sesElse] then
   begin
     ReadNextToken;
-    Statement(State, Method);
+    try
+      Statement(State, Method);
+    except
+    on E: ESE2ParserError do
+    begin
+      State.IsExpression := False;
+      State.LastVariable := nil;
+      State.LastProperty := nil;
+      State.LastMethod   := nil;
+      State.LastTargetVar := nil;
+      State.LastSetVariable := nil;
+      while not (Tokenizer.Token.AType in [sesSemiColon, sesEnd, sesNone, sesUnknown]) do
+        ReadNextToken;
+    end;
+  end;
   end;
 
   PSE2OpFLOW_GOTO(Method.OpCodes[OpCodePos2].OpCode).Position := Method.OpCodes.Count;
@@ -4285,9 +4482,23 @@ begin
         State.TargetType := Expr;
 
         State.IsExpression := True;
-        CaseType := Expression(State, Method, Expr);
-        if not IsCompatible(Expr, CaseType, sesNone, False, Self) then
-           RaiseError(petError, 'Type dismatch');
+        try
+          CaseType := Expression(State, Method, Expr);
+          if not IsCompatible(Expr, CaseType, sesNone, False, Self) then
+             RaiseError(petError, 'Type dismatch');
+        except
+          on E: ESE2ParserError do
+          begin
+            State.IsExpression := False;
+            State.LastVariable := nil;
+            State.LastProperty := nil;
+            State.LastMethod   := nil;
+            State.LastTargetVar := nil;
+            State.LastSetVariable := nil;
+            while not (Tokenizer.Token.AType in [sesColon, sesElse, sesSemiColon, sesDoublePoint, sesEnd, sesNone, sesUnknown]) do
+              ReadNextToken;
+          end;
+        end;
         State.IsExpression := False;
 
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(1), ''));
@@ -4320,7 +4531,22 @@ begin
 
 
       ReadNextToken;
-      Statement(State, Method);
+      try
+        Statement(State, Method);
+      except
+        on E: ESE2ParserError do
+        begin
+          State.IsExpression := False;
+          State.LastVariable := nil;
+          State.LastProperty := nil;
+          State.LastMethod   := nil;
+          State.LastTargetVar := nil;
+          State.LastSetVariable := nil;
+          while not (Tokenizer.Token.AType in [sesElse, sesDoublePoint, sesColon, sesSemiColon, sesEnd, sesNone, sesUnknown]) do
+            ReadNextToken;
+        end;
+      end;
+
       ExpectToken([sesSemiColon]);
       ReadNextToken;
 
@@ -4694,8 +4920,6 @@ begin
   StatementSquence(State, Method);
 
   ExpectToken([sesFinally, sesExcept]);
-  if FHasError then
-     exit;
 
   PSE2OpSAFE_TRYFIN(Method.OpCodes[OpCodePos2].OpCode).SavePos := Method.OpCodes.Count;
   OpCodePos1 := Method.OpCodes.Count;
@@ -4768,14 +4992,16 @@ var Token   : TSE2TokenType;
     FacType : TSE2Type;
 begin
   result := Operators(State, Method, TargetType);
+  if result = nil then
+     RaiseError(petError, 'Expression did not return a value');
   while Tokenizer.Token.AType in [sesStar, sesSlash, sesDiv, sesMod, sesAnd, sesShr, sesShl] do
   begin
-    if FHasError then
-       exit;
 
     Token   := Tokenizer.Token.AType;
     ReadNextToken;
     FacType := Operators(State, Method, TargetType);
+    if FacType = nil then
+       RaiseError(petError, 'Expression did not return a value');
 
 
     if Token = sesSlash then
@@ -4790,8 +5016,6 @@ begin
     result := ConvertIntToSingle(State, Method, result, FacType);
     ConvertVariableCode(State, Method, FacType, result);
     //result  := FacType;
-    if FHasError then
-       exit;
 
     case Token of
     sesStar   : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(4), ''));
@@ -4816,8 +5040,6 @@ begin
     Token  := Tokenizer.Token.AType;
     ReadNextToken;
     result := Term(State, Method, TargetType);
-    if FHasError then
-       exit;
 
     if Token = sesMinus then
        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(1), ''))
@@ -4832,16 +5054,20 @@ begin
   end else
     result := Term(State, Method, TargetType);
 
+  if result = nil then
+     RaiseError(petError, 'Expression did not return a value');
+
   while Tokenizer.Token.AType in [sesPlus, sesMinus, sesOr, sesXor] do
   begin
-    if FHasError then
-       exit;
                  
     Token := Tokenizer.Token.AType;
     ReadNextToken;
     FacType := Term(State, Method, TargetType);
+    if FacType = nil then
+       RaiseError(petError, 'Expression did not return a value');
+
     if not IsCompatible(FacType, Result, Token, False, Self) then
-       RaiseError(petError, GenIncompatibleExpression(Result, FacType));
+       RaiseError(petError, GenIncompatibleExpression(Result, FacType, Token));
 
     result := ConvertIntToSingle(State, Method, result, FacType);
 
@@ -4865,11 +5091,17 @@ begin
      RaiseError(petError, 'Internal error: boolean type not found');
 end;       
 
-function TSE2Parser.GetIntegerType: TSE2Type;
+function TSE2Parser.GetIntegerType(use64Bit: boolean = True): TSE2Type;
+var s: string;
 begin
-  result := TSE2Type(FindIdentifier(nil, C_SE2Int64, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Type])));
+  if use64Bit then
+     s := C_SE2Int64
+  else
+     s := C_SE2Int32;
+
+  result := TSE2Type(FindIdentifier(nil, s, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Type])));
   if result = nil then
-     RaiseError(petError, 'Internal error: int64 type not found');
+     RaiseError(petError, 'Internal error: '+s+' type not found');
 end;
 
 function TSE2Parser.GetDoubleType: TSE2Type;
@@ -5135,11 +5367,11 @@ begin
               if not ClassesAreCompatible(TSE2Class(orgTarget), TSE2Class(orgCurrent)) then
               begin
                 if AInstance <> nil then
-                   AInstance.RaiseError(petWarning,
-                     Format('Classes might not be compatible: "%s" is assigned to "%s"',
+                   AInstance.RaiseError(petError,
+                     Format('Classes are not compatible: "%s" can not be assigned to "%s"',
                        [
-                         orgCurrent.AUnitName + '.' + orgCurrent.Name,
-                         orgTarget.AUnitName + '.' + orgTarget.Name
+                         orgCurrent.GetStrongName,
+                         orgTarget.GetStrongName
                        ]
                      )
                    );
@@ -5281,8 +5513,15 @@ begin
       end;
   sesInteger :
       begin
-        result := GetIntegerType;
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btS64), ''));
+        if Tokenizer.Token.AsInteger and int64($FFFFFFFF00000000) <> 0 then
+        begin
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btS64), ''));
+           result := GetIntegerType(True);
+        end else
+        begin
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btS32), ''));
+           result := GetIntegerType(False);
+        end;
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(Tokenizer.Token.AsInteger), ''));
         State.IncStack;
         ReadNextToken;
@@ -5362,9 +5601,6 @@ begin
       end;
   end;
 
-  if FHasError then
-     exit;
-
   if (TargetType <> nil) and (result <> nil) then
   begin
     if (result.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64]) and
@@ -5384,7 +5620,7 @@ begin
   if Method.IsVirtual or Method.IsOverride then
      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DEBUG_META(0), Method.GenLinkerName));
 
-  while not FHasError do
+  while True do
   begin
     case Tokenizer.Token.AType of
     sesType       :
@@ -5402,9 +5638,6 @@ begin
         break;
     end;
   end;
-
-  if FHasError then
-     exit;
 
 
   ExpectToken([sesBegin]);
@@ -5539,9 +5772,9 @@ begin
         if TSE2Method(FUnit.ElemList[i]).OpCodes.Count = 0 then
         begin
           if TSE2Method(FUnit.ElemList[i]).Parent is TSE2Type then
-            RaiseError(petError, 'Method '+FUnit.ElemList[i].Parent.Name+'.'+FUnit.ElemList[i].Name+' is not fully declared', FUnit.ElemList[i].DeclPos, FUnit.ElemList[i].DeclLine)
+            RaiseError(petError, 'Method '+FUnit.ElemList[i].GetStrongName+' is not fully declared', FUnit.ElemList[i].DeclPos, FUnit.ElemList[i].DeclLine)
           else
-            RaiseError(petError, 'Method '+FUnit.ElemList[i].Name+' is not fully declared', FUnit.ElemList[i].DeclPos, FUnit.ElemList[i].DeclLine);
+            RaiseError(petError, 'Method '+FUnit.ElemList[i].GetStrongName+' is not fully declared', FUnit.ElemList[i].DeclPos, FUnit.ElemList[i].DeclLine);
         end;
     end;
 
@@ -5613,7 +5846,7 @@ function TSE2Parser.FindMatchingMethod(State: TSE2ParseState; Method: TSE2Method
   ParamExpression: TSE2BaseTypeList; IgnoreFirst: boolean): TSE2Method;
 
 type
-  TSearchFilter = (sfLoose, sfVarParam, sfNumberType, sfExactParam);
+  TSearchFilter = (sfLoose, sfVarParam, sfNumberType, sfInheritRoot, sfExactParam);
 
   function MethodMatchesParam(MethodParam: TSE2Parameter; Param: TSE2ParamExpression; Filter: TSearchFilter): boolean;
   begin
@@ -5655,6 +5888,11 @@ type
     end;
 
     if (Filter = sfNumberType) or (not result) then
+       exit;
+
+    result := Param.AType.InheritRoot = MethodParam.AType.InheritRoot;
+
+    if (Filter = sfInheritRoot) or (not result) then
        exit;
 
     result := Param.AType = MethodParam.AType;
@@ -5712,6 +5950,9 @@ begin
   // first of all - delete every method with different number of parameters
   for i:=MethodList.Count-1 downto 0 do
     if TSE2Method(MethodList[i]).Params.Count <> ParamExpression.Count then
+       MethodList.Delete(i)
+    else
+    if State.NoStaticPointer and not TSE2Method(MethodList[i]).IsStatic then
        MethodList.Delete(i);
 
   if MethodList.Count = 0 then
@@ -5767,17 +6008,32 @@ begin
       for i:=MethodList.Count-1 downto 0 do
       begin
         for p:=iParamStart to TSE2Method(MethodList[i]).Params.Count-1 do
-          if not (MethodMatchesParam(TSE2Parameter(TSE2Method(MethodList[i]).Params[p]), TSE2ParamExpression(ParamExpression[p]), sfExactParam)) then
+          if not (MethodMatchesParam(TSE2Parameter(TSE2Method(MethodList[i]).Params[p]), TSE2ParamExpression(ParamExpression[p]), sfInheritRoot)) then
           begin
             MethodList.Delete(i);
             break;
           end;
       end;
 
+      if MethodList.Count = 0 then
+         exit;
+
       if MethodList.Count > 1 then
       begin
-         RaiseError(petError, 'More than one method matches to the parameters');
-         exit;
+        for i:=MethodList.Count-1 downto 0 do
+        begin
+          for p:=iParamStart to TSE2Method(MethodList[i]).Params.Count-1 do
+            if not (MethodMatchesParam(TSE2Parameter(TSE2Method(MethodList[i]).Params[p]), TSE2ParamExpression(ParamExpression[p]), sfExactParam)) then
+            begin
+              MethodList.Delete(i);
+              break;
+            end;
+        end;
+        if MethodList.Count > 1 then
+        begin
+           RaiseError(petError, 'More than one method matches to the parameters');
+           exit;
+        end;
       end;
     end;
   end;
@@ -5815,7 +6071,7 @@ begin
   ExpectToken([sesConst]);
   ReadNextToken;
 
-  while not FHasError do
+  while True do
   begin
     ExpectToken([sesIdentifier]);
     ConstName := Tokenizer.Token.Value;
@@ -5862,8 +6118,13 @@ begin
         DeclareType(State, cnst, ConstName);
         cnst.AType := oldC.AType;
         cnst.Value := oldC.Value;
-        cnst.Parent := State.CurrentOwner;
-        FUnit.ElemList.Add(cnst);
+        if Method <> nil then
+           Method.Types.Add(cnst)
+        else
+        begin
+          cnst.Parent := State.CurrentOwner;
+          FUnit.ElemList.Add(cnst);
+        end;
       end else
       begin
         if Tokenizer.Token.AType = sesMinus then
@@ -5896,8 +6157,13 @@ begin
               cnst.Value   := Tokenizer.Token.Value;
             end;
         end;
-        cnst.Parent := State.CurrentOwner;
-        FUnit.ElemList.Add(cnst);
+        if Method <> nil then
+           Method.Types.Add(cnst)
+        else
+        begin
+          cnst.Parent := State.CurrentOwner;
+          FUnit.ElemList.Add(cnst);
+        end;
       end;
     end else
     begin
@@ -5921,8 +6187,13 @@ begin
             if neg then
                cnst.AsInteger := -cnst.AsInteger;
 
-            cnst.Parent := State.CurrentOwner;
-            FUnit.ElemList.Add(cnst);
+            if Method <> nil then
+               Method.Types.Add(cnst)
+            else
+            begin
+              cnst.Parent := State.CurrentOwner;
+              FUnit.ElemList.Add(cnst);
+            end;
           end;
       btSingle, btDouble :
           begin
@@ -5941,8 +6212,13 @@ begin
             if neg then
                cnst.AsFloat := -cnst.AsFloat;
 
-            cnst.Parent := State.CurrentOwner;
-            FUnit.ElemList.Add(cnst);
+            if Method <> nil then
+               Method.Types.Add(cnst)
+            else
+            begin
+              cnst.Parent := State.CurrentOwner;
+              FUnit.ElemList.Add(cnst);
+            end;
           end;
       btString, btWideString, btUTF8String, btPChar :
           begin
@@ -5953,8 +6229,13 @@ begin
             DeclareType(State, cnst, ConstName);
             cnst.Value := Tokenizer.Token.Value;
 
-            cnst.Parent := State.CurrentOwner;
-            FUnit.ElemList.Add(cnst);
+            if Method <> nil then
+               Method.Types.Add(cnst)
+            else
+            begin
+              cnst.Parent := State.CurrentOwner;
+              FUnit.ElemList.Add(cnst);
+            end;
           end;
       else
           RaiseError(petError, 'Unsupported const type');
@@ -5985,6 +6266,7 @@ var aProperty : TSE2Property;
     aParamType: TSE2BaseType;
     i, start  : integer;
     Item      : TSE2BaseType;
+    oldParent : TSE2BaseType;
 begin
   if State.CurrentOwner = nil then
      RaiseError(petError, 'Internal error: property not in class');
@@ -6008,6 +6290,8 @@ begin
   aParams.OwnsObjs := False;
   aParams.OwnsObj  := False;
   try
+    oldParent := State.AParent;
+    State.AParent := nil;
     ReadNextToken;
     ExpectToken([sesDoublePoint, sesOpenBracket]);
     if Tokenizer.Token.AType = sesOpenBracket then
@@ -6020,7 +6304,7 @@ begin
            RaiseError(petError, 'Name already declared');
         aProperty.AddParam(Tokenizer.Token.Value, nil);
         ReadNextToken;
-        while (Tokenizer.Token.AType in [sesColon]) and (not FHasError) do
+        while (Tokenizer.Token.AType in [sesColon]) do
         begin
           ExpectToken([sesColon]);
           ReadNextToken;
@@ -6035,7 +6319,8 @@ begin
         ReadNextToken;
         ExpectToken([sesIdentifier]);
 
-        aParamType := FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type]));
+        aParamType := TypeExpression(nil);
+        //aParamType := FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type]));
         if aParamType = nil then
            RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"')
         else
@@ -6054,19 +6339,19 @@ begin
            ReadNextToken;
            ExpectToken([sesIdentifier]);
         end;
-      until FHasError or (Tokenizer.Token.AType = sesCloseBracket);
-      if FHasError then
-         exit;
+      until (Tokenizer.Token.AType = sesCloseBracket);
       ReadNextToken;
     end;
     ExpectToken([sesDoublePoint]);
     ReadNextToken;
     ExpectToken([sesIdentifier]);
-    aProperty.AType := TSE2Type(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
+    aProperty.AType := TypeExpression(nil);
+    //aProperty.AType := TSE2Type(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type])));
     if aProperty.AType = nil then
        RaiseError(petError, 'Unknown type identifier: "'+Tokenizer.Token.Value+'"');
 
-    ReadNextToken;    
+    State.AParent := oldParent;
+    ReadNextToken;
     if (not StringIdentical(Tokenizer.Token.Value, 'read')) and
        (not StringIdentical(Tokenizer.Token.Value, 'write')) then
        RaiseError(petError, '"read" or "write" expected');
@@ -6081,13 +6366,7 @@ begin
       if aSource = nil then
          RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
 
-      if aSource.IsDeprecated then
-      begin
-        if aSource.DeprecatedValue <> '' then
-           RaiseError(petWarning, aSource.AUnitName + '.' + aSource.Name + ' is deprecated. ' + aSource.DeprecatedValue)
-        else
-           RaiseError(petWarning, aSource.AUnitName + '.' + aSource.Name + ' is deprecated.');
-      end;
+      CheckForDeprecated(aSource);
 
       if aSource is TSE2Method then
       begin
@@ -6143,6 +6422,9 @@ begin
              RaiseError(petError, 'non-static properties can not access static elements');
         end;
 
+        if aParams.Count > 0 then
+           RaiseError(petError, 'Indexed properites can not link to a variable');
+
         if TSE2Variable(aSource).AType <> aProperty.AType then
            RaiseError(petError, 'Variable and property type must be the same');
 
@@ -6165,13 +6447,7 @@ begin
       if aSource = nil then
          RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
 
-      if aSource.IsDeprecated then
-      begin
-        if aSource.DeprecatedValue <> '' then
-           RaiseError(petWarning, aSource.AUnitName + '.' + aSource.Name + ' is deprecated. ' + aSource.DeprecatedValue)
-        else
-           RaiseError(petWarning, aSource.AUnitName + '.' + aSource.Name + ' is deprecated.');
-      end;
+      CheckForDeprecated(aSource);
 
       if aSource is TSE2Method then
       begin
@@ -6234,6 +6510,9 @@ begin
              RaiseError(petError, 'non-static properties can not access static elements');
         end;
 
+        if aParams.Count > 0 then
+           RaiseError(petError, 'Indexed properties can not link to a variable');
+
         if TSE2Variable(aSource).AType <> aProperty.AType then
            RaiseError(petError, 'Variable and property type must be the same');
 
@@ -6292,19 +6571,20 @@ begin
     ReadNextToken;
     Meth := TSE2Method(pFindType);
 
-    {$IFDEF SEII_SMART_LINKING}
-    Method.UsedMethods.Add(Meth);
-    {$ELSE}
-    Meth.Used := True;
-    {$ENDIF}
+    if (Meth.AUnitName <> '') and (Meth.Name <> '') then
+        {$IFDEF SEII_SMART_LINKING}
+        Method.UsedMethods.Add(Meth);
+        {$ELSE}
+        Meth.Used := True;
+        {$ENDIF}
 
     diff := 0;
     if Meth.HasSelfParam then
     begin
       case TSE2Parameter(Meth.Params[0]).ParameterType of
       ptConst,
-      ptDefault : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-(Method.Params.Count + diff + Method.StackSize), False), ''));
-      ptVar     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_MOVE_FROM(-(Method.Params.Count + diff + Method.StackSize), False), ''));
+      ptDefault : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-(Method.Params.Count + diff + Method.StackSize) - State.StackSize, False), ''));
+      ptVar     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_MOVE_FROM(-(Method.Params.Count + diff + Method.StackSize) - State.StackSize, False), ''));
       end;
     end;
 
@@ -6319,8 +6599,12 @@ begin
       ptVar     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC_NODEL, ''));
       end;
     end;               }
-    if result = nil then
-       State.DecStack;
+
+    // Hm, ....
+    //if Meth.HasSelfParam then
+    //   State.DecStack;
+    //if result <> nil then
+    //   State.DecStack;
   end else
   begin
     if not Method.IsOverride then
@@ -6330,11 +6614,12 @@ begin
     if pOverwrite = nil then
        RaiseError(petError, 'Could not find the overwritten method');
 
-    {$IFDEF SEII_SMART_LINKING}
-    Method.UsedMethods.Add(pOverwrite);
-    {$ELSE}
-    pOverwrite.Used := True;
-    {$ENDIF}
+    if (pOverwrite.AUnitName <> '') and (pOverwrite.Name <> '') then
+        {$IFDEF SEII_SMART_LINKING}
+        Method.UsedMethods.Add(pOverwrite);
+        {$ELSE}
+        pOverwrite.Used := True;
+        {$ENDIF}
 
     if pOverwrite.IsAbstract then
        exit;
@@ -6495,14 +6780,19 @@ begin
      result := 'Expression not compatible'
   else
   if (Current = Target) and (Operation <> sesNone) then
-     result := Format('Operation "%s" is not available for "%s"', [OpStr, Current.AUnitName + '.' + Current.Name])
+     result := Format('Operation "%s" is not available for "%s"', [OpStr, Current.GetStrongName])
   else
   if (Current <> Target) and (Operation <> sesNone) then
-     result := Format('Operation "%s" can not be applied between "%s" and "%s"', [OpStr, Current.AUnitName + '.' + Current.Name,
-                                                            Target.AUnitName + '.' +  Target.Name])
+     result := Format('Operation "%s" can not be applied between "%s" and "%s"', [OpStr, Current.GetStrongName,
+                                                            Target.GetStrongName])
   else
-     result := Format('Incompatible types: "%s" and "%s"', [Current.AUnitName + '.' + Current.Name,
-                                                            Target.AUnitName + '.' +  Target.Name]);
+  begin
+    if (Target is TSE2MethodVariable) and (Current = GetPointerType) then
+       result := Format('Method is not compatible to "%s"', [Target.GetStrongName])
+    else
+       result := Format('Incompatible types: "%s" and "%s"', [Current.GetStrongName,
+                                                            Target.GetStrongName]);
+  end;
 end;
 
 procedure TSE2Parser.AtStatement(State: TSE2ParseState;
@@ -6832,7 +7122,7 @@ begin
       try
         Method.Variables.Add(Variable);
         DeclareType(State, Variable, varName);
-        Variable.CodePos := Method.StackSize;
+        Variable.CodePos := Method.StackSize + State.LoopStackSize;
         Variable.AType := aType;
 
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_PEX, ''));
@@ -6956,6 +7246,17 @@ begin
     sesSmallerEqual : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(5), ''));
     sesUnEqual      : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
     end;
+  end;
+end;
+
+procedure TSE2Parser.CheckForDeprecated(aType: TSE2BaseType);
+begin
+  if aType.IsDeprecated then
+  begin
+    if aType.DeprecatedValue <> '' then
+       RaiseError(petWarning, aType.GetStrongName + ' is deprecated. ' + aType.DeprecatedValue)
+    else
+       RaiseError(petWarning, aType.GetStrongName + ' is deprecated.');
   end;
 end;
 

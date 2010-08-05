@@ -14,6 +14,7 @@ type
     FToken      : TSE2Token;
     FTokenCache : array[0..255] of Char;
     FCachePos   : integer;
+    FInlineDoc  : string;
   protected
     procedure SetReader(const value: TSE2Reader);
     procedure StepSpaces;
@@ -28,8 +29,9 @@ type
 
     function NextToken: boolean;
 
-    property Token    : TSE2Token    read FToken;
-    property Reader   : TSE2Reader   read FReader   write SetReader;     
+    property InlineDoc : string       read FInlineDoc write FInlineDoc;
+    property Token     : TSE2Token    read FToken;
+    property Reader    : TSE2Reader   read FReader    write SetReader;
   end;
 
 implementation
@@ -62,7 +64,7 @@ end;
 
 function TSE2Tokenizer.CompilerConditions: boolean;
 begin
-  while not CharInSet(FReader.NextChar(False), [#0, '}']) do
+  while not CharInSet(FReader.Symbol, [#0, '}']) do
     FReader.NextChar();
 
   result := FReader.Symbol <> #0;
@@ -116,11 +118,13 @@ begin
 end;
 
 function TSE2Tokenizer.NextToken: boolean;
-var TokenType : TSE2TokenType;
-    tempChar  : char;
-    tempStr   : string;
+var TokenType    : TSE2TokenType;
+    tempChar     : char;
+    tempStr      : string;
+    isInlineDoc  : boolean;
 label StartPos;
 begin
+  isInlineDoc := False;
   StartPos :
 
   result := False;
@@ -165,6 +169,7 @@ begin
       begin
         if CharInSet(FReader.Symbol, ['(']) then
         begin
+          isInlineDoc := False;
           TempChar := FReader.NextChar(True);
           if CharInSet(TempChar, ['*']) then
           begin
@@ -190,10 +195,28 @@ begin
           TempChar := FReader.NextChar(True);
           if CharInSet(TempChar, ['/']) then
           begin
+            FReader.NextChar();
+            if FReader.NextChar(True) = '/' then
+            begin
+              if not isInlineDoc then
+                 FInlineDoc := '';
+              isInlineDoc := True;
+              FReader.NextChar();
+            end;
+
+
             // Line comment
             while not FReader.LineIncreased do
+            begin
               if FReader.NextChar() = #0 then
                 exit;
+              if isInlineDoc then
+                if not FReader.LineIncreased then
+                   FInlineDoc := FInlineDoc + FReader.Symbol;
+            end;
+
+            if isInlineDoc then
+               FInlineDoc := FInlineDoc + #13#10;
 
             goto StartPos;
           end;
@@ -416,6 +439,7 @@ begin
   { Comments }
   '{' :
       begin
+        isInlineDoc  := False;
         if FReader.NextChar(True) = '$' then
         begin
           if CompilerConditions() then

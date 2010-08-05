@@ -16,8 +16,8 @@ const
         #13#10 + 
         'interface' + #13#10 + 
         #13#10 + 
-        'type' + #13#10 + 
-        '  KeyCodes = partial class' + #13#10 + 
+        'type' + #13#10 +
+        '  KeyCodes = sealed partial class' + #13#10 + 
         '  public' + #13#10 + 
         '    const LeftMouse = 1;' + #13#10 + 
         '    const RightMouse = 2;' + #13#10 + 

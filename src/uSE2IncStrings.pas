@@ -31,37 +31,52 @@ const
       '  TSoundExLength      = cardinal;'+#13#10+
       {$ENDIF}
       #13#10+
-      '  Strings = class(TExternalObject)'+#13#10+
+      '  /// Provides basic string routines'+#13#10+
+      '  Strings = sealed partial class(TExternalObject)'+#13#10+
       '  public'+#13#10+
+      '    /// Converts the first character of the string into the corresponding ascii-index'+#13#10+
       '    class function ToASCIIIndex(const s: string): word; external;'+#13#10+
+      '    /// Converts a given ascii-index to the corresponding character'+#13#10+
       '    class function FromASCIIIndex(index: word): string; external;'+#13#10+
       '    class function AdjustLineBreaks(const S: string; Style: TTextLineBreakStyle): string; external;'+#13#10+
+      '    /// Compares two strings case sensitive. Returns 0 if the strings are equal'+#13#10+
       '    class function CompareStr(const S1, S2: string): Integer; external;'+#13#10+
+      '    /// Compares two strings case insensitive. Returns 0 if the strings are equal'+#13#10+
       '    class function CompareText(const S1, S2: string): Integer; external;'+#13#10+
+      '    /// Copy a substring out of "s", starting at "index" and with "count" characters'+#13#10+
       '    class function Copy(const s: string; Index, Count: Integer): string; external;'+#13#10+
       {$IFDEF SEII_USE_SOUND_EX}
       '    class function DecodeSoundExWord(AValue: Word): string; external;'+#13#10+
       {$ENDIF}
+      '    /// Delete a part of the string, starting at "index"'+#13#10+
       '    class procedure Delete(var S: string; Index, Count:Integer); external;'+#13#10+
+      '    /// Repeats the input string "ACount" - Times'+#13#10+
       '    class function Duplicate(const AText: string; ACount: Integer): string; external;'+#13#10+
       '    class procedure Insert(SubStr: string; var S: string; Index: Integer); external;'+#13#10+
       '    class function IsDelimiter(const Delimiters, S: string; Index: Integer): Boolean; external;'+#13#10+
       '    class function LastDelimiter(const Delimiters, S: string): Integer; external;'+#13#10+
       '    class function LeftBStr(const AText: string; const AByteCount: Integer): string; external;'+#13#10+
       '    class function LeftStr(const AText: string; const ACount: Integer): string; external;'+#13#10+
+      '    /// Returns the length of the given string'+#13#10+
       '    class function Length(const s: string): Integer; external;'+#13#10+
+      '    /// Converts the given string to lower case characters'+#13#10+
       '    class function LowerCase(const S: string): string; external;'+#13#10+
       '    class function MidBStr(const AText: string; const AByteStart, AByteCount: Integer): string; external;'+#13#10+
       '    class function MidStr(const AText: string; const AStart, ACount: Integer): string; external;'+#13#10+
+      '    /// Search for "substr" in "s". Returns the first start index if "substr" was found, otherwise 0'+#13#10+
       '    class function Pos(Substr: string; S: string): Integer; external;'+#13#10+
       '    class function PosEx(const SubStr, S: string; Offset: Cardinal): Integer; overload; external;'+#13#10+
+      '    /// Search for "substr" in "s" starting at "offset"'+#13#10+
       '    class function PosEx(const SubStr, S: string): Integer; overload; external;'+#13#10+
       '    class function QuotedStr(const S: string): string; external;'+#13#10+
       '    class function ReverseString(const AText: string): string; external;'+#13#10+
 
+      '    /// Change the length of a given string to "NewLength"'+#13#10+
       '    class procedure SetLength(var S: string; NewLength: Integer); external;'+#13#10+
 
+      '    /// Returns true, if the strings are equal (case sensitive)'+#13#10+
       '    class function SameStr(const s1, s2: string): boolean; external;'+#13#10+
+      '    /// Returns true, if the strings are equal (case insensitive)'+#13#10+
       '    class function SameText(const S1, S2: string): Boolean; external;'+#13#10+
       '    class function RightStr(const AText: string; const ACount: Integer): string; external;'+#13#10+
       '    class function RightBStr(const AText: string; const AByteCount: Integer): string; external;'+#13#10+
@@ -77,16 +92,22 @@ const
       '    class function SoundExWord(const AText: string): Word; external;'+#13#10+
       {$ENDIF}
 
+      '    /// Replace "OldPattern" with "NewPattern" inside "s"'+#13#10+
       '    class function Replace(const s: string; OldPattern, NewPattern: string; Flags: TReplaceFlags): string; external;'+#13#10+
+      '    /// Overwrites the content in "AText" with "ASubText", starting at "AStart"'+#13#10+
       '    class function StuffString(const AText: string; AStart, ALength: Cardinal; const ASubText: string): string; external;'+#13#10+
+      '    /// Removes every white space and control characters at the beginning and at the end of the string'+#13#10+
       '    class function Trim(const Text: string): string; external;'+#13#10+
+      '    /// Removes every white space and control characters at the beginning of the string'+#13#10+
       '    class function TrimLeft(const Text: string): string; external;'+#13#10+
+      '    /// Removes every white space and control characters at the end of the string'+#13#10+
       '    class function TrimRight(const Text: string): string; external;'+#13#10+
+      '    /// Convert the given string to upper case characters'+#13#10+
       '    class function UpperCase(const Text: string): string; external;'+#13#10+
       '    class function WrapText(const Text: string; MaxCol: Integer): string; external;'+#13#10+
       '  end;'+#13#10+
       #13#10+
-      '  WideStrings = class(TExternalObject)'+#13#10+
+      '  WideStrings = sealed partial class(TExternalObject)'+#13#10+
       '  public'+#13#10+
       '    class function Copy(const s: WideString; Index, Count: Integer): WideString; external;'+#13#10+
       '    class procedure Delete(var S: WideString; Index, Count: Integer); external;'+#13#10+
@@ -106,17 +127,28 @@ const
       #13#10+
       '  StringEncoding = class(TExternalObject)' + #13#10 + 
       '  public' + #13#10 +
+      '    /// Converts a utf-8 encoded string to a system string'+#13#10+
       '    class function ToString(const s: UTF8String): string; external; overload;' + #13#10 +
+      '    /// Converts a utf-16 encoded string to a system string'+#13#10+
       '    class function ToString(const s: WideString): string; external; overload;' + #13#10 +
+      '    /// Converts a system string to a utf-8 string'+#13#10+
       '    class function ToUTF8(const s: string): UTF8String; external; overload;' + #13#10 +
+      '    /// Converts a utf-16 string to a utf-8 string'+#13#10+
       '    class function ToUTF8(const s: WideString): UTF8String; external; overload;' + #13#10 +
+      '    /// Converts a system string to a utf-16 string'+#13#10+
       '    class function ToUnicode(const s: string): WideString; external; overload;' + #13#10 +
+      '    /// Converts a utf-8 string to a utf-16 string'+#13#10+
       '    class function ToUnicode(const s: UTF8string): WideString; external; overload;' + #13#10 +
       #13#10 +
-      '    class function AsString(const s: UTF8String): string; external; overload;' + #13#10 +
+      '    /// Interprate a unicode string as a system string'+#13#10+
+      '    class function AsString(const s: UTF8String): string; external; overload;' + #13#10 +  
+      '    /// Interprate a unicode string as a system string'+#13#10+
       '    class function AsString(const s: WideString): string; external; overload;' + #13#10 +
-      '    class function AsUTF8(const s: string): UTF8String; external; overload;' + #13#10 +
-      '    class function AsUTF8(const s: WideString): UTF8String; external; overload;' + #13#10 +
+      '    /// Interprate a string as a utf-8'+#13#10+
+      '    class function AsUTF8(const s: string): UTF8String; external; overload;' + #13#10 +    
+      '    /// Interprate a string as a utf-8 string'+#13#10+
+      '    class function AsUTF8(const s: WideString): UTF8String; external; overload;' + #13#10 +  
+      '    /// Interprate a string as a utf-16 string'+#13#10+
       '    class function AsUnicode(const s: string): WideString; external; overload;' + #13#10 +
       '    class function AsUnicode(const s: UTF8String): WideString; external; overload;' + #13#10 +
       '  end;' + #13#10 +
@@ -252,32 +284,32 @@ begin
   TSE2StringHelper.UTF8ToWide(@p1, @p2);
 end;
 
-function StringEncoding_AsString(Self: TObject; const s: Pointer): Pointer;
+function StringEncoding_AsString(Self: TObject; const s: string): string;
 begin
   result := s;
 end;
 
-function StringEncoding_AsString1(Self: TObject; const s: Pointer): Pointer;
+function StringEncoding_AsString1(Self: TObject; const s: string): string;
 begin
   result := s;
 end;
 
-function StringEncoding_AsUTF8(Self: TObject; const s: Pointer): Pointer;
+function StringEncoding_AsUTF8(Self: TObject; const s: UTF8String): UTF8String;
 begin
   result := s;
 end;
 
-function StringEncoding_AsUTF81(Self: TObject; const s: Pointer): Pointer;
+function StringEncoding_AsUTF81(Self: TObject; const s: UTF8String): UTF8String;
 begin
   result := s;
 end;
 
-function StringEncoding_AsUnicode(Self: TObject; const s: Pointer): Pointer;
+function StringEncoding_AsUnicode(Self: TObject; const s: WideString): WideString;
 begin
   result := s;
 end;
 
-function StringEncoding_AsUnicode1(Self: TObject; const s: Pointer): Pointer;
+function StringEncoding_AsUnicode1(Self: TObject; const s: WideString): WideString;
 begin
   result := s;
 end;

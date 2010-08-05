@@ -32,6 +32,35 @@ type
     property Line          : integer   read FLine           write SetLine;
   end;
 
+  TSE2ReaderList = class(TObject)
+  private
+    FList        : TList;
+    FOwnsObjects : boolean;
+  protected
+    function  GetCount: integer;
+    function  GetItem(index: integer): TSE2Reader;
+    function  GetFirst: TSE2Reader;
+    function  GetLast: TSE2Reader;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    procedure Clear;
+    function  Add(Reader: TSE2Reader): boolean; overload;
+    procedure Add(const Source: string); overload;
+    procedure Add(const Stream: TStream); overload;
+
+    function Delete(index: integer): boolean; overload;
+    function Delete(Reader: TSE2Reader): boolean; overload;
+    function IndexOf(Reader: TSE2Reader): integer;
+
+    property Items[index: integer]: TSE2Reader read GetItem; default;
+    property Count                : integer    read GetCount;
+    property First                : TSE2Reader read GetFirst;
+    property Last                 : TSE2Reader read GetLast;
+    property OwnsObjects          : boolean    read FOwnsObjects  write FOwnsObjects;
+  end;
+
   TSE2StringReader = class(TSE2Reader)
   protected
     FScriptSource      : string;
@@ -53,6 +82,7 @@ type
     FStream            : TStream;
     procedure SetStream(const Stream: TStream);
     function  GetNextChar(): char; override;
+    procedure SetPosition(const value: Integer); override;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -203,10 +233,113 @@ begin
   end;          
 end;
 
+procedure TSE2StreamReader.SetPosition(const value: Integer);
+begin
+  inherited;
+  FStream.Position := value;
+end;
+
 procedure TSE2StreamReader.SetStream(const Stream: TStream);
 begin
   FreeAndNil(FStream);
   FStream := Stream;
+end;
+
+{ TSE2ReaderList }
+
+function TSE2ReaderList.Add(Reader: TSE2Reader): boolean;
+begin
+  result := IndexOf(Reader) < 0;
+  if result then
+     FList.Add(Reader);
+end;
+
+procedure TSE2ReaderList.Add(const Source: string);
+begin
+  FList.Add(TSE2StringReader.Create(Source));
+end;
+
+procedure TSE2ReaderList.Add(const Stream: TStream);
+var Reader: TSE2StreamReader;
+begin
+  Reader := TSE2StreamReader.Create;
+  Reader.Stream := Stream;
+  FList.Add(Reader);
+end;
+
+procedure TSE2ReaderList.Clear;
+var i: integer;
+begin
+  for i:=FList.Count-1 downto 0 do
+    Delete(i);
+end;
+
+constructor TSE2ReaderList.Create;
+begin
+  inherited;
+  FList := TList.Create;
+  FOwnsObjects := True;
+end;
+
+function TSE2ReaderList.Delete(index: integer): boolean;
+var reader: TSE2Reader;
+begin
+  if (index < 0) or (index >= FList.Count) then
+     result := False
+  else
+  begin
+    reader := FList[index];
+    FList.Delete(index);
+    if FOwnsObjects then
+       reader.Free;
+    result := True;
+  end;
+end;
+
+function TSE2ReaderList.Delete(Reader: TSE2Reader): boolean;
+begin
+  result := Delete(IndexOf(Reader));
+end;
+
+destructor TSE2ReaderList.Destroy;
+begin
+  Clear;
+  FList.Free;
+  inherited;
+end;
+
+function TSE2ReaderList.GetCount: integer;
+begin
+  result := FList.Count;
+end;
+
+function TSE2ReaderList.GetFirst: TSE2Reader;
+begin
+  if (FList.Count > 0) then
+     result := FList.List[0]
+  else
+     result := nil;
+end;
+
+function TSE2ReaderList.GetItem(index: integer): TSE2Reader;
+begin
+  if (index < 0) or (index > FList.Count) then
+     result := nil
+  else
+     result := FList.List[index];
+end;
+
+function TSE2ReaderList.GetLast: TSE2Reader;
+begin
+  if (FList.Count > 0) then
+     result := FList.List[FList.Count-1]
+  else
+     result := nil;
+end;
+
+function TSE2ReaderList.IndexOf(Reader: TSE2Reader): integer;
+begin
+  result := FList.IndexOf(Reader);
 end;
 
 end.

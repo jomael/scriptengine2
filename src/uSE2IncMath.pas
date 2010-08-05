@@ -22,7 +22,7 @@ const
       'type'+#13#10+
       '  TRoundToRange = shortint;'+#13#10+
       #13#10+
-      '  Math = class(TExternalObject)'+#13#10+
+      '  Math = sealed partial class(TExternalObject)'+#13#10+
       '  public'+#13#10+
       '    class function ArcCos(const X: double): double; external;'+#13#10+
       '    class function ArcCosh(const X: double): double; external;'+#13#10+
@@ -100,8 +100,6 @@ const
       '    class function RadToCycle(const Radians: double): double; external;'+#13#10+
       '    class function RadToDeg(const Radians: double): double; external;'+#13#10+
       '    class function RadToGrad(const Radians: double): double; external;'+#13#10+
-      '    class function RandG(Mean, StdDev: double): double; external;'+#13#10+
-      '    class function RandomRange(const AFrom, ATo: Integer): Integer; external;'+#13#10+
       '    class function RoundTo(const AValue: Double; const ADigit: TRoundToRange): Double; external;'+#13#10+
       '    class function SameValue(const A, B: Single; Epsilon: Single): Boolean; overload; external;'+#13#10+   
       '    class function SameValue(const A, B: Single): Boolean; overload; external;'+#13#10+
@@ -134,13 +132,21 @@ const
       '    class function Sqr(X: Integer): Integer; overload; external;'+#13#10+
       '    class function Sqrt(X: double): double; external;'+#13#10+
       '    class function Trunc(X: double): Int64; external;'+#13#10+
-      
-      '    class procedure Randomize; external;'+#13#10+
-      '    class function Random: double; overload; external;'+#13#10+
-      '    class function Random(max: integer): integer; overload; external;'+#13#10+
-      '    class function RandSeed: integer; external;'+#13#10+
-      '    class procedure SetRandSeed(value: integer); external;'+#13#10+
       '  end;'+#13#10+
+      #13#10+
+      '  Random = record' + #13#10 +
+      '  private' + #13#10 +
+      '    class function  GetRandSeed: integer; external;' + #13#10 +
+      '    class procedure SetRandSeed(value: integer); external;' + #13#10 +
+      '  public' + #13#10 +
+      '    class function  Next: double; overload; external;' + #13#10 +
+      '    class function  Next(max: integer): integer; overload; external;' + #13#10 +
+      '    class function  Next(min, max: integer): integer; overload; external;' + #13#10 +
+      '    class function  NextGaussian(Mean, StdDev: double): double; external;'+#13#10+
+      '    class procedure Randomize; external;' + #13#10 +
+      #13#10 +
+      '    class property  Seed : integer read GetRandSeed write SetRandSeed;' + #13#10 +
+      '  end;' + #13#10 +
       #13#10+
       'implementation'+#13#10+
       #13#10+
@@ -230,8 +236,6 @@ type
     class function RadToCycle(const Radians: double): double;
     class function RadToDeg(const Radians: double): double;
     class function RadToGrad(const Radians: double): double;
-    class function RandG(Mean, StdDev: double): double;
-    class function RandomRange(const AFrom, ATo: Integer): Integer;
     class function RoundTo(const AValue: Double; const ADigit: TRoundToRange): Double;
     class function SameValue0(const A, B: Single; Epsilon: Single): Boolean;
     class function SameValue1(const A, B: Single): Boolean;
@@ -264,13 +268,52 @@ type
     class function Sqr1(X: Integer): Integer;
     class function Sqrt(X: double): double;
     class function Trunc(X: double): Int64;
-
+                       {
     class procedure Randomize;
     class function Random0: double;
     class function Random1(max: integer): integer;         
     class function RandSeed: integer;
-    class procedure SetRandSeed(value: integer);
+    class procedure SetRandSeed(value: integer);    }
   end;
+
+function Random_GetRandSeed(__Self: pointer): integer;
+begin
+  result := RandSeed;
+end;
+
+procedure Random_SetRandSeed(__Self: pointer; value: integer);
+begin
+  RandSeed := value;
+end;
+
+function Random_Next(__Self: pointer): double;
+begin
+  result := Random;
+end;
+
+function Random_Next1(__Self: pointer; max: integer): integer;
+begin
+  result := Random(max);
+end;
+
+function Random_Next2(__Self: pointer; min, max: integer): integer;
+begin
+  {$IFDEF SEII_NO_EXT_MATH}
+  result := Random(max - min) + min;
+  {$ELSE}
+  result := Math.RandomRange(min, max);
+  {$ENDIF}
+end;
+
+function  Random_NextGaussian(Mean, StdDev: double): double;
+begin
+  result := Math.RandG(Mean, StdDev);
+end;
+
+procedure Random_Randomize(__Self: pointer);
+begin
+  Randomize;
+end;
 
 procedure Unit_RegisterMethods(const Target: TSE2RunAccess);
 begin
@@ -352,8 +395,6 @@ begin
     Target.Method['Math.RadToCycle[0]', C_UnitName] := @TMath.RadToCycle;
     Target.Method['Math.RadToDeg[0]', C_UnitName] := @TMath.RadToDeg;
     Target.Method['Math.RadToGrad[0]', C_UnitName] := @TMath.RadToGrad;
-    Target.Method['Math.RandG[0]', C_UnitName] := @TMath.RandG;
-    Target.Method['Math.RandomRange[0]', C_UnitName] := @TMath.RandomRange;
     Target.Method['Math.RoundTo[0]', C_UnitName] := @TMath.RoundTo;
     Target.Method['Math.SameValue[0]', C_UnitName] := @TMath.SameValue0;
     Target.Method['Math.SameValue[1]', C_UnitName] := @TMath.SameValue1;
@@ -386,11 +427,14 @@ begin
     Target.Method['Math.Sqr[1]', C_UnitName] := @TMath.Sqr1;
     Target.Method['Math.Sqrt[0]', C_UnitName] := @TMath.Sqrt;
     Target.Method['Math.Trunc[0]', C_UnitName] := @TMath.Trunc;
-    Target.Method['Math.Randomize[0]', C_UnitName] := @TMath.Randomize;
-    Target.Method['Math.Random[0]', C_UnitName] := @TMath.Random0;
-    Target.Method['Math.Random[1]', C_UnitName] := @TMath.Random1;
-    Target.Method['Math.RandSeed[0]', C_UnitName] := @TMath.RandSeed;
-    Target.Method['Math.SetRandSeed[0]', C_UnitName] := @TMath.SetRandSeed;
+
+    Target.Method['Random.GetRandSeed[0]', C_UnitName] := @Random_GetRandSeed;
+    Target.Method['Random.SetRandSeed[0]', C_UnitName] := @Random_SetRandSeed;
+    Target.Method['Random.Next[0]', C_UnitName] := @Random_Next;
+    Target.Method['Random.Next[1]', C_UnitName] := @Random_Next1;
+    Target.Method['Random.Next[2]', C_UnitName] := @Random_Next2;
+    Target.Method['Random.NextGaussian[0]', C_UnitName] := @Random_NextGaussian;
+    Target.Method['Random.Randomize[0]', C_UnitName] := @Random_Randomize;
   end;
 end;
 
@@ -780,40 +824,6 @@ begin
   result := Math.RadToGrad(Radians);
 end;
 
-class function TMath.RandG(Mean, StdDev: double): double;
-begin
-  result := Math.RandG(Mean, StdDev);
-end;
-
-class function TMath.Random0: double;
-begin
-  result := System.Random;
-end;
-
-class function TMath.Random1(max: integer): integer;
-begin
-  result := System.Random(max);
-end;
-
-class procedure TMath.Randomize;
-begin
-  System.Randomize;
-end;
-
-class function TMath.RandomRange(const AFrom, ATo: Integer): Integer;
-begin
-  {$IFDEF SEII_NO_EXT_MATH}
-  result := System.Random(ATo - AFrom) + AFrom;
-  {$ELSE}
-  result := Math.RandomRange(AFrom, ATo);
-  {$ENDIF}
-end;
-
-class function TMath.RandSeed: integer;
-begin
-  result := System.RandSeed;
-end;
-
 class function TMath.Round(X: double): Int64;
 begin
   result := System.Round(x);
@@ -858,11 +868,6 @@ begin
   result := Math.SecH(x);
 end;
 {$ENDIF}
-
-class procedure TMath.SetRandSeed(value: integer);
-begin
-  System.RandSeed := value;
-end;
 
 class function TMath.Sign0(const AValue: Double): shortint;
 begin

@@ -66,9 +66,16 @@ type
     FBaseCompability : TSE2TokenTypes;
     FIsDeprecated    : boolean;
     FDeprecatedValue : string;
+    FInlineDoc       : string;
+
+    FCachedUniqueID  : string;
+    FCachedUniqueHash: integer;
 
     //FCompability     : TSE2CompatibleList;
   protected
+    procedure SetID(value: integer);
+    procedure GenerateUniqueIdCache;
+
     procedure SetName(const value: string);
     procedure SetUnitName(const value: string);
 
@@ -92,14 +99,17 @@ type
     function   IsUnit(const value: string; const NameHash: integer): boolean; overload;
     function   IsChildOf(const Parent: TSE2BaseType): boolean;
     function   IsTypeOf(const BaseType: TSE2BaseType): boolean;
+
+    function   GetStrongName: string; virtual;
     //function   IsCompatible(Action: TSE2TokenType; const ToObj: TSE2BaseType): boolean; overload;
     //function   IsCompatible(Action: TSE2TokenType; ToObj: array of TSE2BaseType): boolean; overload;
 
+    property   InlineDoc       : string             read FInlineDoc      write FInlineDoc;
     property   Name            : string             read FName           write SetName;
     property   NameHash        : integer            read FNameHash;
     property   AUnitName       : string             read FUnitName       write SetUnitName;
     property   UnitHash        : integer            read FUnitHash;   
-    property   ID              : integer            read FID             write FID;
+    property   ID              : integer            read FID             write SetID;
     property   DeprecatedValue : string             read FDeprecatedValue write FDeprecatedValue;
     property   IsDeprecated    : boolean            read FIsDeprecated   write FIsDeprecated;
 
@@ -393,6 +403,7 @@ type
     FDynMethods  : integer;
     FIsPartial   : boolean;
     FIsHelper    : boolean;
+    FIsSealed    : boolean;
     FRTTI        : TSE2ClassRTTI;
   protected
     function  GetParentClass : TSE2Class;
@@ -415,6 +426,7 @@ type
     property IsForwarded  : boolean                read FIsForwarded   write FIsForwarded;
     property IsPartial    : boolean                read FIsPartial     write FIsPartial;
     property IsHelper     : boolean                read FIsHelper      write FIsHelper;
+    property IsSealed     : boolean                read FIsSealed      write FIsSealed;
   end;
 
   TSE2MethodType = (mtProcedure, mtFunction, mtConstructor, mtDestructor);
@@ -538,6 +550,7 @@ type
     FFinalizations    : TSE2BaseTypeList;
     FMain             : TSE2Method;
     FIsProgram        : boolean;
+    FUnitIndex        : integer;
     FRequiredUnits    : TStringList;
   protected
     procedure SetMain(value: TSE2Method);
@@ -548,6 +561,7 @@ type
     procedure LoadFromStream(Stream: TStream; Weaver: TSE2NameWeaver); override;
     procedure SaveToStream(Stream: TStream); override;
 
+    property UnitIndex       : integer            read FUnitIndex              write FUnitIndex;
     property RequiredUnits   : TStringList        read FRequiredUnits;
     property Strings         : TSE2LinkStringList read FStrings;
     property TypeList        : TSE2BaseTypeList   read FTypeList;
@@ -726,12 +740,14 @@ procedure TSE2BaseType.SetName(const value: string);
 begin
   FName     := value;
   FNameHash := MakeHash(value);
+  GenerateUniqueIdCache;
 end;
 
 procedure TSE2BaseType.SetUnitName(const value: string);
 begin
   FUnitName := value;
-  FUnitHash := MakeHash(value);
+  FUnitHash := MakeHash(value);  
+  GenerateUniqueIdCache;
 end;
 
 function TSE2BaseType.IsUnit(const value: string): boolean;
@@ -837,8 +853,9 @@ begin
         Stream.Read(FID, SizeOf(integer));
         Stream.Read(FIsDeprecated, SizeOf(boolean));
         TSE2StreamHelper.ReadString(Stream, FDeprecatedValue);
+        TSE2StreamHelper.ReadString(Stream, FInlineDoc);
 
-        Weaver.Add(TSE2StreamHelper.ReadString(Stream), @FInheritsFrom);  
+        Weaver.Add(TSE2StreamHelper.ReadString(Stream), @FInheritsFrom);
         Weaver.Add(TSE2StreamHelper.ReadString(Stream), @FParent);
 
         Stream.Read(FDeclLine        , SizeOf(integer));
@@ -846,7 +863,7 @@ begin
 
         Stream.Read(FBaseCompability , SizeOf(TSE2TokenTypes));
 
-
+        GenerateUniqueIdCache;
       end;
   else RaiseIncompatibleStream;
   end;
@@ -869,8 +886,9 @@ begin
   Stream.Write(FUnitHash, SizeOf(integer));
   Stream.Write(FVisibility, SizeOf(TSE2Visibility));
   Stream.Write(FID, SizeOf(integer));
-  Stream.Write(FIsDeprecated, SizeOf(boolean));   
+  Stream.Write(FIsDeprecated, SizeOf(boolean));
   TSE2StreamHelper.WriteString(Stream, FDeprecatedValue);
+  TSE2StreamHelper.WriteString(Stream, FInlineDoc);
 
   SaveWeaverData(Stream, FInheritsFrom);  
   SaveWeaverData(Stream, FParent);
@@ -879,6 +897,28 @@ begin
   Stream.Write(FDeclPos         , SizeOf(integer));
 
   Stream.Write(FBaseCompability , SizeOf(TSE2TokenTypes));
+end;
+
+function TSE2BaseType.GetStrongName: string;
+begin
+  result := Self.Name;
+  if Self.Parent <> nil then
+     result := Self.Parent.GetStrongName + '.' + result
+  else
+  if Self.AUnitName <> '' then
+     result := Self.AUnitName + '.' + result;
+end;
+
+procedure TSE2BaseType.SetID(value: integer);
+begin
+  FID := value;
+  GenerateUniqueIdCache;
+end;
+
+procedure TSE2BaseType.GenerateUniqueIdCache;
+begin
+  FCachedUniqueID := GetUniqueName(FID);
+  FCachedUniqueHash := MakeHash(FCachedUniqueID);
 end;
 
 { TSE2BaseTypeList }
@@ -960,6 +1000,7 @@ function TSE2BaseTypeList.FindItem(const Name, DeclUnit: string;
 var NameHash : integer;
     UnitHash : integer;
     i, c     : integer;
+    Filter   : integer;
     obj      : TSE2BaseType;
 begin
   NameHash := MakeHash(Name);
@@ -994,11 +1035,17 @@ begin
 
     if ClassTypes <> nil then
     begin
+      Filter := 0;
       for c:=Low(ClassTypes.Filters) to High(ClassTypes.Filters) do
       begin
-        if not (obj is ClassTypes.Filters[c]) then
-           continue
+        if (obj is ClassTypes.Filters[c]) then
+        begin
+          Filter := 1;
+          Break;
+        end;
       end;
+      if Filter = 0 then
+         continue;
     end;
 
     result := obj;
@@ -1039,11 +1086,14 @@ var i: integer;
 
   function HasName(const value: string): boolean;
   var i: integer;
+      Hash : integer;
   begin
+    Hash := MakeHash(value);
     result := True;
     for i:=FList.Count-1 downto 0 do
-      if TSE2BaseType(FList[i]).GetUniqueName = value then
-        exit;
+      if TSE2BaseType(FList[i]).FCachedUniqueHash = Hash then
+         if TSE2BaseType(FList[i]).FCachedUniqueID = value then
+            exit;
     result := False;
   end;
 
@@ -1350,6 +1400,7 @@ begin
         Stream.Read(FDynMethods, SizeOf(FDynMethods));
         Stream.Read(FIsPartial, SizeOf(boolean));
         Stream.Read(FIsHelper, SizeOf(boolean));
+        Stream.Read(FIsSealed, SizeOf(boolean));
       end;
   else RaiseIncompatibleStream;
   end;
@@ -1370,6 +1421,7 @@ begin
   Stream.Write(FDynMethods, SizeOf(FDynMethods));
   Stream.Write(FIsPartial, SizeOf(boolean));
   Stream.Write(FIsHelper, SizeOf(boolean));
+  Stream.Write(FIsSealed, SizeOf(boolean));
 end;
 
 procedure TSE2Class.SetParentClass(value: TSE2Class);
@@ -1571,6 +1623,9 @@ begin
   FInitializations := TSE2BaseTypeList.Create;
   FFinalizations   := TSE2BaseTypeList.Create;
   FRequiredUnits   := TStringList.Create;
+  FRequiredUnits.CaseSensitive := False;
+  FRequiredUnits.Sorted := True;
+  FRequiredUnits.Duplicates := dupIgnore;
 end;
 
 destructor TSE2Unit.Destroy;

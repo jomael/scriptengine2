@@ -31,7 +31,8 @@ const
         #13#10 + 
         'interface' + #13#10 + 
         #13#10 + 
-        'type' + #13#10 + 
+        'type' + #13#10 +
+        '  /// Represents a time difference'+#13#10+
         '  TTimeSpan = record' + #13#10 + 
         '  private' + #13#10 + 
         '    FSpan : double;' + #13#10 + 
@@ -47,56 +48,90 @@ const
         '    function GetTotalMinutes: double;' + #13#10 + 
         '    function GetTotalHours: double;' + #13#10 + 
         '    function GetTotalDays: double;' + #13#10 + 
-        '  public' + #13#10 + 
-        '    const HoursPerDay   : integer = 24;' + #13#10 + 
-        '    const MinutesPerDay : integer = 1440; // 24 * 60' + #13#10 + 
-        '    const SecondsPerDay : integer = 86400; // 24 * 60 * 60' + #13#10 + 
+        '  public' + #13#10 +
+        '    /// Total number of hours in one day'+#13#10+
+        '    const HoursPerDay   : integer = 24;' + #13#10 +
+        '    /// Total number of minutes in one day'+#13#10+
+        '    const MinutesPerDay : integer = 1440; // 24 * 60' + #13#10 +
+        '    /// Total number of seconds in one day'+#13#10+
+        '    const SecondsPerDay : integer = 86400; // 24 * 60 * 60' + #13#10 +
+        '    /// Total number of milliseconds in one day'+#13#10+
         '    const MillSecPerDay : integer = 86400000; // 24 * 60 * 60 * 1000' + #13#10 + 
-        #13#10 + 
-        '    function ToString: string; overload;' + #13#10 + 
+        #13#10 +
+        '    function ToString: string; overload;' + #13#10 +
+        '    /// Convert the current time span to a string ([days].[hours]:[minutes]:[seconds].[milliseconds]'+#13#10+
         '    function ToString(ShowMilliseconds: boolean): string; overload;' + #13#10 + 
-        #13#10 + 
-        '    function Add(TimeSpan: TTimeSpan): TTimeSpan;' + #13#10 + 
-        '    function Substract(TimeSpan: TTimeSpan): TTimeSpan;' + #13#10 + 
-        '    function Negate: TTimeSpan;' + #13#10 + 
+        #13#10 +
+        '    /// Add an offset to the current value'+#13#10+
+        '    function Add(TimeSpan: TTimeSpan): TTimeSpan;' + #13#10 +
+        '    /// Substract an offset from the current value'+#13#10+
+        '    function Substract(TimeSpan: TTimeSpan): TTimeSpan;' + #13#10 +
+        '    /// Negate the current time span'+#13#10+
+        '    function Negate: TTimeSpan;' + #13#10 +
+        '    /// Returns the absolute duration of the current time span'+#13#10+
         '    function Duration: TTimeSpan;' + #13#10 + 
-        #13#10 + 
-        '    function AddMilliseconds(value: double): TTimeSpan;' + #13#10 + 
-        '    function AddSeconds(value: double): TTimeSpan;' + #13#10 + 
-        '    function AddMinutes(value: double): TTimeSpan;' + #13#10 + 
-        '    function AddHours(value: double): TTimeSpan;' + #13#10 + 
+        #13#10 +
+        '    /// Add a millisecond offset to the current time span'+#13#10+
+        '    function AddMilliseconds(value: double): TTimeSpan;' + #13#10 +
+        '    /// Add a second offset to the current time span'+#13#10+
+        '    function AddSeconds(value: double): TTimeSpan;' + #13#10 +
+        '    /// Add a minute offset to the current time span'+#13#10+
+        '    function AddMinutes(value: double): TTimeSpan;' + #13#10 +
+        '    /// Add a hour offset to the curren time span'+#13#10+
+        '    function AddHours(value: double): TTimeSpan;' + #13#10 +
+        '    /// Add a day offset to the current time span'+#13#10+
         '    function AddDays(value: double): TTimeSpan;' + #13#10 + 
-        #13#10 + 
-        '    class function TimeBetween(d1, d2: TDateTime): TTimeSpan;' + #13#10 + 
-        #13#10 + 
-        '    class function TimeSpan(hours, minutes, seconds: integer): TTimeSpan; overload;' + #13#10 + 
-        '    class function TimeSpan(days, hours, minutes, seconds: integer): TTimeSpan; overload;' + #13#10 + 
+        #13#10 +
+        '    /// Get the time span between to time stamps'+#13#10+
+        '    class function TimeBetween(d1, d2: TDateTime): TTimeSpan;' + #13#10 +
+        #13#10 +
+        '    class function TimeSpan(hours, minutes, seconds: integer): TTimeSpan; overload;' + #13#10 +
+        '    class function TimeSpan(days, hours, minutes, seconds: integer): TTimeSpan; overload;' + #13#10 +
+        '    /// Create a new time span value'+#13#10+
         '    class function TimeSpan(days, hours, minutes, seconds, milliseconds: integer): TTimeSpan; overload;' + #13#10 + 
-        #13#10 + 
-        '    class function FromDays(value: double): TTimeSpan;' + #13#10 + 
-        '    class function FromHours(value: double): TTimeSpan;' + #13#10 + 
-        '    class function FromMinutes(value: double): TTimeSpan;' + #13#10 + 
-        '    class function FromSeconds(value: double): TTimeSpan;' + #13#10 + 
-        '    class function FromMilliseconds(value: double): TTimeSpan;' + #13#10 + 
+        #13#10 +
+        '    /// Create a new time span and initiate it the the given number of days'+#13#10+
+        '    class function FromDays(value: double): TTimeSpan;' + #13#10 +          
+        '    /// Create a new time span and initiate it the the given number of hours'+#13#10+
+        '    class function FromHours(value: double): TTimeSpan;' + #13#10 +        
+        '    /// Create a new time span and initiate it the the given number of minutes'+#13#10+
+        '    class function FromMinutes(value: double): TTimeSpan;' + #13#10 +     
+        '    /// Create a new time span and initiate it the the given number of seconds'+#13#10+
+        '    class function FromSeconds(value: double): TTimeSpan;' + #13#10 +   
+        '    /// Create a new time span and initiate it the the given number of milliseconds'+#13#10+
+        '    class function FromMilliseconds(value: double): TTimeSpan;' + #13#10 +  
+        '    /// Create a new time span and initiate it the the given duration in the string'+#13#10+
         '    class function FromString(value: string): TTimeSpan;' + #13#10 + 
-        #13#10 + 
-        '    property TotalDays    : double  read GetTotalDays;' + #13#10 + 
-        '    property TotalHours   : double  read GetTotalHours;' + #13#10 + 
-        '    property TotalMinutes : double  read GetTotalMinutes;' + #13#10 + 
-        '    property TotalSeconds : double  read GetTotalSeconds;' + #13#10 + 
+        #13#10 +
+
+        '    /// Absolute days within the time span'+#13#10+
+        '    property TotalDays    : double  read GetTotalDays;' + #13#10 +
+        '    /// Absolute hours within the time span'+#13#10+
+        '    property TotalHours   : double  read GetTotalHours;' + #13#10 +   
+        '    /// Absolute hours minutes the time span'+#13#10+
+        '    property TotalMinutes : double  read GetTotalMinutes;' + #13#10 +     
+        '    /// Absolute hours seconds the time span'+#13#10+
+        '    property TotalSeconds : double  read GetTotalSeconds;' + #13#10 +   
+        '    /// Absolute hours milliseconds the time span'+#13#10+
         '    property TotalMilliseconds : double read GetTotalMilliseconds;' + #13#10 + 
-        #13#10 + 
-        '    property Days         : integer read GetDays;' + #13#10 + 
-        '    property Hours        : integer read GetHours;' + #13#10 + 
-        '    property Minutes      : integer read GetMinutes;' + #13#10 + 
-        '    property Seconds      : integer read GetSeconds;' + #13#10 + 
+        #13#10 +                             
+        '    /// Completed days within the time span'+#13#10+
+        '    property Days         : integer read GetDays;' + #13#10 +
+        '    /// Completed hours within the time span'+#13#10+
+        '    property Hours        : integer read GetHours;' + #13#10 +  
+        '    /// Completed minutes within the time span'+#13#10+
+        '    property Minutes      : integer read GetMinutes;' + #13#10 +    
+        '    /// Completed seconds within the time span'+#13#10+
+        '    property Seconds      : integer read GetSeconds;' + #13#10 +       
+        '    /// Completed milliseconds within the time span'+#13#10+
         '    property Milliseconds : integer read GetMilliseconds;' + #13#10 + 
-        #13#10 + 
+        #13#10 +                   
+        '    /// Absolute time span ticks'+#13#10+
         '    property Value        : double  read FSpan write FSpan;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 + 
         '  TDateTimeTimeSpanHelper = helper for TDateTime' + #13#10 + 
-        '  public' + #13#10 + 
+        '  public' + #13#10 +
         '    function Substract(aTime: TDateTime): TTimeSpan;' + #13#10 + 
         '    function Add(aTime: TTimeSpan): TDateTime;' + #13#10 +
         '    function TimeBetween(aTime: TDateTime): TTimeSpan;' + #13#10 +
@@ -272,22 +307,21 @@ const
         'class function TTimeSpan.FromMilliseconds(value: double): TTimeSpan;' + #13#10 + 
         'begin' + #13#10 + 
         '  result.FSpan := value / TTimeSpan.MillSecPerDay;' + #13#10 + 
-        'end;' + #13#10 + 
-        #13#10 + 
+        'end;' + #13#10 +
+        #13#10 +
         'class function TTimeSpan.FromString(value: string): TTimeSpan;' + #13#10 + 
-        'var d, h, m, s, ms: integer;' + #13#10 + 
+        'var d, h, m, s, ms: integer;' + #13#10 +
         '    iPos, sign : integer;' + #13#10 + 
         'begin' + #13#10 + 
         '  //  [o]                       [o]' + #13#10 + 
         '  // [DAY].[HOUR]:[MIN]:[SEC].[MILLI]' + #13#10 + 
-        #13#10 + 
+        #13#10 +
         '  sign := 1;' + #13#10 + 
         '  if value.StartsWith(''-'') then' + #13#10 + 
         '  begin' + #13#10 + 
         '    sign := -1;' + #13#10 + 
-        '    value := value.Copy(2, value.Length);' + #13#10 + 
+        '    value := value.SubString(2, value.Length);' + #13#10 + 
         '  end;' + #13#10 + 
-        #13#10 + 
         #13#10 + 
         '  // 1st value' + #13#10 + 
         '  iPos := value.IndexOf('':'');' + #13#10 + 
@@ -297,33 +331,36 @@ const
         '  if (value.IndexOf(''.'') > 0) and' + #13#10 + 
         '     (value.IndexOf(''.'') < iPos) then' + #13#10 + 
         '  begin' + #13#10 + 
-        '    d := Convert.StrToIntDef(value.Copy(1, value.IndexOf(''.'') - 1), 0);' + #13#10 + 
-        '    value := value.Copy(value.IndexOf(''.'') + 1, value.Length);' + #13#10 + 
+        '    d := Convert.StrToIntDef(value.SubString(1, value.IndexOf(''.'') - 1), 0);' + #13#10 +
+        '    value := value.SubString(value.IndexOf(''.'') + 1, value.Length);' + #13#10 + 
         '    iPos  := value.IndexOf('':'');' + #13#10 + 
         '  end else' + #13#10 + 
         '    d := 0;' + #13#10 + 
         #13#10 + 
-        '  h := Convert.StrToIntDef(value.Copy(1, iPos - 1), 0);' + #13#10 + 
-        '  value := value.Copy(iPos + 1, value.Length);' + #13#10 + 
-        #13#10 + 
-        '  // 2nd value' + #13#10 + 
+        '  h := Convert.StrToIntDef(value.SubString(1, iPos - 1), 0);' + #13#10 +
+        '  value := value.SubString(iPos + 1, value.Length);' + #13#10 +
+        #13#10 +
+        '  // 2nd value' + #13#10 +
         '  iPos := value.IndexOf('':'');' + #13#10 + 
         '  if iPos = 0 then' + #13#10 + 
-        '     exit;' + #13#10 + 
+        '     exit;' + #13#10 +
         #13#10 + 
-        '  m := Convert.StrToIntDef(value.Copy(1, iPos - 1), 0);' + #13#10 + 
-        '  value := value.Copy(iPos + 1, value.Length);' + #13#10 + 
-        #13#10 + 
-        '  // 3rd value' + #13#10 + 
+        '  m := Convert.StrToIntDef(value.SubString(1, iPos - 1), 0);' + #13#10 +
+        '  value := value.SubString(iPos + 1, value.Length);' + #13#10 +
+        #13#10 +
+        '  // 3rd value' + #13#10 +
         '  iPos  := value.IndexOf(''.'');' + #13#10 + 
         '  if iPos > 0 then' + #13#10 + 
         '  begin' + #13#10 + 
-        '    s := Convert.StrToIntDef(value.Copy(1, iPos - 1), 0);' + #13#10 + 
-        '    value := value.Copy(iPos + 1, value.Length);' + #13#10 + 
+        '    s := Convert.StrToIntDef(value.SubString(1, iPos - 1), 0);' + #13#10 + 
+        '    value := value.SubString(iPos + 1, value.Length);' + #13#10 +
         #13#10 + 
         '    ms := Convert.StrToIntDef(value, 0);' + #13#10 + 
-        '  end else' + #13#10 + 
-        '    ms := 0;' + #13#10 + 
+        '  end else' + #13#10 +
+        '  begin'+#13#10+
+        '    s  := Convert.StrToIntDef(value, 0);'+#13#10+
+        '    ms := 0;' + #13#10 +
+        '  end;'+#13#10+
         #13#10 + 
         '  result.FSpan := d +' + #13#10 + 
         '                  h / TTimeSpan.HoursPerDay +' + #13#10 + 

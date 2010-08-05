@@ -22,6 +22,7 @@ type
     FEventRaised      : boolean;
     FCanExecute       : boolean;
     FShowKeyWords     : boolean;
+    FHasParentObj     : boolean;
     FProcessed        : TList;
   protected
     procedure CompileCallBack(Sender: TObject; CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method;
@@ -58,7 +59,8 @@ type
     constructor Create(CallBack: TSE2AddItemEvent); reintroduce;
     destructor Destroy; override;
 
-    function GetCodeCompletion(const Source: string; CursorPos: integer): boolean;
+    function GetCodeCompletion(const Source: string; CursorPos: integer): boolean; overload;
+    function GetCodeCompletion(const Readers: TSE2ReaderList; CursorPos: integer): boolean; overload;
 
     property Compiler         : TSE2Compiler       read FCompiler;
     property OnAddItem        : TSE2AddItemEvent   read FOnAddItem        write FOnAddItem;
@@ -108,7 +110,8 @@ type
     constructor Create(CallBack: TSE2AddItemEvent); reintroduce;
     destructor Destroy; override;
 
-    function GetParamCompletion(const Source: string; CursorPos: integer; var ParamIndex: integer): boolean;
+    function GetParamCompletion(const Source: string; CursorPos: integer; var ParamIndex: integer): boolean; overload;
+    function GetParamCompletion(const Readers: TSE2ReaderList; CursorPos: integer; var ParamIndex: integer): boolean; overload;
 
     property Compiler      : TSE2Compiler      read FCompiler;
     property OnAddItem     : TSE2AddItemEvent  read FOnAddItem      write FOnAddItem;
@@ -118,6 +121,42 @@ type
   TSE2SynParamCompletion = class(TSE2ParamCompletion)
   protected
     function  FormatParamStr(Entry: TSE2Parameter; IsLastParam: boolean): string; override;
+  end;
+
+  TSE2InlineDocumentation = class(TSE2Object)
+  private
+    FCompiler      : TSE2Compiler;
+    FOnAddItem     : TSE2AddItemEvent;
+    FOnGetUnitMngr : TSE2GetUnitMngr;
+    FEventRaised   : boolean;
+    FCanExecute    : boolean;
+    FCurrentToken  : string;
+  protected
+    procedure CompileCallBack(Sender: TObject; CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method;
+                                  Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean);
+
+    function  SearchItem(Parser: TSE2Parser; CurrentMethod: TSE2Method; AParent: TSE2BaseType; const Name: string): TSE2BaseType;
+    function  GetItemDocumentation(Parser: TSE2Parser; CurrentMethod: TSE2Method; Item: TSE2BaseType): string; virtual;
+    function  FormatItemType(Item: TSE2BaseType): string; virtual; abstract;
+    function  FormatDescription(const Input: string): string; virtual; abstract;
+    procedure DoAddItem(const DispText: string); virtual;
+    procedure ProcessItem(Item: TSE2BaseType; const Doc: string);
+  public
+    constructor Create(CallBack: TSE2AddItemEvent); reintroduce;
+    destructor Destroy; override;
+
+    function GetInlineDocumentation(const Source: string; CursorPos: integer; CurrentToken: string): boolean; overload;
+    function GetInlineDocumentation(const Readers: TSE2ReaderList; CursorPos: integer; CurrentToken: string): boolean; overload;
+
+    property Compiler      : TSE2Compiler      read FCompiler;
+    property OnAddItem     : TSE2AddItemEvent  read FOnAddItem      write FOnAddItem;
+    property OnGetUnitMngr : TSE2GetUnitMngr   read FOnGetUnitMngr  write FOnGetUnitMngr;
+  end;
+
+  TSE2SynInlineDocumentation = class(TSE2InlineDocumentation)
+  protected
+    function FormatItemType(Item: TSE2BaseType): String; override;
+    function FormatDescription(const Input: String): String; override;
   end;
 
 implementation
@@ -439,11 +478,12 @@ begin
      result := Entry.GenLinkerName();
 end;
 
-function TSE2CodeCompletion.GetCodeCompletion(const Source: string;
+function TSE2CodeCompletion.GetCodeCompletion(const Readers: TSE2ReaderList;
   CursorPos: integer): boolean;
 var UnitMngr : TSE2UnitCacheMngr;
     Token    : TSE2TokenType;
 begin
+  FHasParentObj := False;
   FEventRaised := False;
   FCanExecute  := True;
   FProcessed.Clear;
@@ -453,19 +493,32 @@ begin
      FOnGetUnitMngr(Self, UnitMngr);
 
   FCompiler.UnitCache := UnitMngr;
-  FCompiler.CodeComplete(Source, CompileCallBack, CursorPos);
+  FCompiler.CodeComplete(Readers, CompileCallBack, CursorPos);
 
   if not FEventRaised then
   begin
     ProcessUnits(FCompiler, nil, nil, CAllVisibilities, nil, nil, False);
   end;
 
-  if FShowKeyWords then
+  if FShowKeyWords and not FHasParentObj then
     for Token := sesNone to sesLastToken do
         if length(TSE2TokenString[Token]) > 2 then
            DoAddItem(GetDisplayStrToken(TSE2TokenString[Token]), GetInsertStrToken(TSE2TokenString[Token]));
 
   result := FCanExecute;
+end;
+
+function TSE2CodeCompletion.GetCodeCompletion(const Source: string;
+  CursorPos: integer): boolean;
+var Readers: TSE2ReaderList;
+begin
+  Readers := TSE2ReaderList.Create;
+  try
+    Readers.Add(TSE2StringReader.Create(Source));
+    result := GetCodeCompletion(Readers, CursorPos);
+  finally
+    Readers.Free;
+  end;
 end;
 
 procedure TSE2CodeCompletion.CompileCallBack(Sender: TObject;
@@ -480,11 +533,29 @@ end;
 procedure TSE2CodeCompletion.ProcessUnits(Compiler: TSE2Compiler;
   Parser: TSE2Parser; ParentObj: TSE2BaseType;
   Visibility: TSE2Visibilities; ResultType: TSE2Type; Method: TSE2Method; StaticOnly: boolean);
-var i, j       : integer;
-    IgnoreUnit : TSE2Unit;
-    vis        : TSE2Visibilities;
-    unitList   : TStringList;
+var i, j         : integer;
+    IgnoreUnit   : TSE2Unit;
+    vis          : TSE2Visibilities;
+    unitList     : TStringList;
+    OnlyUnitList : boolean;
+
+  function DoHasParentObject: boolean;
+  begin
+    result := ParentObj <> nil;
+    if result then
+       result := not (ParentObj is TSE2Method);
+    if result then
+       result := not ((ParentObj is TSE2Class) and (Method = nil));
+    if result then
+       result := not ((ParentObj is TSE2Record) and (Method = nil));
+  end;
+
 begin
+  OnlyUnitList := False;
+  if Parser <> nil then
+     if Parser.State.IsInUsesBlock then
+        OnlyUnitList := True;
+
   if ParentObj <> nil then
      if ParentObj is TSE2Unit then
      begin
@@ -493,22 +564,31 @@ begin
           if Parser.AUnit = ParentObj then
             vis := CAllVisibilities;
 
+       FHasParentObj := True;
        ProcessUnit(TSE2Unit(ParentObj), nil, vis, nil, nil, StaticOnly);
        exit;
      end;
 
-  IgnoreUnit := nil;
-  if Parser <> nil then
+  if not OnlyUnitList then
   begin
-    IgnoreUnit := Parser.AUnit;
-    ProcessUnit(IgnoreUnit, ParentObj, CAllVisibilities, ResultType, Method, StaticOnly);
+    IgnoreUnit := nil;
+    if Parser <> nil then
+    begin
+      IgnoreUnit := Parser.AUnit;
+      FHasParentObj := FHasParentObj or DoHasParentObject;
+      ProcessUnit(IgnoreUnit, ParentObj, CAllVisibilities, ResultType, Method, StaticOnly);
+    end;
+
+    for i:=0 to Compiler.UnitList.Count-1 do
+      if Compiler.UnitList[i] <> IgnoreUnit then
+      begin
+        FHasParentObj := FHasParentObj or DoHasParentObject;
+        ProcessUnit(TSE2Unit(Compiler.UnitList[i]), ParentObj, CPublicVisibilities, ResultType, Method, StaticOnly);
+      end;
   end;
 
-  for i:=0 to Compiler.UnitList.Count-1 do
-    if Compiler.UnitList[i] <> IgnoreUnit then
-    begin
-      ProcessUnit(TSE2Unit(Compiler.UnitList[i]), ParentObj, CPublicVisibilities, ResultType, Method, StaticOnly);
-    end;
+  if OnlyUnitList then
+     FHasParentObj := True;
 
   if ParentObj = nil then
   begin
@@ -529,6 +609,13 @@ begin
         begin
           unitList.Add(TSE2UnitManager.Instance[i].UnitNames[j]);
         end;
+
+      if OnlyUnitList and (Parser <> nil) then
+      begin
+        for i:=unitList.Count-1 downto 0 do
+          if Parser.UnitList.FindItem(unitList[i]) is TSE2Unit then
+             unitList.Delete(i);
+      end;
 
       for i:=0 to unitList.Count-1 do
         DoAddItem(GetDisplayStrUnit(unitList[i]), GetInsertStrUnit(unitList[i])); 
@@ -854,6 +941,19 @@ end;
 
 function TSE2ParamCompletion.GetParamCompletion(const Source: string;
   CursorPos: integer; var ParamIndex: integer): boolean;
+var Readers: TSE2ReaderList;
+begin
+  Readers := TSE2ReaderList.Create;
+  try
+    Readers.Add(TSE2StringReader.Create(Source));
+    result := GetParamCompletion(Readers, CursorPos, ParamIndex);
+  finally
+    Readers.Free;
+  end;
+end;
+
+function TSE2ParamCompletion.GetParamCompletion(const Readers: TSE2ReaderList;
+  CursorPos: integer; var ParamIndex: integer): boolean;
 var UnitMngr : TSE2UnitCacheMngr;
 begin
   FEventRaised := False;
@@ -863,7 +963,7 @@ begin
      FOnGetUnitMngr(Self, UnitMngr);
 
   FCompiler.UnitCache := UnitMngr;
-  FCompiler.CodeComplete(Source, CompileCallBack, CursorPos);
+  FCompiler.CodeComplete(Readers, CompileCallBack, CursorPos);
 
   ParamIndex := Self.FParamIndex;
   result     := FEventRaised and FCanExecute;
@@ -913,6 +1013,293 @@ begin
        result := result + ', ';
 
   end;
+end;
+
+{ TSE2InlineDocumentation }
+
+procedure TSE2InlineDocumentation.CompileCallBack(Sender: TObject; CodePos,
+  ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method;
+  Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType;
+  StaticOnly: boolean);
+var aType: TSE2BaseType;
+begin
+  aType := SearchItem(TSE2Parser(Sender), CurrentMethod, Parent, FCurrentToken);
+
+  if aType <> nil then
+  begin
+    FCanExecute := True;
+    FEventRaised := True;
+    ProcessItem(aType, GetItemDocumentation(TSE2Parser(Sender), CurrentMethod, aType));
+  end;
+end;
+
+constructor TSE2InlineDocumentation.Create(CallBack: TSE2AddItemEvent);
+begin
+  inherited Create;
+  FOnAddItem := CallBack;
+  FCompiler  := TSE2Compiler.Create;
+end;
+
+destructor TSE2InlineDocumentation.Destroy;
+begin       
+  FreeAndNil(FCompiler);
+  inherited;
+end;
+
+function TSE2InlineDocumentation.GetInlineDocumentation(
+  const Source: string; CursorPos: integer; CurrentToken: string): boolean;
+var Readers: TSE2ReaderList;
+begin
+  Readers := TSE2ReaderList.Create;
+  try
+    Readers.Add(TSE2StringReader.Create(Source));
+    result := GetInlineDocumentation(Readers, CursorPos, CurrentToken);
+  finally
+    Readers.Free;
+  end;
+end;
+
+procedure TSE2InlineDocumentation.DoAddItem(const DispText: string);
+begin
+  if Assigned(FOnAddItem) then
+     FOnAddItem(Self, DispText, '');
+end;
+
+function TSE2InlineDocumentation.GetInlineDocumentation(
+  const Readers: TSE2ReaderList; CursorPos: integer; CurrentToken: string): boolean;
+var UnitMngr : TSE2UnitCacheMngr;
+begin
+  FEventRaised := False;
+
+  result := False;
+  if CurrentToken = '' then
+     exit;
+
+  FCurrentToken := CurrentToken;
+  UnitMngr := nil;
+  if Assigned(FOnGetUnitMngr) then
+     FOnGetUnitMngr(Self, UnitMngr);
+
+  FCompiler.UnitCache := UnitMngr;
+  FCompiler.CodeComplete(Readers, CompileCallBack, CursorPos);
+
+  result     := FEventRaised and FCanExecute;
+end;
+
+procedure TSE2InlineDocumentation.ProcessItem(Item: TSE2BaseType; const Doc: string);
+var docs: TStringList;
+    i   : integer;
+begin
+  DoAddItem(FormatItemType(Item));
+  if Doc <> '' then
+  begin
+    docs := TStringList.Create;
+    try
+      docs.Text := doc;
+      for i:=0 to docs.Count-1 do
+        DoAddItem(FormatDescription(docs[i]));
+    finally
+      docs.Free;
+    end;
+    //DoAddItem(Doc);
+  end;
+end;
+
+function TSE2InlineDocumentation.GetItemDocumentation(
+  Parser: TSE2Parser; CurrentMethod: TSE2Method; Item: TSE2BaseType): string;
+
+  function ScanDefinition(const AClass: TSE2BaseType; const Name: string): string;
+  var aItem   : TSE2BaseType;
+      newScan : boolean;
+  begin
+    aItem := SearchItem(Parser, CurrentMethod, AClass, Name);
+
+    if aItem = nil then
+       newScan := True
+    else
+       newScan := (aItem.InlineDoc = '') and (AClass.InheritFrom <> nil);
+
+    if newScan then
+       result := ScanDefinition(AClass.InheritFrom, Name)
+    else
+    if aItem = nil then
+       result := ''
+    else
+       result := aItem.InlineDoc;
+  end;
+
+var p: TSE2BaseType;
+begin
+  result := Item.InlineDoc;
+  if result = '' then
+  begin
+    if Item is TSE2Method then
+    begin
+      if TSE2Method(Item).IsOverride then
+        if Item.Parent is TSE2Class then
+          if TSE2Class(Item.Parent).InheritFrom <> nil then
+          begin
+             result := ScanDefinition(TSE2Class(Item.Parent).InheritFrom, Item.Name);
+          end;
+    end else
+    if (Item is TSE2Type) and not (Item is TSE2Class) then
+    begin
+      p := Item;
+      while p <> nil do
+      begin
+        p := p.InheritFrom;
+        if p <> nil then
+          if p.InlineDoc <> '' then
+          begin
+            result := p.InlineDoc;
+            break;
+          end;
+      end;
+
+    end;
+  end;
+end;
+
+function TSE2InlineDocumentation.SearchItem(Parser: TSE2Parser;
+  CurrentMethod: TSE2Method; AParent: TSE2BaseType; const Name: string): TSE2BaseType;
+var i     : integer;
+    aType : TSE2BaseType;
+
+  function SearchInUnit(AUnit: TSE2Unit; All: boolean): TSE2BaseType;
+  var vis: TSE2Visibilities;
+      i  : integer;
+  begin
+    if all then
+       vis := CAllVisibilities
+    else
+       vis := CPublicVisibilities;
+    result := AUnit.TypeList.FindItem(Name, '', AParent, nil, nil, vis);
+    if result = nil then
+       result := AUnit.ElemList.FindItem(Name, '', AParent, nil, nil, vis);
+
+    if result = nil then
+      for i:=AUnit.TypeList.Count-1 downto 0 do
+        if AUnit.TypeList[i] is TSE2Class then
+          if TSE2Class(AUnit.TypeList[i]).IsHelper then
+            if AUnit.TypeList[i].InheritFrom = AParent then
+            begin
+              result := AUnit.TypeList.FindItem(Name, '', AUnit.TypeList[i], nil, nil, vis);
+              if result = nil then
+                 result := AUnit.ElemList.FindItem(Name, '', AUnit.TypeList[i], nil, nil, vis);
+              if result <> nil then
+                 break;
+            end;
+
+  end;
+
+begin
+  aType := nil;
+  repeat
+    if CurrentMethod <> nil then
+    begin
+      aType := CurrentMethod.Variables.FindItem(Name, '', AParent, nil, nil, CAllVisibilities);
+      if aType = nil then
+         aType := CurrentMethod.Types.FindItem(Name, '', AParent, nil, nil, CAllVisibilities);
+
+      
+      if AParent = nil then
+         if CurrentMethod.ReturnValue <> nil then
+            if CurrentMethod.ReturnValue.IsName(Name) then
+               aType := CurrentMethod.ReturnValue;
+
+      if aType = nil then
+         aType := CurrentMethod.Params.FindItem(Name, '', AParent, nil, nil, CAllVisibilities);
+    end;
+    if aType = nil then
+       aType := SearchInUnit(Parser.AUnit, True);
+    if aType = nil then
+    begin
+      for i:=FCompiler.UnitList.Count-1 downto 0 do
+      begin
+        aType := SearchInUnit(TSE2Unit(FCompiler.UnitList.Items[i]), False);
+        if aType <> nil then
+           break;
+      end;
+    end;
+    if AParent <> nil then
+       AParent := AParent.InheritFrom;
+  until (AParent = nil) or (aType <> nil);
+
+  result := aType;
+end;
+
+{ TSE2SynInlineDocumentation }
+
+function TSE2SynInlineDocumentation.FormatDescription(
+  const Input: String): String;
+begin
+  result := '\hspace{10}\color{clBlack}' + Input;
+end;
+
+function TSE2SynInlineDocumentation.FormatItemType(
+  Item: TSE2BaseType): String;
+var typeNameValue : string;
+    typeNameBase  : string;
+begin
+
+  result := '\color{clGreen}';
+  if Item is TSE2Unit then
+     result := result + Item.Name
+  else
+  begin
+    result := result + Item.AUnitName + '.';
+
+    if (Item.Parent is TSE2Class) or (Item.Parent is TSE2Record) then
+       result := result + '\color{clMaroon}' + Item.Parent.Name + '.';
+
+    result := result + '\color{clNavy}' + Item.Name;
+
+    if Item is TSE2Type then
+    begin
+      typeNameBase := '';
+      if TSE2Type(Item).InheritFrom <> nil then
+         typeNameBase := '\color{clBlack}: ' + TSE2Type(Item).InheritFrom.Name;
+
+      if Item is TSE2Class then
+      begin
+        if TSE2Class(Item).IsHelper then
+           typeNameValue := 'helper '
+        else
+           typeNameValue := 'class ';
+      end else
+      if Item is TSE2Record then
+         typeNameValue := 'record '
+      else
+         typeNameValue := 'type ';
+
+      result := typeNameValue + result + typeNameBase;
+    end else
+    if Item is TSE2Variable then
+       result := 'var ' + result + '\color{clBlack}: ' + TSE2Variable(Item).AType.Name
+    else
+    if Item is TSE2Property then
+       result := 'property ' + result + '\color{clBlack}: ' + TSE2Property(Item).AType.Name
+    else
+    if Item is TSE2Constant then
+       result := 'const ' + result
+    else
+    if Item is TSE2Method then
+    begin
+      case TSE2Method(Item).MethodType of
+      mtProcedure : result := 'procedure ' + result;
+      mtFunction  : result := 'function ' + result;
+      mtConstructor : result := 'constructor ' + result;
+      mtDestructor : result := 'destructor ' + result;
+      end;          
+      if (TSE2Method(Item).IsStatic) and (TSE2Method(Item).MethodType in [mtProcedure, mtFunction]) then
+         result := 'class ' + result;
+    end;
+        ;
+  end;
+                         (*
+  s := '\color{clGreen}System.Threading.\color{clMaroon}Console.\color{clNavy}WriteLine\color{clBlack}' +
+       '(s: string);';  *)
+
 end;
 
 end.

@@ -41,7 +41,7 @@ const
      'type'+#13#10+
      '  TDateTime = double;'+#13#10+
      #13#10+
-     '  DateTime = class(TExternalObject)'+#13#10+
+     '  DateTime = sealed partial class(TExternalObject)'+#13#10+
      '  public'+#13#10+
      '    class function CompareDate(const a, b: TDateTime): integer; external;'+#13#10+
      '    class function CompareDateTime(const a, b: TDateTime): integer; external;'+#13#10+

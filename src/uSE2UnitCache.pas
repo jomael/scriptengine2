@@ -210,6 +210,9 @@ begin
   FStream    := aStream;
   FWeaver    := TSE2NameWeaver.Create;
   FDependsOn := TStringList.Create;
+  FDependsOn.CaseSensitive := False;
+  FDependsOn.Sorted := True;
+  FDependsOn.Duplicates := dupIgnore;
 end;
 
 destructor TSE2UnitCache.Destroy;
