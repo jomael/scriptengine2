@@ -21,20 +21,29 @@ const
         #13#10 + 
         'interface' + #13#10 + 
         #13#10 + 
-        'type' + #13#10 + 
+        'type' + #13#10 +             
+        '  /// The basic execution context for multi threading'+#13#10+
         '  TExecutionContext = class;' + #13#10 + 
-        #13#10 + 
+        #13#10 +
+        '  /// The state of the thread'+#13#10+
         '  TThreadState = byte;' + #13#10 +
+        '  /// The priority of the thread'+#13#10+
         '  TThreadPriority = byte;' + #13#10 +
-        #13#10 + 
-        '  ThreadState = record' + #13#10 + 
-        '  public' + #13#10 + 
-        '    const Waiting   : TThreadState = 0;' + #13#10 + 
-        '    const Executing : TThreadState = 1;' + #13#10 + 
-        '    const Suspended : TThreadState = 2;' + #13#10 + 
+        #13#10 +
+        '  /// Stores possible thread states'+#13#10+
+        '  ThreadState = record' + #13#10 +
+        '  public' + #13#10 +
+        '    /// Thread is ready and waits for the start signal'+#13#10+
+        '    const Waiting   : TThreadState = 0;' + #13#10 +
+        '    /// Thread is executing'+#13#10+
+        '    const Executing : TThreadState = 1;' + #13#10 +
+        '    /// Thread is sleeping and waits for the resume signal'+#13#10+
+        '    const Suspended : TThreadState = 2;' + #13#10 +
+        '    /// The thread-execute method has been finished'+#13#10+
         '    const Finished  : TThreadState = 3;' + #13#10 +
         '  end;' + #13#10 +
         #13#10 +
+        '  /// Possible thread priorities'+#13#10+
         '  ThreadPriority = record' + #13#10 +
         '  public' + #13#10 +
         '    const Idle          : TThreadPriority = 0;' + #13#10 +
@@ -44,7 +53,7 @@ const
         '    const Higher        : TThreadPriority = 4;' + #13#10 +
         '    const Highest       : TThreadPriority = 5;' + #13#10 +
         '  end;' + #13#10+
-        #13#10 + 
+        #13#10 +
         '  EThreadException = class(EExternalException)' + #13#10 +
         '  public' + #13#10 + 
         '    constructor Create(const Message: string); override;' + #13#10 + 
@@ -56,8 +65,9 @@ const
         '  end;'+#13#10+
         #13#10 +
         '  TThreadAffinity = cardinal;'+#13#10+
-        #13#10 + 
-        '  TThread = class(TExternalObject)' + #13#10 + 
+        #13#10 +
+        '  /// The system thread'+#13#10+
+        '  TThread = sealed class(TExternalObject)' + #13#10 + 
         '  private' + #13#10 +
         '    function  GetPriority: TThreadPriority; external;'+#13#10+
         '    procedure SetPriority(value: TThreadPriority); external;' +#13#10 +
@@ -70,24 +80,39 @@ const
         '    constructor CreateInstance(Instance: Pointer; Context: TExecutionContext; AutoFree: boolean); external;' + #13#10 +
         '  public' + #13#10 +
         '    class function NewThread(Context: TExecutionContext): TThread; overload;' + #13#10 +
+        '    /// Creates a new thread. The given execution context will be executed in the thread'+#13#10+
         '    class function NewThread(Context: TExecutionContext; AutoFree: boolean): TThread; overload;' + #13#10 +
-        #13#10 + 
-        '    procedure Start; external;' + #13#10 + 
-        '    procedure Suspend; external;' + #13#10 + 
-        '    procedure Resume; external;' + #13#10 + 
-        '    procedure Terminate; external;' + #13#10 + 
-        '    procedure WaitFor; external;' + #13#10 + 
         #13#10 +
+        '    /// Start the thread'+#13#10+
+        '    procedure Start; external;' + #13#10 +
+        '    /// Suspend the thread'+#13#10+
+        '    procedure Suspend; external;' + #13#10 +
+        '    /// Resume the thread after a suspended call'+#13#10+
+        '    procedure Resume; external;' + #13#10 +
+        '    /// Send a terminate signal to the thread. The thread will raise a "EThreadTerminate" exception inside the execute method of the execution context'+#13#10+
+        '    procedure Terminate; external;' + #13#10 +
+        '    /// Wait until the thread is finished'+#13#10+
+        '    procedure WaitFor; external;' + #13#10 +
+        #13#10 +
+        '    /// The system priority of the thread (currently Windows-Only)'+#13#10+
         '    property  Priority: TThreadPriority   read GetPriority write SetPriority;'+#13#10+
+        '    /// The Affinity Mask bit field of the thread (currently windows only)'+#13#10+
+        '    /// - if (.Affinity and ThreadAffinity.CPU0) <> 0 then the thread is executed on cpu 0'+#13#10+   
+        '    /// - if (.Affinity and ThreadAffinity.CPU1) <> 0 then the thread is executed on cpu 1'+#13#10+
         '    property  Affinity: TThreadAffinity   read GetAffinity write SetAffinity;'+#13#10+
-        '    property  State   : TThreadState      read GetThreadState;' + #13#10 + 
-        '    property  Context : TExecutionContext read GetContext;' + #13#10 + 
+        '    /// The current state of the thread'+#13#10+
+        '    property  State   : TThreadState      read GetThreadState;' + #13#10 +
+        '    /// The execution context, the thread is executing'+#13#10+
+        '    property  Context : TExecutionContext read GetContext;' + #13#10 +
+        '    /// Event is raised after the thread has finished the execution'+#13#10+
         '    property  OnDone  : TNotifyEvent      read GetOnDone write SetOnDone;' + #13#10 + 
         #13#10 + 
-        '    class procedure Sleep(time: integer); external; overload;' + #13#10 + 
+        '    class procedure Sleep(time: integer); external; overload;' + #13#10 +
+        '    /// Suspend the current thread for "time" milliseconds'+#13#10+
         '    class procedure Sleep(time: TTimeSpan); overload;' + #13#10 + 
         '  end;' + #13#10 +
         #13#10 +
+        '  /// Possible thread affinity bit values'+#13#10+
         '  ThreadAffinity = record' + #13#10 +
         '  public' + #13#10 + 
         '    const AllCPUs   : TThreadAffinity = $FFFFFFFF;' + #13#10 +
@@ -108,18 +133,21 @@ const
         '    const CPU14     : TThreadAffinity = 16384;' + #13#10 +
         '    const CPU15     : TThreadAffinity = 32768;' + #13#10 +
         '  end;' + #13#10 +
-        #13#10 + 
+        #13#10 +
         '  TExecutionContext = class(TObject)' + #13#10 + 
         '  private' + #13#10 + 
         '    FThread : TThread;' + #13#10 + 
         '    procedure __SetThread(value: TThread); export;' + #13#10 +
-        '  protected' + #13#10 + 
-        '    procedure Execute; virtual;' + #13#10 + 
+        '  protected' + #13#10 +
+        '    /// The execute-method is called by the TThread-Object. Do not call it directly'+#13#10+
+        '    procedure Execute; virtual;' + #13#10 +
         '  public' + #13#10 +
         '    function RunInThread: TThread; overload;' + #13#10 +
         '    function RunInThread(AutoStart: boolean): TThread; overload;' + #13#10 +
+        '    /// Create a new TThread-Instance and link the current execution context instance to it'+#13#10+
         '    function RunInThread(AutoStart, AutoFreeThread: boolean): TThread; overload;' + #13#10 +
         #13#10 +
+        '    /// The thread, the executing context is executed in'+#13#10+
         '    property Thread : TThread read FThread;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 +

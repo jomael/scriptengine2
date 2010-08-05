@@ -617,6 +617,7 @@ type
     procedure LoadFromStream(Stream: TStream);
     procedure SaveToStream(Stream: TStream);
 
+    procedure ChangeOpCode(newOpCode: Pointer; CodeIndex: string);
     procedure SetPosition(index: integer);
     procedure AddOffset(Offset: integer; MinJumpPos: integer);
     function  GetJumpPos: integer;
@@ -1408,6 +1409,15 @@ begin
   Stream.Write(FPositionSet, SizeOf(FPositionSet));
 
   Stream.Write(FOpCode^, SizeOf(TSE2OpDefault));
+end;
+
+procedure TSE2LinkOpCode.ChangeOpCode(newOpCode: Pointer;
+  CodeIndex: string);
+begin
+  if FOpCode <> nil then
+     FreeMem(FOpCode);
+  FOpCode := newOpCode;
+  FCodeIndex := CodeIndex;
 end;
 
 { TSE2LinkOpCodeList }

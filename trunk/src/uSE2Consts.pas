@@ -35,7 +35,7 @@ type
                     sesTry, sesFinally, sesExcept, sesOn, sesDeprecated, sesRaise, sesSizeOf,
                     // Class Definitions
                     sesClass, sesPrivate, sesProtected, sesPublic, sesProperty, sesVirtual, sesAbstract, sesOverride, sesOverload,
-                    sesInherited, sesReintroduce, sesPartial, sesHelper,
+                    sesInherited, sesReintroduce, sesPartial, sesHelper, sesSealed,
                     // Method definitions
                     sesProcedure, sesFunction, sesConstructor, sesDestructor, sesForward, sesObject,
                     // External Methods
@@ -96,7 +96,7 @@ const
                     'try', 'finally', 'except', 'on', 'deprecated', 'raise', 'sizeof',
                     // Class Definitions
                     'class', 'private', 'protected', 'public', 'property', 'virtual', 'abstract', 'override', 'overload',
-                    'inherited', 'reintroduce', 'partial', 'helper',
+                    'inherited', 'reintroduce', 'partial', 'helper', 'sealed',
                     // Method definitions
                     'procedure', 'function', 'constructor', 'destructor', 'forward', 'object',
                     // External Methods
@@ -116,6 +116,7 @@ const
   C_SE2TExternalObjectName      = 'TExternalObject';
   C_SE2ThreadingUnit            = 'System.Threading';
   C_SE2Boolean                  = 'boolean';
+  C_SE2Int32                    = 'integer';
   C_SE2Int64                    = 'int64';   
   C_SE2String                   = 'string';
   C_SE2Double                   = 'double';   
@@ -124,6 +125,7 @@ const
 
   C_SE2ExceptionObject          = 'EException';
   C_SE2ExceptExternal	          = 'EExternalException';
+  C_SE2ExceptUnknown            = 'EUnknownException';
 
   C_SE2ExceptionUnit            = 'System.Exceptions';
 
@@ -178,10 +180,11 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 2; Build: 0);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 3; Build: 0);
 
 
 function SE2SplitFullQualifiedName(const Input: string; var AUnitName, ATypeName: string): boolean;
+function SE2VersionIsInRange(const version, maxVersion: TSE2ScriptEngineVersion): boolean;
 
 implementation
 
@@ -212,6 +215,40 @@ begin
             (Pos(' ', ATypeName) = 0);
 
   result := result and (length(ATypeName) > 0);
+end;
+
+function SE2VersionIsInRange(const version, maxVersion: TSE2ScriptEngineVersion): boolean;
+begin
+  result := False;
+  if maxVersion.Major < version.Major then
+     exit
+  else
+  if maxVersion.Major > version.Major then
+  begin
+    result := True;
+    exit;
+  end;
+
+  if maxVersion.Minor < version.Minor then
+     exit
+  else
+  if maxVersion.Minor > version.Minor then
+  begin
+    result := True;
+    exit;
+  end;
+
+  if maxVersion.Patch < version.Patch then
+     exit
+  else
+  if maxVersion.Patch > version.Patch then
+  begin
+    result := True;
+    exit;
+  end;
+
+  if maxVersion.Build >= version.Build then
+     result := True;
 end;
 
 { TSE2StreamHelper }
@@ -374,7 +411,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 05, 21);
+  result := EncodeDate(2010, 08, 04);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }

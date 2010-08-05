@@ -679,6 +679,11 @@ begin
         if TSE2ParamHelper.IsVarParam(ParamDecl) then
           if TSE2ParamHelper.GetParamType(ParamDecl) = btRecord then
           begin
+            //tmpMeta := TSE2ExecutionContext(FRunTime).ExecutionData.AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]);
+            //if
+
+
+
             Self.FClasses.DelphiToScriptRecord(pVarRecords.Last, Pointer(Param.tPointer^), TSE2ExecutionContext(FRunTime).ExecutionData.AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]);
             pVarRecords.Delete(pVarRecords.Count - 1);
           end;

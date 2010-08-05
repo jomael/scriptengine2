@@ -31,7 +31,8 @@ const
         #13#10 + 
         'interface' + #13#10 + 
         #13#10 + 
-        'type' + #13#10 + 
+        'type' + #13#10 +
+        '  /// Represents a global unique identifier'+#13#10+ 
         '  TGuid = record' + #13#10 + 
         '  private' + #13#10 + 
         '    Fa  : LongWord;' + #13#10 + 
@@ -49,15 +50,22 @@ const
         '    class function CreateNewGuid: TGuid; external;' + #13#10 + 
         '    class function GuidToString(aGuid: TGuid): string; external;' + #13#10 + 
         '    class function StringToGuid(value: string): TGuid; external;' + #13#10 + 
-        '  public' + #13#10 + 
+        '  public' + #13#10 +
         '    class function Guid(a : LongWord; b, c: word; d1, d2, d3, d4, d5, d6, d7, d8: byte): TGuid; overload;' + #13#10 + 
-        '    class function Guid(value: string): TGuid; overload;' + #13#10 + 
-        '    class function Empty: TGuid;' + #13#10 + 
-        '    class function Generate: TGuid;' + #13#10 + 
-        #13#10 + 
+        '    /// Create a new guid'+#13#10+
+        '    class function Guid(value: string): TGuid; overload;' + #13#10 +      
+        '    /// Returns a new guid equals to {00000000-0000-0000-0000-000000000000}'+#13#10+
+        '    class function Empty: TGuid;' + #13#10 +
+        '    /// Generate a new unique guid'+#13#10+
+        '    class function Generate: TGuid;' + #13#10 +
+        #13#10 +
+        '    /// Returns true, if the guid is equal to another guid'+#13#10+
         '    function Equals(aGuid: TGuid): boolean;' + #13#10 + 
+        '    /// Checks, if the guid is equal to {00000000-0000-0000-0000-000000000000}'+#13#10+
         '    function IsZeroGuid: boolean;' + #13#10 + 
-        #13#10 + 
+        #13#10 +
+        '    /// Converts a guid to a string'+#13#10+
+        '    /// Format: {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}'+#13#10+
         '    function ToString: string;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 + 

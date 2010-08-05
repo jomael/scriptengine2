@@ -20,11 +20,16 @@ const
      'interface'+#13#10+
      #13#10+
      'type' + #13#10 +
+     '  /// Stores some basic information about the compiler, the script was built with'+#13#10+
      '  ScriptInfo = class(TObject)'+#13#10+
      '  public' + #13#10 +
+     '    /// The date and the time the current script was build'+#13#10+
      '    const BuiltDate       : TDateTime = {%SCRIPT_DATE%};'+#13#10+
+     '    /// The used ScriptEngineII compiler version'+#13#10+
      '    const CompilerVersion : string = ''{%COMP_VERSION%}'';'+#13#10+
+     '    /// The date the ScriptEngineII compiler was build'+#13#10+
      '    const CompilerDate    : TDateTime = {%COMP_DATE%};'+#13#10+
+     '    /// Returns true if the compiler was an unicode compiler'+#13#10+
      '    const UnicodeCompiler = {%COMP_UNICODE%};'+#13#10+
      '  end; ' + #13#10 +
      #13#10 +

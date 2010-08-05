@@ -221,7 +221,8 @@ implementation
 uses SysUtils;
 
 const
-  TSE2OpCodes_StreamVersion    = 1;
+  TSE2OpCodes_StreamVersion    = 2;
+  TSE2OpCodes_OpCodeVersion    = 1;
   TSE2StringList_StreamVersion = 2;
   TSE2MetaEntry_StreamVersion  = 3;
   TSE2MetaList_StreamVersion   = 1;
@@ -300,6 +301,7 @@ end;
 
 procedure TSE2OpCodes.LoadFromStream(Stream: TStream);
 var version  : byte;
+    opVersion: word;
     OpCode   : PSE2OpDefault;
     i, count : integer;
 begin
@@ -314,8 +316,17 @@ begin
   {$ENDIF}
 
   case version of
-  1 :
+  1, 2 :
       begin
+        if version > 1 then
+        begin                                   
+          {$IFDEF SEII_FPC} {$HINTS OFF} {$ENDIF}
+          Stream.Read(opVersion, SizeOf(opVersion));
+          if opVersion <> TSE2OpCodes_OpCodeVersion then
+             raise ESE2InvalidDataStream.Create('Unsupported op-code-version. Please recompile the source');
+          {$IFDEF SEII_FPC} {$HINTS ON} {$ENDIF}
+        end;
+
         {$IFDEF SEII_FPC}
           {$HINTS OFF}
         {$ENDIF}
@@ -346,11 +357,14 @@ end;
 
 procedure TSE2OpCodes.SaveToStream(Stream: TStream);
 var version  : byte;
+    opVersion: word;
     OpCode   : PSE2OpDefault;
     i, count : integer;
 begin
   version := TSE2OpCodes_StreamVersion;
   Stream.Write(version, SizeOf(version));
+  opVersion := TSE2OpCodes_OpCodeVersion;
+  Stream.Write(opVersion, SizeOf(opVersion));
 
   count := Self.Count;
   Stream.Write(count, SizeOf(integer));

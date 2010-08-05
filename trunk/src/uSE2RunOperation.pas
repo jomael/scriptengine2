@@ -1035,8 +1035,8 @@ begin
         btU32       : Param1^.ts32^       := Param1^.ts32^ * Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ * Param2^.ts32^;
         btS64       : Param1^.ts32^       := Param1^.ts32^ * Param2^.ts64^;
-        btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts32^ - Param2^.tSingle^);
-        btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts32^ - Param2^.tDouble^);
+        btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts32^ * Param2^.tSingle^);
+        btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts32^ * Param2^.tDouble^);
         end;
       end;
   btS64 :

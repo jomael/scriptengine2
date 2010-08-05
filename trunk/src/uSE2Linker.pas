@@ -12,7 +12,7 @@ type
   private
     FUnitList : TSE2BaseTypeList;
   protected
-    procedure SetCodePos(ElemName: string; NewPos: cardinal; TypeMeta: TSE2BaseType = nil);
+    procedure SetCodePos(ElemName: string; NewPos: cardinal; DebugPos: integer; TypeMeta: TSE2BaseType = nil);
     procedure SetDebugPos(ElemName: string; DebugPos: cardinal);
     procedure AddCodeOffset(OpCode: PSE2OpDefault; Offset: integer);
 
@@ -60,9 +60,39 @@ type
     property UnitList : TSE2BaseTypeList read FUnitList write FUnitList;
   end;
 
+{var
+  DEBUG_TimeMeasure : int64;
+}
 implementation
 
-uses SysUtils;
+uses SysUtils
+     {, Windows }
+     ;
+ {
+var
+  TTimeMeasure_BeginTime    : array[0..1024] of int64;
+  TTimeMeasure_CurrentIndex : integer = 0;
+
+type
+  TTimeMeasure = class
+  public
+    class procedure Start;
+    class procedure Stop;
+  end;
+
+class procedure TTimeMeasure.Start;
+begin
+  QueryPerformanceCounter(TTimeMeasure_BeginTime[TTimeMeasure_CurrentIndex]);
+  TTimeMeasure_CurrentIndex := TTimeMeasure_CurrentIndex + 1;
+end;
+
+class procedure TTimeMeasure.Stop;
+var t: int64;
+begin
+  TTimeMeasure_CurrentIndex := TTimeMeasure_CurrentIndex - 1;
+  QueryPerformanceCounter(t);
+  DEBUG_TimeMeasure := DEBUG_TimeMeasure + (t - TTimeMeasure_BeginTime[TTimeMeasure_CurrentIndex]);
+end;         }
 
 { TSE2Linker }
 
@@ -86,15 +116,19 @@ begin
   ProcessUsage;
   {$ENDIF}
 
+
   // 1st of all - optimize
   for i:=0 to FUnitList.Count-1 do
     OptimizeMethods(TSE2Unit(FUnitList[i]));
+
 
   // Make as the 1st OpCode
   // this is to make a return to position 0 is not possible
   // Return to 0 means that the execution will end
   GenCode(result, TSE2OpCodeGen.NOOP);
   LinkResources(result);
+
+
   for i:=0 to FUnitList.Count-1 do
     LinkRecords(result, TSE2Unit(FUnitList[i]));
 
@@ -103,12 +137,11 @@ begin
 
   for i:=0 to FUnitList.Count-1 do
     LinkUnit(result, TSE2Unit(FUnitList[i]));
-
+    
   // UnlinkOpCodes;
 
   PostLinkClasses(Result);
   PostLinkRecords(Result);
-
 
   LinkInitialization(result);
   LinkFinalization(result);
@@ -119,7 +152,7 @@ end;
 procedure TSE2Linker.LinkString(PE: TSE2PE; value: TSE2LinkString);
 begin
   PE.Strings.Add(value.Value);
-  SetCodePos(value.GenLinkerName, PE.Strings.Count-1, nil);
+  SetCodePos(value.GenLinkerName, PE.Strings.Count-1, -1, nil);
 end;
 
 procedure TSE2Linker.LinkResources(PE: TSE2PE);
@@ -256,7 +289,7 @@ begin
           pVar := TSE2Variable(AUnit.ElemList[j]);
           pVar.CodePos := Index;
           aType := TSE2Type(TSE2Variable(AUnit.ElemList[j]).AType.InheritRoot).AType;
-          SetCodePos(pVar.GenLinkerName, Index, TSE2Variable(AUnit.ElemList[j]).AType);
+          SetCodePos(pVar.GenLinkerName, Index, -1, TSE2Variable(AUnit.ElemList[j]).AType);
           GenCode(PE, TSE2OpCodeGen.MEM_MAKE(aType));
           if TSE2Variable(AUnit.ElemList[j]).AType is TSE2Record then
             GenCode(PE, TSE2OpCodeGen.MEM_REC_MAKE(0, GetIndexOfRecord(PE, TSE2Record(TSE2Variable(AUnit.ElemList[j]).AType))))
@@ -397,13 +430,17 @@ begin
     if TSE2Parameter(Method.Params[i]).AType is TSE2Record then
       Meta.RTTI.Add(btRecord, i, FindRecordMeta(GetRecordMeta(TSE2Record(TSE2Parameter(Method.Params[i]).AType))));
 
-
   PE.MetaData.Add(Meta);
+
+
   CodePos := PE.OpCodes.Count;
   Method.CodePos  := CodePos;
   Method.DebugPos := PE.MetaData.Count-1;
-  SetCodePos(Method.GenLinkerName, CodePos);
-  SetDebugPos(Method.GenLinkerName, PE.MetaData.Count-1);
+
+  SetCodePos(Method.GenLinkerName, CodePos, PE.MetaData.Count - 1);
+  //  * DO NOT USE - Integrated in "SetCodePos" - if it does not work correctly, used it again *
+  //  * SetDebugPos(Method.GenLinkerName, PE.MetaData.Count-1);                                *
+  //  * END DO NOT USE                                                                         *
 
   if Method.Parent is TSE2Class then
     if Method.IsOverride or Method.IsVirtual or Method.IsAbstract then
@@ -420,6 +457,7 @@ begin
      Meta.Name := Method.Parent.Name + '.' + Meta.Name;
 
   Meta.Name := Meta.Name + '['+TSE2Converter.IntToStr(Method.ID)+']';
+
 
   for i:=0 to Method.OpCodes.Count-1 do
   begin
@@ -479,6 +517,8 @@ var i, j     : integer;
   begin
     if Method = nil then
        exit;
+    if not Method.Used then
+       exit;
 
     for c := 0 to Method.OpCodes.Count-1 do
       if Method.OpCodes[c].CodeHash = NameHash then
@@ -529,14 +569,17 @@ begin
   end;
 end;
 
-procedure TSE2Linker.SetCodePos(ElemName: string; NewPos: cardinal; TypeMeta: TSE2BaseType = nil);
+procedure TSE2Linker.SetCodePos(ElemName: string; NewPos: cardinal; DebugPos: integer; TypeMeta: TSE2BaseType = nil);
 var i, j     : integer;
     NameHash : integer;
 
   procedure DoForMethod(Method: TSE2Method);
   var c: integer;
+      p: PSE2OpDefault;
   begin
     if Method = nil then
+       exit;
+    if not Method.Used then
        exit;
 
     for c := 0 to Method.OpCodes.Count-1 do
@@ -548,6 +591,24 @@ var i, j     : integer;
           if Method.OpCodes[c].OpCode.OpCode = soREC_COPY_TO then
             if TypeMeta is TSE2Type then
                PSE2OpREC_COPY_TO(Method.OpCodes[c].OpCode).MetaIndex := TSE2Type(TypeMeta).MetaIndex;
+
+          if DebugPos >= 0 then
+          begin
+            case Method.OpCodes[c].OpCode.OpCode of
+            soFLOW_CALL, soFLOW_CALLEX :
+               if Method.OpCodes[c - 1] <> nil then
+               begin
+                 p := Method.OpCodes[c - 1].OpCode;
+                 if p <> nil then
+                    if p.OpCode = soFLOW_PUSHRET then
+                       PSE2OpFLOW_PUSHRET(p).DebugData := DebugPos + 1;
+               end;
+            soSPEC_GetProcPtr :
+               PSE2OpSPEC_GetProcPtr(Method.OpCodes[c].OpCode).MetaIndex := DebugPos;
+            soDEBUG_META :
+               PSE2OpDEBUG_META(Method.OpCodes[c].OpCode).MetaIndex := DebugPos + 1;
+            end;
+          end;
         end;
   end;
 
@@ -955,6 +1016,11 @@ var i, j    : integer;
     if PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Static and PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
         exit;
 
+    if not PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Static and (PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Source = 0) then
+       exit;
+    if not PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static and (PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Source = 0) then
+       exit;
+
     if PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
        OpCodes[0].CodeIndex := OpCodes[1].CodeIndex;
 
@@ -1010,6 +1076,11 @@ var i, j    : integer;
        exit;
     if PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Static and PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
         exit;
+
+    if not PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Static and (PSE2OpDAT_COPY_FROM(OpCodes[0].OpCode).Source = 0) then
+       exit;
+    if not PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static and (PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Source = 0) then
+       exit;
 
     if PSE2OpDAT_COPY_FROM(OpCodes[1].OpCode).Static then
        OpCodes[0].CodeIndex := OpCodes[1].CodeIndex;

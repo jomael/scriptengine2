@@ -75,7 +75,7 @@ end;
 constructor TSE2ScriptThread.Create(ARunTime, AContext: Pointer);
 var setThreadPtr: Pointer;
 begin
-  if AContext = nil then
+  if ARunTime = nil then
      raise ESE2NullReferenceError.Create('Script runtime not assigned');
   if AContext = nil then
      raise ESE2NullReferenceError.Create('Script execution context can not be nil');

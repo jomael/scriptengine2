@@ -19,16 +19,22 @@ const
       'interface'+#13#10+
       #13#10+
       'type'+#13#10+
-      '  ScriptEngineInfo = class(TExternalObject)'+#13#10+
+      '  /// Basic information about the current ScriptEngineII'+#13#10+
+      '  ScriptEngineInfo = record'+#13#10+
       '  public'+#13#10+
+      '    /// The current name of SEII'+#13#10+
       '    class function  Name      : string; external;'+#13#10+
+      '    /// The author of SEII'+#13#10+
       '    class function  Author    : string; external;'+#13#10+
+      '    /// The current running version of SEII'+#13#10+
       '    class function  Version   : string; external;'+#13#10+
+      '    /// The build date of the current SEII'+#13#10+
       '    class function  BuildDate : TDateTime; external;'+#13#10+
+      '    /// Additional information'+#13#10+
       '    class function  Copyright : string; external;'+#13#10+
       '  end;'+#13#10+
       #13#10+
-      '  ScriptEngineAdditionalInfo = class(TExternalObject)'+#13#10+
+      '  ScriptEngineAdditionalInfo = record'+#13#10+
       '  public'+#13#10+
       '    class function  Authors   : string; external;'+#13#10+
       '    class function  Revision  : string; external;'+#13#10+

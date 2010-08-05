@@ -248,9 +248,10 @@ var s         : string;
     if NextParam = nil then
        exit;
 
-    if NextParam.ParameterType = Param.ParameterType then
-      if NextParam.AType = Param.AType then
-        result := True;
+    if (Pos('!', Param.Name) = 0) and (Pos('!', NextParam.Name) = 0) then
+      if NextParam.ParameterType = Param.ParameterType then
+        if NextParam.AType = Param.AType then
+          result := True;
   end;
 
   function PrevParamEqual: boolean;
@@ -258,10 +259,11 @@ var s         : string;
     result := False;
     if PrevParam = nil then
        exit;
-
-    if PrevParam.ParameterType = Param.ParameterType then
-      if PrevParam.AType = Param.AType then
-        result := True;
+                      
+    if (Pos('!', Param.Name) = 0) and (Pos('!', PrevParam.Name) = 0) then
+      if PrevParam.ParameterType = Param.ParameterType then
+        if PrevParam.AType = Param.AType then
+          result := True;
   end;
 
 begin
@@ -307,12 +309,20 @@ begin
         end;
       end;
 
-      s := s + Param.Name;
+      if Pos('!', Param.Name) = 1 then
+         s := s + '__' + Copy(Param.Name, 2, MaxInt)
+      else
+         s := s + Param.Name;
       if NextParamEqual then
          s := s + ', '
       else
       begin
-        TypeName := Param.AType.Name;
+
+        if Pos('!', Param.Name) = 1 then
+           TypeName := 'pointer'
+        else
+           TypeName := Param.AType.Name;
+
         s := s + ': ' + TypeName;
         if i < AMethod.Params.Count - 1 then
            s := s + '; ';

@@ -43,9 +43,10 @@ const
         '  TWaitResult = (wrSignaled, wrTimeout, wrAbandoned, wrError);' + #13#10 + 
         #13#10 + 
         '  TEvent = class(TSynchronizeObject)' + #13#10 + 
-        '  public' + #13#10 + 
-        '    constructor Create(const Name: string; ManualReset, InitialSate: boolean); overload; external;' + #13#10 + 
-        '    constructor Create(const Name: string); overload; external;' + #13#10 + 
+        '  public' + #13#10 +
+        '    constructor Create(const Name: string; ManualReset, InitialState: boolean); overload; external;' + #13#10 + 
+        '    constructor Create(const Name: string); overload; external;' + #13#10 +
+        '    constructor Create; overload; external;'+#13#10+
         #13#10 + 
         '    function  WaitFor(Timeout: cardinal): TWaitResult; overload; external;' + #13#10 + 
         '    function  WaitFor(TimeSpan: TTimeSpan): TWaitResult; overload;' + #13#10 + 
@@ -67,12 +68,18 @@ const
         '    constructor Create; external;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 +
-        '  Monitor = class(TExternalObject)' + #13#10 +
+        '  /// Gives the possibilty to lock any object inside the current script'+#13#10+
+        '  Monitor = record //sealed class(TExternalObject)' + #13#10 +
         '  private'+#13#10+
         '    class procedure PEnter(AInstance, Data: Pointer); external;'+#13#10+
         '    class procedure PLeave(AInstance, Data: Pointer); external;'+#13#10+
-        '  public' + #13#10 + 
+        '  public' + #13#10 +
+        '    /// Aquire the lock for the data behind the "data" pointer'+#13#10+
+        '    /// If the curren thread tries to lock the same "data" pointer another thread has'+#13#10+
+        '    /// locked before, it has to wait, until any other thread, which also has locked the resource,'+#13#10+
+        '    /// releases the lock by calling the "Monitor.Leave" method'+#13#10+
         '    class procedure Enter(Data: Pointer);' + #13#10 +
+        '    /// Release the lock for the data behind the "data" pointer'+#13#10+
         '    class procedure Leave(Data: Pointer);' + #13#10 +
         '  end;' + #13#10 +
         #13#10 +
@@ -196,14 +203,19 @@ begin
   Self.Release;
 end;
 
-function TEvent_Create(Self: TEvent; const Name: string; ManualReset, InitialSate: boolean): TEvent;
+function TEvent_Create(Self: TEvent; const Name: string; ManualReset, InitialState: boolean): TEvent;
 begin
-  result := TEvent.Create(nil, ManualReset, InitialSate, Name);
+  result := TEvent.Create(nil, ManualReset, InitialState, Name);
 end;
 
 function TEvent_Create1(Self: TEvent; const Name: string): TEvent;
 begin
   result := TEvent.Create(nil, False, False, Name);
+end;
+
+function TEvent_Create2(Self: TEvent; const Name: string): TEvent;
+begin
+  result := TEvent.Create(nil, False, False, '');
 end;
 
 function TEvent_WaitFor(Self: TEvent; Timeout: cardinal): TWaitResult;
@@ -271,6 +283,7 @@ begin
     Target.Method['TSynchronizeObject.Release[0]', C_UnitName] := @TSynchronizeObject_Release;
     Target.Method['TEvent.Create[0]', C_UnitName] := @TEvent_Create;
     Target.Method['TEvent.Create[1]', C_UnitName] := @TEvent_Create1;
+    Target.Method['TEvent.Create[2]', C_UnitName] := @TEvent_Create2;
     Target.Method['TEvent.WaitFor[0]', C_UnitName] := @TEvent_WaitFor;
     Target.Method['TEvent.SetEvent[0]', C_UnitName] := @TEvent_SetEvent;
     Target.Method['TEvent.ResetEvent[0]', C_UnitName] := @TEvent_ResetEvent;
@@ -289,6 +302,7 @@ begin
   CallBack(Module, Data, @TSynchronizeObject_Release, 'TSynchronizeObject.Release[0]');
   CallBack(Module, Data, @TEvent_Create, 'TEvent.Create[0]');
   CallBack(Module, Data, @TEvent_Create1, 'TEvent.Create[1]');
+  CallBack(Module, Data, @TEvent_Create2, 'TEvent.Create[2]');
   CallBack(Module, Data, @TEvent_WaitFor, 'TEvent.WaitFor[0]');
   CallBack(Module, Data, @TEvent_SetEvent, 'TEvent.SetEvent[0]');
   CallBack(Module, Data, @TEvent_ResetEvent, 'TEvent.ResetEvent[0]');
