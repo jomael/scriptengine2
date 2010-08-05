@@ -4744,7 +4744,11 @@ begin
   ReadNextToken;
 
   oldVar := State.LastVariable;
-  try
+  try                      
+    { Push old }
+    oldIsInLoop      := State.IsInLoop;
+    oldLoopStack     := State.StackSize;
+
     State.LastTargetVar := nil;
     Statement(State, Method);
     if State.LastTargetVar = nil then
@@ -4785,10 +4789,6 @@ begin
     opCodePos1 := Method.OpCodes.Count;
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
     State.DecStack;
-
-    { Push old }
-    oldIsInLoop      := State.IsInLoop;
-    oldLoopStack     := State.StackSize;
 
     { New values }
     State.IsInLoop      := True;
