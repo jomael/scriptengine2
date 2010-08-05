@@ -175,7 +175,7 @@ object MainForm: TMainForm
       Top = 2
       Width = 233
       Height = 459
-      ActivePage = Packages
+      ActivePage = tabProject
       Align = alClient
       Images = ImgListProject
       TabOrder = 0
@@ -205,6 +205,7 @@ object MainForm: TMainForm
           TabOrder = 0
           OnCompare = tvProjectTreeCompare
           OnDblClick = tvProjectTreeDblClick
+          OnKeyDown = tvProjectTreeKeyDown
         end
       end
       object tabProjects: TTabSheet
@@ -488,6 +489,10 @@ object MainForm: TMainForm
         ShortCut = 16497
         OnClick = Run_StopClick
       end
+      object btnRunTests: TMenuItem
+        Caption = 'Tests'
+        OnClick = btnRunTestsClick
+      end
     end
     object MainMenu_Help: TMenuItem
       Caption = '?'
@@ -502,7 +507,7 @@ object MainForm: TMainForm
     Left = 78
     Top = 84
     Bitmap = {
-      494C010115001800580010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010115001800680010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000006000000001002000000000000060
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -1305,7 +1310,7 @@ object MainForm: TMainForm
     Left = 44
     Top = 84
     Bitmap = {
-      494C010108000900580010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010108000900680010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000003000000001002000000000000030
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

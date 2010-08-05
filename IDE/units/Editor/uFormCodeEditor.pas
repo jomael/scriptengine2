@@ -11,33 +11,44 @@ uses
   JvComponent, JvExControls, JvGradient, JvTabBar,
 
   SynEdit, SynCompletionProposal, SynEditRegexSearch, SynEditMiscClasses,
-  SynEditSearch, SynHighlighterSE2,
+  SynEditSearch, SynHighlighterSE2, SynEditTypes,
   
   uSE2Errors, uSE2PEData, uSE2RunTime, uSE2DebugData, uSE2CodeCompletion,
-  uSE2Compiler, uSE2RunType, uSE2UnitCacheMngr;
+  uSE2Compiler, uSE2RunType, uSE2UnitCacheMngr, uSE2Reader;
 
 
 type
   TEditorGetCustomUnits = uSE2CodeCompletion.TSE2GetCustomUnits;
 
+  TEditorSourceEvent = procedure(Sender: TObject; const Readers: TSE2ReaderList) of object;
+
   TCodeEditor = class(TObject)
   private
+    FUnderlines    : TList;
+
     FEditor        : TSynEdit;
     FErrorLine     : integer;
 
     FCodeComplete  : TSynCompletionProposal;
     FParamComplete : TSynCompletionProposal;
+    FItemInfo      : TSynCompletionProposal;
     FHighlighter   : TSynSE2Syn;
 
     FOnGetUnit     : TSE2GetFileReader;
     FOnGetUnitMngr : TSE2GetUnitMngr;
     FOnGetCustomUnits : TEditorGetCustomUnits;
+
+    FOnCompletionDependency : TEditorSourceEvent;
   protected
     procedure EditorMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: integer);
     procedure EditorLineColor(Sender: TObject; Line: integer; var Special: boolean; var FG, BG: TColor);
+    procedure EditorPaintTransient(Sender: TObject; Canvas: TCanvas; TransientType: TTransientType);
 
+    procedure EditorMouseMove(Sender: TObject; Shift: TShiftState; x, y: integer);
+    procedure EditorContextHelp(Sender: TObject; word: string);
     procedure CodeCompleteInsert(Sender: TObject; const DisplayText, InsertText: string);
-    procedure ParamCompleteInsert(Sender: TObject; const DisplayText, InsertText: string);
+    procedure ParamCompleteInsert(Sender: TObject; const DisplayText, InsertText: string);  
+    procedure ItemInfoInsert(Sender: TObject; const DisplayTest, InsertTest: string);
 
     procedure CompleteGetUnitMngr(Sender: TObject; var UnitMngr: TSE2UnitCacheMngr);
 
@@ -46,23 +57,33 @@ type
       var CanExecute: Boolean);
     procedure ParamCompleteExecute(Kind: SynCompletionType;
       Sender: TObject; var CurrentInput: String; var x, y: Integer;
+      var CanExecute: Boolean);  
+    procedure ItemInfoExecute(Kind: SynCompletionType;
+      Sender: TObject; var CurrentInput: String; var x, y: Integer;
       var CanExecute: Boolean);
 
     function  GetSource: string;
     procedure SetSource(const value: string);
 
     procedure SetErrorLine(value: integer);
+    procedure ClearUnderlines;
+    procedure AddUnderline(Pos: TPoint; Color: TColor);
+    procedure DrawUnderLines(Canvas: TCanvas);
   public
     constructor Create(AParent: TWinControl); reintroduce;
     destructor Destroy; override;
     class procedure SetupColors(FHighlighter: TSynSE2Syn; FEditor: TSynEdit);
-                                    
+    procedure RemoveErrorCodes;
+
     property  CodeComplete   : TSynCompletionProposal  read FCodeComplete;
     property  ParamComplete  : TSynCompletionProposal  read FParamComplete;
+    property  ItemInfo       : TSynCompletionProposal  read FItemInfo;
     property  Highlighter    : TSynSE2Syn              read FHighlighter;
     property  Editor         : TSynEdit                read FEditor;
     property  ErrorLine      : integer                 read FErrorLine       write SetErrorLine;
     property  Source         : string                  read GetSource        write SetSource;
+
+    property  OnCompletionDependency : TEditorSourceEvent read FOnCompletionDependency write FOnCompletionDependency;
   end;
 
   TCodeEditorPanel = class(TPanel)
@@ -76,6 +97,7 @@ type
     FOnGetUnitMngr : TSE2GetUnitMngr;
     FOnGetCustomUnits : TEditorGetCustomUnits;
     FOnChanged     : TNotifyEvent;
+    FOnDependency   : TEditorSourceEvent;
   protected
     function  GetCaption: string;
     procedure SetCaption(const value: string);
@@ -83,6 +105,7 @@ type
     function  GetModified: boolean;
     procedure SetModified(value: boolean);
 
+    procedure CodeEditorDependency(Sender: TObject; const Readers: TSE2ReaderList);
     procedure CompleteGetUnitMngr(Sender: TObject; var UnitMngr: TSE2UnitCacheMngr);
 
     procedure EditorChanged(Sender: TObject);
@@ -100,6 +123,7 @@ type
     property  Data       : TObject        read FData         write FData;
 
     property  OnChanged  : TNotifyEvent   read FOnChanged    write FOnChanged;
+    property  OnDependency : TEditorSourceEvent   read FOnDependency   write FOnDependency;
   end;
 
   TRequireSaveEvent = procedure(Sender: TObject; CodeTab: TCodeEditorPanel; var CanClose: boolean) of object;
@@ -115,11 +139,13 @@ type
     FOnRequireSave  : TRequireSaveEvent;
     FOnRequireUnit  : TRequireUnitEvent;
     FOnUnitChanged  : TCodeEditorEvent;
+    FOnDependency   : TEditorSourceEvent;
   protected
     procedure CodeTabClosing(Sender: TObject; Item: TJvTabBarItem; var AllowClose: boolean);
     procedure CodeTabSelected(Sender: TObject; Item: TJvTabBarItem);
     procedure CodeTabClosed(Sender: TObject; Item: TJvTabBarItem);
-                                                                 
+
+    procedure CodeEditorDependency(Sender: TObject; const Readers: TSE2ReaderList);
     procedure CompleteGetUnitMngr(Sender: TObject; var UnitMngr: TSE2UnitCacheMngr);
     procedure EditorGetUnit(Sender: TObject; const Name: string; const Readers: TList);
     procedure EditorGetCustomUnits(Sender: TObject; const Target: TStrings);
@@ -153,6 +179,7 @@ type
     property  OnRequireSave        : TRequireSaveEvent    read FOnRequireSave  write FOnRequireSave;
     property  OnRequireUnit        : TRequireUnitEvent    read FOnRequireUnit  write FOnRequireUnit;
     property  OnUnitChanged        : TCodeEditorEvent     read FOnUnitChanged  write FOnUnitChanged;
+    property  OnDependency         : TEditorSourceEvent   read FOnDependency   write FOnDependency;
   end;
 
   TScriptEditorMngr = class(TPanel)
@@ -162,7 +189,7 @@ type
     FMessages : TEditorMessages;
   protected
     procedure MessagesVisibleChanged(Sender: TObject);
-    procedure CompileErrorEvent(Sender: TObject; ErrorPos, ErrorLine: integer; EditorData: TObject);
+    procedure CompileErrorEvent(Sender: TObject; ErrorPos, ErrorLine: integer; EditorData: TObject; FirstError: boolean; ErrorType: TErrorType);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -175,11 +202,19 @@ type
 
 implementation
 
+type
+  PUnderlineData = ^TUnderlineData;
+  TUnderlineData = record
+    x, y  : integer;
+    Color : TColor;
+  end;
+
 { TCodeEditor }
 
 procedure TCodeEditor.CodeCompleteExecute(Kind: SynCompletionType;
   Sender: TObject; var CurrentInput: String; var x, y: Integer;
   var CanExecute: Boolean);
+var Readers: TSE2ReaderList;
 begin
   FCodeComplete.ClearList;
 
@@ -188,7 +223,17 @@ begin
     OnGetCustomUnits   := FOnGetCustomUnits;
     OnGetUnitMngr      := CompleteGetUnitMngr;
     Compiler.OnGetFile := FOnGetUnit;
-    CanExecute         := GetCodeCompletion(Source, FEditor.SelStart);
+
+    Readers := TSE2ReaderList.Create;
+    try
+      if Assigned(FOnCompletionDependency) then
+         FOnCompletionDependency(Self, Readers);
+
+      Readers.Add(TSE2StringReader.Create(Source));
+      CanExecute         := GetCodeCompletion(Readers, FEditor.SelStart);
+    finally
+      Readers.Free;
+    end;
     FCodeComplete.AddItem('', '');
   finally
     Free;
@@ -208,6 +253,33 @@ begin
      FOnGetUnitMngr(Self, UnitMngr);
 end;
 
+procedure TCodeEditor.ItemInfoExecute(Kind: SynCompletionType;
+  Sender: TObject; var CurrentInput: String; var x, y: Integer;
+  var CanExecute: Boolean);
+var Readers: TSE2ReaderList;
+begin
+  FItemInfo.ClearList;
+
+  with TSE2SynInlineDocumentation.Create(ItemInfoInsert) do
+  try
+    OnGetUnitMngr      := CompleteGetUnitMngr;
+    Compiler.OnGetFile := FOnGetUnit;
+
+    Readers := TSE2ReaderList.Create;
+    try
+      if Assigned(FOnCompletionDependency) then
+         FOnCompletionDependency(Self, Readers);
+
+      Readers.Add(TSE2StringReader.Create(Source));
+      CanExecute         := GetInlineDocumentation(Readers, FEditor.SelStart, FEditor.WordAtCursor);
+    finally
+      Readers.Free;
+    end;
+  finally
+    Free;
+  end;
+end;
+
 constructor TCodeEditor.Create(AParent: TWinControl);
 begin
   inherited Create;
@@ -223,19 +295,31 @@ begin
   FCodeComplete.TimerInterval  := 50;
   FCodeComplete.Columns.Add.BiggestWord := 'CONSTRUCTOR';
   FCodeComplete.Editor         := FEditor;
-  FCodeComplete.EndOfTokenChr  := '()[]. 1234567890+-*/';
+  FCodeComplete.EndOfTokenChr  := '()[]. +-*/:;,';
   FCodeComplete.TriggerChars   := '.';
   FCodeComplete.Title          := 'ScriptEngine II';
 
   FParamComplete := TSynCompletionProposal.Create(AParent);
   FParamComplete.DefaultType   := ctParams;
   FParamComplete.Editor        := FEditor;
-  FParamComplete.EndOfTokenChr := '()[].';
+  FParamComplete.EndOfTokenChr := '()[].:;,';
   FParamComplete.Options       := [scoLimitToMatchedText,scoUsePrettyText,scoUseBuiltInTimer];
   FParamComplete.TimerInterval := 50;
   FParamComplete.ShortCut      := ShortCut(VK_SPACE, [ssCtrl, ssShift]);
   FParamComplete.TriggerChars  := '([';
   FParamComplete.OnExecute     := ParamCompleteExecute;
+
+  FItemInfo := TSynCompletionProposal.Create(AParent);
+  FItemInfo.DefaultType        := ctHint;
+  FItemInfo.Editor             := Editor;
+  FItemInfo.EndOfTokenChr      := '';
+  FItemInfo.Options            := [scoLimitToMatchedText,scoUsePrettyText];
+  FItemInfo.TimerInterval      := 50;
+  FItemInfo.ShortCut           := ShortCut(VK_SPACE, [ssCtrl, ssAlt]);
+  FItemInfo.TriggerChars       := '';
+  FItemInfo.OnExecute          := ItemInfoExecute;
+  FItemInfo.ClBackground       := $00A8F4FF;
+  FItemInfo.Font.Name          := 'Tahoma';
 
   FEditor.Highlighter         := FHighlighter;
   FEditor.Gutter.Font.Name    := 'MS Sans Serif';
@@ -248,18 +332,46 @@ begin
   FEditor.WantTabs            := True;
   FEditor.OnMouseDown         := EditorMouseDown;
   FEditor.OnSpecialLineColors := EditorLineColor;
+  FEditor.OnContextHelp       := EditorContextHelp;
+  FEditor.OnMouseMove         := EditorMouseMove;
+  FEditor.OnPaintTransient    := EditorPaintTransient;
   FErrorLine                  := -1;
 
   SetupColors(FHighlighter, FEditor);
+  FUnderlines := TList.Create;
 end;
 
 destructor TCodeEditor.Destroy;
 begin
+  ClearUnderlines;
+  FUnderlines.Free;
   FHighlighter.Free;
   FCodeComplete.Free;
   FParamComplete.Free;
+  FItemInfo.Free;
   FEditor.Free;
   inherited;
+end;      
+
+procedure TCodeEditor.EditorMouseMove(Sender: TObject; Shift: TShiftState;
+  x, y: integer);
+begin
+  FEditor.Hint := FEditor.WordAtMouse;
+  Application.Hint := FEditor.WordAtMouse;
+end;
+
+procedure TCodeEditor.EditorContextHelp(Sender: TObject; word: string);
+begin
+  Application.HintPause := 0;
+  Application.HintShortPause := 10;
+  Application.HintHidePause := 10000;
+  if word <> '' then
+  begin
+     FEditor.Hint := word + ' hello';
+     FEditor.ShowHint := True;
+  end;
+    // word := 'Hello';
+  //
 end;
 
 procedure TCodeEditor.EditorLineColor(Sender: TObject; Line: integer;
@@ -267,9 +379,9 @@ procedure TCodeEditor.EditorLineColor(Sender: TObject; Line: integer;
 begin
   if Line = FErrorLine then
   begin
-    Special := True;
+    Special := False;    {
     BG      := clMaroon;
-    FG      := clWhite;
+    FG      := clWhite;   }
   end else
     Special := False;
 end;
@@ -277,8 +389,7 @@ end;
 procedure TCodeEditor.EditorMouseDown(Sender: TObject;
   Button: TMouseButton; Shift: TShiftState; X, Y: integer);
 begin
-  FErrorLine := -1;
-  FEditor.Refresh;
+  //SetErrorLine(-1);
 end;
 
 function TCodeEditor.GetSource: string;
@@ -290,6 +401,7 @@ procedure TCodeEditor.ParamCompleteExecute(Kind: SynCompletionType;
   Sender: TObject; var CurrentInput: String; var x, y: Integer;
   var CanExecute: Boolean);
 var index: integer;
+    readers: TSE2ReaderList;
 begin
   if (FParamComplete.ItemList.Count = 0) or (not TWinControl(FParamComplete.Form).Visible) or
      (CurrentInput = '') or (Pos('(', CurrentInput) > 0) or (Pos(')', CurrentInput) > 0) then
@@ -300,7 +412,18 @@ begin
     try
       OnGetUnitMngr      := CompleteGetUnitMngr;
       Compiler.OnGetFile := FOnGetUnit;
-      CanExecute := GetParamCompletion(Source, FEditor.SelStart, index);
+
+      readers := TSE2ReaderList.Create;
+      try
+        if Assigned(FOnCompletionDependency) then
+           FOnCompletionDependency(Self, readers);
+
+        readers.Add(TSE2StringReader.Create(Source));
+
+        CanExecute := GetParamCompletion(readers, FEditor.SelStart, index);
+      finally
+        readers.Free;
+      end;
       if TWinControl(FParamComplete.Form).Visible then
          CanExecute := True;
       FParamComplete.Form.CurrentIndex := index;
@@ -316,10 +439,19 @@ begin
   FParamComplete.ItemList.Add(DisplayText);
 end;
 
+procedure TCodeEditor.ItemInfoInsert(Sender: TObject;
+  const DisplayTest, InsertTest: string);
+begin
+  FItemInfo.ItemList.Add(DisplayTest);
+end;
+
 procedure TCodeEditor.SetErrorLine(value: integer);
 begin
   if value <> FErrorLine then
   begin
+    if value < 0 then
+       ClearUnderlines;
+       
     FErrorLine := value;
     FEditor.Refresh;
   end;
@@ -362,7 +494,107 @@ begin
   end
 end;
 
+procedure TCodeEditor.AddUnderline(Pos: TPoint; Color: TColor);
+var p: PUnderlineData;
+begin
+  New(p);
+  p^.x := Pos.x;
+  p^.y := Pos.y;
+  p^.Color := Color;
+  FUnderlines.Add(p);
+  FEditor.Refresh;
+end;
+
+procedure TCodeEditor.ClearUnderlines;
+var i: integer;
+begin
+  for i:=FUnderlines.Count-1 downto 0 do
+    Dispose(PUnderlineData(FUnderlines[i]));
+  FUnderlines.Clear;
+end;
+
+procedure TCodeEditor.DrawUnderLines(Canvas: TCanvas);
+
+  procedure DrawErrorLine(Line, StartPos: integer; Color: TColor);
+  var fromPos, ToPos, Y: integer;
+      t: TDisplayCoord;
+      p: TPoint;
+      buffer : TBufferCoord;
+  begin
+    if (Line < 1) or (Line > FEditor.Lines.Count) then
+       exit;
+
+    buffer := FEditor.PrevWordPosEx(BufferCoord(StartPos, Line));
+    if buffer.Line = Line then
+       StartPos := buffer.Char
+    else
+    if StartPos > 1 then
+       StartPos := StartPos - 1;
+
+
+    t.Column := StartPos;
+    t.Row    := Line;
+    p := FEditor.RowColumnToPixels(t);
+    fromPos  := p.X;
+
+    t.Column := length(TrimRight(FEditor.Lines[Line - 1])) + 1;
+    p := FEditor.RowColumnToPixels(t);
+    ToPos    := p.X;
+
+    Y := p.Y + FEditor.LineHeight - 3;
+
+    Canvas.Pen.Width := 1;
+    Canvas.Pen.Style := psSolid;
+    Canvas.Pen.Color := Color;
+    Canvas.MoveTo(FromPos, y);
+    Canvas.LineTo(ToPos, y);
+
+    Canvas.Pen.Style := psDot;
+    Canvas.Pen.Width := 1;
+
+    Canvas.MoveTo(FromPos, y - 1);
+    Canvas.LineTo(ToPos, y - 1);
+
+    Canvas.MoveTo(FromPos - 3, y + 1);
+    Canvas.LineTo(ToPos - 3, y + 1);
+    
+    Canvas.Pen.Style := psSolid;
+  end;
+
+var i: integer;
+    p: PUnderlineData;
+begin
+  for i:=0 to FUnderlines.Count-1 do
+  begin
+    p := FUnderlines[i];
+    DrawErrorLine(p^.Y, p^.X, p^.Color);
+  end;
+end;
+
+procedure TCodeEditor.EditorPaintTransient(Sender: TObject;
+  Canvas: TCanvas; TransientType: TTransientType);
+begin
+  if TransientType = ttAfter then
+     DrawUnderLines(Canvas);
+end;
+
+procedure TCodeEditor.RemoveErrorCodes;
+begin
+  if FUnderlines.Count > 0 then
+  begin
+    ClearUnderlines;
+    FEditor.Refresh;
+  end;
+end;
+
 { TCodeEditorPanel }
+
+procedure TCodeEditorPanel.CodeEditorDependency(Sender: TObject;
+  const Readers: TSE2ReaderList);
+begin
+  if Assigned(FOnDependency) then
+     FOnDependency(Self, Readers);
+end;
 
 procedure TCodeEditorPanel.CompleteGetUnitMngr(Sender: TObject;
   var UnitMngr: TSE2UnitCacheMngr);
@@ -379,6 +611,7 @@ begin
   FEditor.FOnGetUnit      := EditorGetUnit;
   FEditor.FOnGetCustomUnits := EditorGetCustomUnits;
   FEditor.FOnGetUnitMngr  := CompleteGetUnitMngr;
+  FEditor.OnCompletionDependency := CodeEditorDependency;
   BevelOuter := bvNone;
 end;
 
@@ -390,8 +623,9 @@ end;
 
 procedure TCodeEditorPanel.EditorChanged(Sender: TObject);
 begin
-  Modified := True;
+  Modified := True;       
   FEditor.ErrorLine := -1;
+  FEditor.RemoveErrorCodes;
 
   if Assigned(FOnChanged) then
      FOnChanged(Self);
@@ -448,6 +682,7 @@ begin
   result.FOnGetUnitMngr := CompleteGetUnitMngr;
   result.FOnGetCustomUnits := EditorGetCustomUnits;
   result.OnChanged         := CodeEditorChanged;
+  result.OnDependency := CodeEditorDependency;
 end;
 
 procedure TScriptEditor.Clear;
@@ -471,6 +706,13 @@ procedure TScriptEditor.CodeEditorChanged(Sender: TObject);
 begin
   if Assigned(FOnUnitChanged) then
      FOnUnitChanged(Self, TCodeEditorPanel(Sender));
+end;
+
+procedure TScriptEditor.CodeEditorDependency(Sender: TObject;
+  const Readers: TSE2ReaderList);
+begin
+  if Assigned(FOnDependency) then
+     FOnDependency(Sender, Readers);
 end;
 
 procedure TScriptEditor.CodeTabClosed(Sender: TObject;
@@ -608,8 +850,10 @@ end;
 { TScriptEditorMngr }
 
 procedure TScriptEditorMngr.CompileErrorEvent(Sender: TObject; ErrorPos,
-  ErrorLine: integer; EditorData: TObject);
+  ErrorLine: integer; EditorData: TObject; FirstError: boolean; ErrorType: TErrorType);
 var Editor : TCodeEditorPanel;
+    Coord  : TBufferCoord;
+    Color  : TColor;
 begin
   Editor := FEditor.GetByData(EditorData);
   if Editor = nil then
@@ -622,13 +866,25 @@ begin
   end;
   if Editor <> nil then
   begin
-    FEditor.Selected := Editor;
-    Editor.Editor.Editor.SelStart := ErrorPos - 1;
-    Editor.Editor.ErrorLine       := ErrorLine;
-    try
-      Editor.Editor.Editor.SetFocus;
-    except
+    if FirstError and (ErrorType in [etError, etNone]) then
+    begin
+      FEditor.Selected := Editor;
+      Editor.Editor.Editor.SelStart := ErrorPos - 1;
+      Editor.Editor.ErrorLine       := ErrorLine;
+      try
+        Editor.Editor.Editor.SetFocus;
+      except
+      end;
     end;
+    case ErrorType of
+    etHint : Color := clGreen;
+    etWarning : Color := clNavy;
+    etError : Color := clRed;
+    else exit;
+    end;
+
+    Coord := Editor.Editor.Editor.CharIndexToRowCol(ErrorPos);
+    Editor.Editor.AddUnderline(Point(Coord.Char, Coord.Line), Color);
   end;
 end;
 

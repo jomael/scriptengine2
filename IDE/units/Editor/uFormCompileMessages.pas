@@ -9,7 +9,8 @@ uses
   uSE2Compiler, uSE2RunTime, uSE2Errors;
 
 type
-  TCompileErrorEvemt = procedure(Sender: TObject; ErrorPos, ErrorLine: integer; EditorData: TObject) of object;
+  TErrorType         = (etNone, etHint, etWarning, etError);
+  TCompileErrorEvent = procedure(Sender: TObject; ErrorPos, ErrorLine: integer; EditorData: TObject; FirstError: boolean; ErrorType: TErrorType) of object;
 
   TMessageViewType = (mvNone, mvMessages, mvSearch, mvRunMessage, mvCustom);
 
@@ -17,7 +18,7 @@ type
   private
     FFirstError     : boolean;
     FMessages       : TListView;
-    FOnCompileError : TCompileErrorEvemt;
+    FOnCompileError : TCompileErrorEvent;
   protected
     procedure ParserError(Sender: TObject; ErrorType: TSE2ErrorType; ErrorUnit, ErrorText: string; ErrorPos,
                           ErrorLine: integer; UserData: TObject);
@@ -30,7 +31,7 @@ type
     procedure AddCompileMsg(MsgType: TSE2ErrorType; ErrorUnit, ErrorText: string; ErrorPos, ErrorLine: integer; Data: TObject);
 
     property Messages        : TListView           read FMessages;
-    property OnCompileError  : TCompileErrorEvemt  read FOnCompileError    write FOnCompileError;
+    property OnCompileError  : TCompileErrorEvent  read FOnCompileError    write FOnCompileError;
   end;
 
   TSearchResult = class(TPanel)
@@ -103,6 +104,7 @@ implementation
 procedure TCompileMessage.AddCompileMsg(MsgType: TSE2ErrorType; ErrorUnit,
   ErrorText: string; ErrorPos, ErrorLine: integer; Data: TObject);
 var Item: TListItem;
+    ErrorType: TErrorType;
 begin
   if FFirstError and (MsgType = petError) then
      Item := FMessages.Items.Insert(0)
@@ -120,17 +122,21 @@ begin
   Item.SubItems.Add(IntToStr(ErrorPos));
 
   Item.Data := Data;
+
+  case MsgType of
+  petError   : ErrorType := etError;
+  petWarning : ErrorType := etWarning;
+  petHint    : ErrorType := etHint;
+  else         ErrorType := etNone;
+  end;
+
+  TEditorMessages(Self.Parent).ViewType := mvMessages;
+  if Assigned(FOnCompileError) then
+     FOnCompileError(Self, ErrorPos, ErrorLine, Data, FFirstError, ErrorType);
+
   if MsgType = petError then
-  begin
-    if FFirstError then
-    begin
-      TEditorMessages(Self.Parent).ViewType := mvMessages;
-      if Assigned(FOnCompileError) then
-         FOnCompileError(Self, ErrorPos, ErrorLine, Data);
-    end;
     if ErrorUnit <> '' then
        FFirstError := False;
-  end;
 end;
 
 procedure TCompileMessage.Clear;
@@ -181,7 +187,7 @@ begin
     if FMessages.Selected.Data <> nil then
       if Assigned(FOnCompileError) then
       begin
-        FOnCompileError(Self, StrToInt(FMessages.Selected.SubItems[3]), StrToInt(FMessages.Selected.SubItems[2]), TObject(FMessages.Selected.Data));
+        FOnCompileError(Self, StrToInt(FMessages.Selected.SubItems[3]), StrToInt(FMessages.Selected.SubItems[2]), TObject(FMessages.Selected.Data), True, etNone);
       end;
 end;
 

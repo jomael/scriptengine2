@@ -8,9 +8,9 @@ uses
   SynEditRegExSearch,
 
   uFormCodeEditor, uFormCompileMessages, uScriptProject, SynHighlighterSE2,
-  uPackageInfo,
+  uPackageInfo, uSE2UnitCache,
 
-  uSE2Packages,
+  uSE2Packages, uSE2Errors,
   uSE2Compiler, uSE2PEData, uSE2Reader, uSE2RunTime, uSE2UnitCacheMngr, uSE2OpCode, uSE2DebugData,
   SynEditMiscClasses, SynEditSearch, SynEdit, Buttons;
 
@@ -91,6 +91,7 @@ type
     packagesPopup: TPopupMenu;
     packagePopupLoad: TMenuItem;
     packagePopupUnload: TMenuItem;
+    btnRunTests: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure File_CloseClick(Sender: TObject);
@@ -129,6 +130,9 @@ type
     procedure packagePopupUnloadClick(Sender: TObject);
     procedure listProjectsKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
+    procedure btnRunTestsClick(Sender: TObject);
+    procedure tvProjectTreeKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
   private
     { Private-Deklarationen }
     FUnitCache      : TSE2UnitCacheMngr;
@@ -150,12 +154,14 @@ type
 
     function  SaveProjectTo: boolean;
     function  DoSaveUnitTab(Tab: TCodeEditorPanel): boolean;
-
+                                 
+    procedure EditorGetDependency(Sender: TObject; const Readers: TSE2ReaderList);
     procedure EditorRequireUnit(Sender: TObject; UnitData: TObject);
     procedure EditorRequireSave(Sender: TObject; CodeTab: TCodeEditorPanel; var CanClose: boolean);
     procedure EditorGetUnitMngr(Sender: TObject; var UnitMngr: TSE2UnitCacheMngr);
     procedure EditorGetCustomUnits(Sender: TObject; const Target: TStrings);
     procedure CompilerGetReader(Sender: TObject; const Name: string; const Readers: TList);
+    procedure CompilerCacheGetChanges(Sender: TObject; const Target: TStrings);
     procedure RunTimeBeforeCall(Sender: TObject);
     procedure RunTimeBeforeStepCall(Sender: TObject);
                          
@@ -203,7 +209,10 @@ uses
   ConsoleForm, uSE2RunType, Math, uSE2RunAccess, uPackageLoader,
   uSE2UnitManager, uSE2ScriptImporter, uSE2Tokenizer,
 
-  uSE2IncHelpers;
+  uSE2IncHelpers,
+
+
+  uSE2Parser;
 
 const
   SScriptExecuting      = 'The script is still executing. Do you want to abort the execution?';
@@ -249,6 +258,7 @@ procedure TMainForm.FormCreate(Sender: TObject);
 begin
   FUnitCache := TSE2UnitCacheMngr.Create;
   FUnitCache.OnGetCacheStream := GetCacheStream;
+  FUnitCache.OnGetChangedUnits := CompilerCacheGetChanges;
   Packages_LoadDefault;
 
 
@@ -271,6 +281,7 @@ begin
   FCodeEditorMngr.Editor.OnRequireSave := EditorRequireSave;
   FCodeEditorMngr.Editor.OnRequireUnit := EditorRequireUnit;
   FCodeEditorMngr.Editor.OnUnitChanged := CodeEditorTabChanged;
+  FCodeEditorMngr.Editor.OnDependency  := EditorGetDependency;
 
   FProjectFile := TScriptProject.Create;
   FProjectFile.OnCloseUnit := Project_NeedCloseUnit;
@@ -935,22 +946,63 @@ var i        : integer;
     Item     : TScriptUnit;
     Editor   : TCodeEditorPanel;
     bChanged : boolean;
-begin
-  // First Check if none of the required units are marked as
-  // changed
-  bChanged := not FUnitCache.HasUnit(Name);
-  if not bChanged then
+
+  function UnitNameChanged(const Name: string): boolean;
+  var i: integer;
+  begin
+    if not FUnitCache.HasUnit(Name) then
+    begin
+      result := True;
+      exit;
+    end;
+
     for i:=0 to FProjectFile.ProjectFile.UnitList.Count-1 do
       if SameText(FProjectFile.ProjectFile.UnitList[i], Name) then
         if not FProjectFile.Files[FProjectFile.ProjectFile.UnitPath[i]].Compiled then
         begin
-          bChanged := True;
-          break;
+          result := True;
+          exit;
         end;
+    result := False;
+  end;
 
-  if not bChanged then
-     bChanged := True;
+  function UnitOrDependencyChanged(const Name: string): boolean;
+  var AUnit: TSE2UnitCache;
+      i    : integer;
+  begin
+    if UnitNameChanged(Name) then
+    begin
+      result := True;
+      exit;
+    end;
 
+    AUnit  := FUnitCache.GetCache(Name);
+    result := False;
+
+    for i:=0 to AUnit.DependsOn.Count-1 do
+      if UnitNameChanged(AUnit.DependsOn[i]) then
+      begin
+        result := True;
+        exit;
+      end;
+     
+    for i:=0 to AUnit.DependsOn.Count-1 do
+    begin
+      if UnitOrDependencyChanged(AUnit.DependsOn[i]) then
+      begin
+        result := True;
+        exit;
+      end;
+    end;
+  end;
+
+begin
+  // First Check if none of the required units are marked as
+  // changed
+  bChanged := not FUnitCache.HasUnit(Name);
+  {if not bChanged then
+     bChanged := UnitOrDependencyChanged(Name);
+                                                   }
   if not bChanged then
      exit;
 
@@ -1062,7 +1114,10 @@ var Compiler : TSE2Compiler;
     c, t1, t2: int64;
 begin
   for i:=0 to FCodeEditorMngr.Editor.Count-1 do
-    FCodeEditorMngr.Editor.Items[i].Editor.ErrorLine := -1;
+  begin
+    //FCodeEditorMngr.Editor.Items[i].Editor.ErrorLine := -1;
+    FCodeEditorMngr.Editor.Items[i].Editor.RemoveErrorCodes;
+  end;
 
   Screen.Cursor := crHourGlass;
 
@@ -2026,7 +2081,7 @@ begin
   dlg := TOpenDialog.Create(Self);
   try
     dlg.InitialDir := ExtractFilePath(Application.ExeName) + 'packages\';
-    dlg.Filter     := 'Packages (*.dll)|*.dll|Every file (*.*)|*.*';
+    dlg.Filter     := 'Packages (*.dll)|*.dll|Script Package (*.package)|*.package|Every file (*.*)|*.*';
     dlg.FilterIndex := 1;
     dlg.Options    := dlg.Options + [ofAllowMultiSelect];
 
@@ -2074,6 +2129,68 @@ begin
   begin
     Key := 0;
     listProjectsDblClick(Sender);
+  end;
+end;
+
+procedure TMainForm.CompilerCacheGetChanges(Sender: TObject;
+  const Target: TStrings);
+var i: integer;
+begin
+  for i:=0 to FProjectFile.ProjectFile.UnitList.Count-1 do
+    if not FProjectFile.Files[FProjectFile.ProjectFile.UnitPath[i]].Compiled then
+    begin
+      Target.Add(FProjectFile.ProjectFile.UnitList[i])
+    end;
+end;
+
+procedure TMainForm.EditorGetDependency(Sender: TObject;
+  const Readers: TSE2ReaderList);
+var Panel: TCodeEditorPanel;
+    Data : TScriptUnit;
+    i    : integer;    
+    Item     : TScriptUnit;
+    Editor   : TCodeEditorPanel;
+begin
+  Panel := TCodeEditorPanel(Sender);
+  Data  := TScriptUnit(Panel.Data);
+
+  for i:=0 to FProjectFile.ProjectFile.UnitList.Count-1 do
+  begin
+    if SameText(FProjectFile.ProjectFile.UnitList[i], Data.UnitName) then
+    begin
+      Item   := FProjectFile.Files[FProjectFile.ProjectFile.UnitPath[i]];
+
+      if Item = Data then
+         break;
+
+      Editor := FCodeEditorMngr.Editor.GetByData(Item);
+
+      if Editor <> nil then
+         Readers.Add(Editor.Editor.Source)
+      else
+         Readers.Add(Item.Source);
+    end;
+  end;
+end;
+
+procedure TMainForm.btnRunTestsClick(Sender: TObject);
+//var c : int64;
+begin
+  {uSE2Parser.DEBUG_TimeMeasure := 0;
+  QueryPerformanceFrequency(c);
+
+  Project_CompileClick(Project_Make);
+
+  FCodeEditorMngr.Messages.Messages.AddCompileMsg(petHint, '', 'DEBUG Time: ' + FloatToStrF((uSE2Parser.DEBUG_TimeMeasure) / c * 1000, ffNumber, 8, 2) + 'ms', -1, -1, nil);
+}end;
+
+procedure TMainForm.tvProjectTreeKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+  begin                        
+    Key := 0;
+    tvProjectTreeDblClick(Sender);
   end;
 end;
 
