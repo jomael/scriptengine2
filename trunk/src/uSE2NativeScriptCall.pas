@@ -510,7 +510,7 @@ var CallInfo     : PSE2NativeCallEntry;
       end;
 
       if not bIsVarParam then
-      begin
+      begin                
         case aParamType of
         btU8, btS8, btU16, btS16, btU32, btS32 :
             SetVariableContent(aParamType, vtInteger, Parameter);
@@ -539,21 +539,21 @@ var CallInfo     : PSE2NativeCallEntry;
       begin
         case aParamType of
         btU8, btS8, btU16, btS16, btU32, btS32 :
-            SetVariableContent(aParamType, vtInteger, Parameter);
+            SetVariableContent(aParamType, vtInteger, PPointer(Parameter)^);
         btS64 :
-            SetVariableContent(aParamType, vtInt64, Parameter);
+            SetVariableContent(aParamType, vtInt64, PPointer(Parameter)^);
         btSingle, btDouble :
-            SetVariableContent(aParamType, btExtended, Parameter);
+            SetVariableContent(aParamType, vtExtended, PPointer(Parameter)^);
         btString :
-            SetVariableContent(aParamType, vtAnsiString, Parameter);
+            SetVariableContent(aParamType, vtAnsiString, PPointer(Parameter)^);
         btUTF8String :
-            SetVariableContent(aParamType, vtAnsiString, Parameter);
+            SetVariableContent(aParamType, vtAnsiString, PPointer(Parameter)^);
         btWideString :
-            SetVariableContent(aParamType, vtWideString, Parameter);
+            SetVariableContent(aParamType, vtWideString, PPointer(Parameter)^);
         btPChar :
-            SetVariableContent(aParamType, vtAnsiString, Parameter);
+            SetVariableContent(aParamType, vtAnsiString, PPointer(Parameter)^);
         btPointer, btArray, btObject :
-            SetVariableContent(aParamType, vtPointer, Parameter);
+            SetVariableContent(aParamType, vtPointer, PPointer(Parameter)^);
         btRecord :
             SetVariableContent(aParamType, vtPointer, Parameter, i, True);
         end;
@@ -585,21 +585,21 @@ var CallInfo     : PSE2NativeCallEntry;
       begin
         Parameter   := GetParameterData(i);
         case Data^.AType of
-        btU8           : PbtU8(Parameter)^     := Data^.tU8^;
-        btS8           : PbtS8(Parameter)^     := Data^.tS8^;
-        btU16          : PbtU16(Parameter)^    := Data^.tU16^;
-        btS16          : PbtS16(Parameter)^    := Data^.tS16^;
-        btU32          : PbtU32(Parameter)^    := Data^.tU32^;
-        btS32          : PbtS32(Parameter)^    := Data^.tS32^;
-        btS64          : PbtS64(Parameter)^    := Data^.tS64^;
-        btSingle       : PbtSingle(Parameter)^ := Data^.tSingle^;
-        btDouble       : PbtDouble(Parameter)^ := Data^.tDouble^;
-        btString       : PbtString(Parameter)^ := PbtString(Data^.tString^)^;
-        btUTF8String   : PbtUTF8String(Parameter)^ := PbtUTF8String(Data^.tString^)^;
-        btWideString   : PbtWideString(Parameter)^ := PbtWideString(Data^.tString^)^;
-        btPChar        : PbtPChar(Parameter)^      := PbtPChar(Data^.tString^)^;
+        btU8           : PbtU8(PPointer(Parameter)^)^     := Data^.tU8^;
+        btS8           : PbtS8(PPointer(Parameter)^)^     := Data^.tS8^;
+        btU16          : PbtU16(PPointer(Parameter)^)^    := Data^.tU16^;
+        btS16          : PbtS16(PPointer(Parameter)^)^    := Data^.tS16^;
+        btU32          : PbtU32(PPointer(Parameter)^)^    := Data^.tU32^;
+        btS32          : PbtS32(PPointer(Parameter)^)^    := Data^.tS32^;
+        btS64          : PbtS64(PPointer(Parameter)^)^    := Data^.tS64^;
+        btSingle       : PbtSingle(PPointer(Parameter)^)^ := Data^.tSingle^;
+        btDouble       : PbtDouble(PPointer(Parameter)^)^ := Data^.tDouble^;
+        btString       : PbtString(PPointer(Parameter)^)^ := PbtString(Data^.tString^)^;
+        btUTF8String   : PbtUTF8String(PPointer(Parameter)^)^ := PbtUTF8String(Data^.tString^)^;
+        btWideString   : PbtWideString(PPointer(Parameter)^)^ := PbtWideString(Data^.tString^)^;
+        btPChar        : PbtPChar(PPointer(Parameter)^)^      := PbtPChar(Data^.tString^)^;
         btPointer,
-        btArray        : PPointer(Parameter)^    := Pointer(Data^.tPointer^);
+        btArray        : PPointer(PPointer(Parameter)^)^    := Pointer(Data^.tPointer^);
         btRecord       :
             begin
               if pVarRecords <> nil then

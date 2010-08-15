@@ -1172,6 +1172,20 @@ var i, j    : integer;
     AddOffsetPos(-(pushCount - 1), i);
   end;
 
+  procedure RemoveNOOPs;
+  begin
+    if OpCodes[0].OpCode.OpCode = soNOOP then
+    begin
+      // Delete this opcode
+      Method.OpCodes.Delete(i);
+
+      // Decrease every position
+      AddOffsetPos(-1, i);
+
+      i := i - 1;
+    end;
+  end;
+
 begin
   if Method = nil then
      exit;
@@ -1181,7 +1195,7 @@ begin
   if Method.IsExternal then
      exit;
 
-  for Mode := 0 to 4 do
+  for Mode := 0 to 5 do
   begin
     i := 0;
     repeat
@@ -1194,8 +1208,9 @@ begin
       2 : OptimizeIntValues;
       3 : InsertFastCompare;
       4 : InsertFastOperation;
-      //5 : CombineMultiplePops;
-      //6 : CombineMultiplePush;
+      5 : RemoveNOOPs;
+      //6 : CombineMultiplePops;
+      //7 : CombineMultiplePush;
       end;
 
       inc(i);

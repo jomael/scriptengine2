@@ -71,8 +71,9 @@ const
       '    class function QuotedStr(const S: string): string; external;'+#13#10+
       '    class function ReverseString(const AText: string): string; external;'+#13#10+
 
+      '    class procedure SetLength(var s: string; NewLength: integer; ClearContent: boolean); overload; external;'+#13#10+
       '    /// Change the length of a given string to "NewLength"'+#13#10+
-      '    class procedure SetLength(var S: string; NewLength: Integer); external;'+#13#10+
+      '    class procedure SetLength(var S: string; NewLength: Integer); overload; external;'+#13#10+
 
       '    /// Returns true, if the strings are equal (case sensitive)'+#13#10+
       '    class function SameStr(const s1, s2: string): boolean; external;'+#13#10+
@@ -191,7 +192,8 @@ type
     class function QuotedStr(const S: string): string;
     class function ReverseString(const AText: string): string;
 
-    class procedure SetLength(var S: string; NewLength: Integer);      
+    class procedure SetLength0(var s: string; NewLength: integer; ClearContent: boolean);
+    class procedure SetLength1(var S: string; NewLength: Integer); 
     class function SameStr(const s1, s2: string): boolean;
     class function SameText(const S1, S2: string): Boolean;
     class function RightStr(const AText: string; const ACount: Integer): string;
@@ -344,7 +346,8 @@ begin
     Target.Method['Strings.QuotedStr[0]', C_UnitName] := @Strings.QuotedStr;
     Target.Method['Strings.ReverseString[0]', C_UnitName] := @Strings.ReverseString;
 
-    Target.Method['Strings.SetLength[0]', C_UnitName] := @Strings.SetLength; 
+    Target.Method['Strings.SetLength[0]', C_UnitName] := @Strings.SetLength0;
+    Target.Method['Strings.SetLength[1]', C_UnitName] := @Strings.SetLength1;
     Target.Method['Strings.SameStr[0]', C_UnitName] := @Strings.SameStr;
     Target.Method['Strings.SameText[0]', C_UnitName] := @Strings.SameText;
     Target.Method['Strings.RightStr[0]', C_UnitName] := @Strings.RightStr;
@@ -600,7 +603,14 @@ begin
   result := SysUtils.SameText(S1, s2);
 end;
 
-class procedure Strings.SetLength(var S: string; NewLength: Integer);
+class procedure Strings.SetLength0(var s: string; NewLength: integer; ClearContent: boolean);
+begin
+  System.SetLength(s, NewLength);
+  if ClearContent then
+     System.FillChar(s[1], NewLength * SizeOf(char), 0);
+end;
+
+class procedure Strings.SetLength1(var S: string; NewLength: Integer);
 begin
   System.SetLength(s, NewLength);
 end;

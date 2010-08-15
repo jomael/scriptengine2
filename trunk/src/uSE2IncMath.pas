@@ -139,12 +139,18 @@ const
       '    class function  GetRandSeed: integer; external;' + #13#10 +
       '    class procedure SetRandSeed(value: integer); external;' + #13#10 +
       '  public' + #13#10 +
+      '    /// Returns a new random value between 0 and 1'+#13#10+
       '    class function  Next: double; overload; external;' + #13#10 +
+      '    /// Returns a new random value between 0 and < max'+#13#10+
       '    class function  Next(max: integer): integer; overload; external;' + #13#10 +
+      '    /// Returns a new random value in the given range'+#13#10+
       '    class function  Next(min, max: integer): integer; overload; external;' + #13#10 +
+      '    /// Returns a new random value calculated by the gaussian distribution'+#13#10+
       '    class function  NextGaussian(Mean, StdDev: double): double; external;'+#13#10+
+      '    /// Change the "Random.Seed", which is used for the next random value, to a new unknown value'+#13#10+
       '    class procedure Randomize; external;' + #13#10 +
       #13#10 +
+      '    /// Get or set the base calulation value, which is used to calculate the next random value'+#13#10+
       '    class property  Seed : integer read GetRandSeed write SetRandSeed;' + #13#10 +
       '  end;' + #13#10 +
       #13#10+

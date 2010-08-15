@@ -654,13 +654,13 @@ begin
     else
       s := obj.GetUniqueName();
   end;
-
+                     {
   if (Pos('integer', s) > 0) and (Pos('[1]', s) > 0) then
   begin
     TSE2StreamHelper.WriteString(Stream, s);
     if obj <> nil then
   end
-  else
+  else          }
     TSE2StreamHelper.WriteString(Stream, s);
 end;
 
@@ -2426,6 +2426,10 @@ begin
           Stream.Read(p^.Size, SizeOf(integer));
           Stream.Read(p^.aType, SizeOf(TSE2TypeIdent));
           Flist[i] := p;
+
+          if p^.aType = btRecord then
+             Weaver.Add(TSE2StreamHelper.ReadString(Stream), @(p^.Size));
+          
         end;
       end;
   else RaiseIncompatibleStream;
@@ -2448,6 +2452,10 @@ begin
     Stream.Write(p^.Offset, SizeOf(integer));
     Stream.Write(p^.Size, SizeOf(integer));
     Stream.Write(p^.aType, SizeOf(TSE2TypeIdent));
+
+    if p^.aType = btRecord then
+       if Pointer(p^.Size) <> nil then
+          SaveWeaverData(Stream, TSE2BaseType(p^.Size));
   end;
 end;
 

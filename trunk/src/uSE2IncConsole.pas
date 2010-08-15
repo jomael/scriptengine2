@@ -87,6 +87,7 @@ const
      '    class procedure WriteLine(const s: UTF8String); external; overload;'+#13#10+
      '    class procedure WriteLine(const s: WideString); external; overload;'+#13#10+
      '    class procedure WriteLine(const s: PChar); external; overload;'+#13#10+
+     '    class procedure WriteLine(const o: TObject); overload;'+#13#10+
      '    /// Appends the content to the output window and adds a line break'+#13#10+
      '    class procedure WriteLine; external; overload;'+#13#10+
 
@@ -103,7 +104,8 @@ const
      '    class procedure Write(p: pointer); external; overload;'+#13#10+
      '    class procedure Write(const s: string); external; overload;'+#13#10+
      '    class procedure Write(const s: UTF8String); external; overload;'+#13#10+
-     '    class procedure Write(const s: WideString); external; overload;'+#13#10+
+     '    class procedure Write(const s: WideString); external; overload;'+#13#10+  
+     '    class procedure Write(const o: TObject); overload;'+#13#10+
      '    /// Appends the content to the output window'+#13#10+
      '    class procedure Write(const s: PChar); external; overload;'+#13#10+
 
@@ -181,6 +183,22 @@ const
      '  end;'+#13#10+
      #13#10+
      'implementation'+#13#10+
+     #13#10+
+     'class procedure Console.WriteLine(const o: TObject); '+#13#10+
+     'begin'+#13#10+
+     '  if o <> nil then'+#13#10+
+     '     Console.WriteLine(o.ToString)'+#13#10+
+     '  else'+#13#10+
+     '     Console.WriteLine(nil)'+#13#10+
+     'end;'+#13#10+   
+     #13#10+
+     'class procedure Console.Write(const o: TObject); '+#13#10+
+     'begin'+#13#10+
+     '  if o <> nil then'+#13#10+
+     '     Console.Write(o.ToString)'+#13#10+
+     '  else'+#13#10+
+     '     Console.Write(nil)'+#13#10+
+     'end;'+#13#10+
      #13#10+
      'end.';
 
@@ -289,7 +307,7 @@ begin
     Target.Method['Console.WriteLine[12]', C_UnitName] := @TConsole.WriteLineU;
     Target.Method['Console.WriteLine[13]', C_UnitName] := @TConsole.WriteLineW;
     Target.Method['Console.WriteLine[14]', C_UnitName] := @TConsole.WriteLineC;
-    Target.Method['Console.WriteLine[15]', C_UnitName] := @TConsole.WriteLine;
+    Target.Method['Console.WriteLine[16]', C_UnitName] := @TConsole.WriteLine;
 
     Target.Method['Console.Write[0]', C_UnitName] := @TConsole.WriteU8;
     Target.Method['Console.Write[1]', C_UnitName] := @TConsole.WriteS8;

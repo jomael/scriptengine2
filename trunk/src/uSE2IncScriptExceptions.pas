@@ -30,7 +30,7 @@ const
         '    constructor Create(const Message: string); virtual;' + #13#10 +
         #13#10 +
         '    /// Returns a string with every information of the exception'+#13#10+
-        '    function ToString: string; virtual;' + #13#10 +
+        '    function ToString: string; override;' + #13#10 +
         '    procedure Assign(Source: EException); virtual;'+#13#10+
         #13#10 +
         '    /// The message of the exception'+#13#10+
