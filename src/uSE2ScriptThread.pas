@@ -43,7 +43,7 @@ type
     procedure Terminate; reintroduce;
 
     property Affinity    : cardinal     read GetAffinity        write SetAffinity;
-    property Context     : Pointer      read FScriptContext;
+    property Context     : Pointer      read FScriptContext     write FScriptContext;
     property State       : TThreadState read GetState;
     property OnDone      : TNotifyEvent read FOnScriptTerminate write FOnScriptTerminate;
   end;

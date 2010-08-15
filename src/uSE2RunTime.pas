@@ -19,6 +19,8 @@ type
     {$UNDEF PERF_MONITOR}
   {$ENDIF}
 
+  TScriptDelayEvent = procedure(var AbortWait: boolean) of object;
+
   TSE2RunTime = class(TSE2Object)
   private
     { FExecution }
@@ -89,6 +91,9 @@ type
     property OnError           : TSE2RunTimeError read FOnError              write FOnError;
     property OnBeforeOperation : TNotifyEvent     read GetOnBeforeOperation  write SetOnBeforeOperation;
   end;
+
+var
+  OnScriptDelay : TScriptDelayEvent = nil;
 
 implementation
 

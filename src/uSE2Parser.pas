@@ -620,11 +620,11 @@ begin
         if Method.ReturnValue.IsName(IdentName) then
           result := Method.ReturnValue;
       if result = nil then
-         result := Method.Types.FindItem(IdentName, '', nil, nil, ClassTypes);
+         result := Method.Types.FindItem(IdentName, '', nil, nil, ClassTypes, CAllVisibilities);
       if result = nil then
          result := Method.Variables.FindItem(IdentName, '', nil, nil, ClassTypes, CAllVisibilities);
       if result = nil then
-         result := Method.Params.FindItem(IdentName, '', nil, nil, ClassTypes);
+         result := Method.Params.FindItem(IdentName, '', nil, nil, ClassTypes, CAllVisibilities);
 
       if result <> nil then
          exit;
@@ -1214,6 +1214,9 @@ begin
       NewVaribles.Free;
     end;
 
+    if ((State.CurrentOwner is TSE2Class) or (State.CurrentOwner is TSE2Record)) and (State.IsStatic) and (Method = nil) then
+       break
+    else
     if not (Tokenizer.Token.AType in [sesIdentifier]) then
        break;
   end;
@@ -1343,8 +1346,9 @@ begin
 
         newSet := TSE2SetOf.Create;
         DeclareType(State, newSet, TypeName);
-        newSet.Strict  := True;
-        newSet.AType   := btU32;
+        newSet.Strict   := True;
+        newSet.AType    := btU32;
+        newSet.DataSize := 4;
         FUnit.TypeList.Add(newSet);
 
         for i:=0 to enumList.Count-1 do
@@ -3349,6 +3353,10 @@ begin
            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_CREATE(CallMethod.Params.Count - 1, 0), 'META_' + TSE2Class(CallMethod.Parent).GenLinkerName ));
         result := TSE2Class(CallMethod.Parent);
       end;
+
+      if (ParentType is TSE2Class) and (ParentType.InheritRoot = GetExternalObjectType) then
+         if CallMethod.IsExternal then
+            result := TSE2Class(CallMethod.Parent);
     end;
 
     if (CallMethod.MethodType in [mtConstructor, mtDestructor]) then 
@@ -4450,7 +4458,11 @@ var Expr         : TSE2Type;
     FinalJumps   : TSE2IntegerList;
     i            : integer;
     iCaseCount   : integer;
+
+    oldLoopSize  : integer;
 begin
+  oldLoopSize := State.LoopStackSize;
+
   ExpectToken([sesCase]);
   ReadNextToken;
 
@@ -4529,6 +4541,7 @@ begin
         PSE2OpFLOW_GOTO(Method.OpCodes[EqualJumps[i]].OpCode).Position := Method.OpCodes.Count;
       EqualJumps.Clear;
 
+      State.LoopStackSize := State.StackSize;
 
       ReadNextToken;
       try
@@ -4584,6 +4597,7 @@ begin
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
     State.DecStack;
   finally
+    State.LoopStackSize := oldLoopSize;
     EqualJumps.Free;
     NextJumps.Free;
     FinalJumps.Free;
@@ -4796,9 +4810,6 @@ begin
 
     Statement(State, Method);
 
-    { Pop old }
-    State.IsInLoop      := oldIsInLoop;
-    State.LoopStackSize := oldLoopStack;
 
     for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
       PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode)^.Position := Method.OpCodes.Count;
@@ -4828,6 +4839,10 @@ begin
     PSE2OpFLOW_JIZ(Method.OpCodes[opCodePos1].OpCode).Position := Method.OpCodes.Count;
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
     State.DecStack;
+
+    { Pop old }
+    State.IsInLoop      := oldIsInLoop;
+    State.LoopStackSize := oldLoopStack;
   finally
     State.LastVariable := oldVar;
   end;
@@ -5671,6 +5686,9 @@ begin
   ExpectToken([sesSemiColon]);
   ReadNextToken;
 
+  if State.LoopStackSize <> 0 then
+     RaiseError(petError, 'Internal error: stack size correction for loops failed');
+
   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
 
   for i:=0 to Method.Variables.Count-1 do
@@ -6245,8 +6263,14 @@ begin
     ExpectToken([sesSemiColon]);
     ReadNextToken;
 
-    if (not (Tokenizer.Token.AType in [sesIdentifier])) or (State.CurrentOwner <> nil) then
+    if ((State.CurrentOwner is TSE2Class) or (State.CurrentOwner is TSE2Record)) and (State.IsStatic) and (Method = nil) then
+       break
+    else
+    if not (Tokenizer.Token.AType in [sesIdentifier]) then
        break;
+
+    //if (not (Tokenizer.Token.AType in [sesIdentifier])) or (State.CurrentOwner <> nil) then
+    //   break;
   end;
   //
 end;

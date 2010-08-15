@@ -12,7 +12,11 @@ implementation
 {$IFNDEF SEII_NO_SCRIPT_THREAD}
 
 uses
-  Classes, SysUtils, uSE2ScriptThread;
+  Classes, SysUtils, uSE2ScriptThread, uSE2RunTime
+  {$IFNDEF SEII_FPC}
+  , Windows
+  {$ENDIF}
+  ;
 
 const
   C_UnitName   = C_SE2ThreadingUnit;
@@ -73,6 +77,7 @@ const
         '    procedure SetPriority(value: TThreadPriority); external;' +#13#10 +
         '    function  GetThreadState: TThreadState; external;' + #13#10 + 
         '    function  GetContext: TExecutionContext; external;' + #13#10 +
+        '    procedure SetContext(value: TExecutionContext); external;' + #13#10 +
         '    function  GetOnDone: TNotifyEvent; external;' + #13#10 + 
         '    procedure SetOnDone(value: TNotifyEvent); external;' + #13#10 +
         '    function  GetAffinity: TThreadAffinity; external;'+#13#10+
@@ -103,13 +108,17 @@ const
         '    /// The current state of the thread'+#13#10+
         '    property  State   : TThreadState      read GetThreadState;' + #13#10 +
         '    /// The execution context, the thread is executing'+#13#10+
-        '    property  Context : TExecutionContext read GetContext;' + #13#10 +
+        '    property  Context : TExecutionContext read GetContext  write SetContext;' + #13#10 +
         '    /// Event is raised after the thread has finished the execution'+#13#10+
         '    property  OnDone  : TNotifyEvent      read GetOnDone write SetOnDone;' + #13#10 + 
         #13#10 + 
         '    class procedure Sleep(time: integer); external; overload;' + #13#10 +
         '    /// Suspend the current thread for "time" milliseconds'+#13#10+
-        '    class procedure Sleep(time: TTimeSpan); overload;' + #13#10 + 
+        '    class procedure Sleep(time: TTimeSpan); overload;' + #13#10 +
+        #13#10+
+        '    class procedure Delay(time: integer); external; overload;' + #13#10 +
+        '    /// Waits for a specific time while the program remains active'+#13#10+
+        '    class procedure Delay(time: TTimeSpan); overload;' + #13#10 +
         '  end;' + #13#10 +
         #13#10 +
         '  /// Possible thread affinity bit values'+#13#10+
@@ -175,7 +184,12 @@ const
         'class procedure TThread.Sleep(time: TTimeSpan);' + #13#10 + 
         'begin' + #13#10 + 
         '  TThread.Sleep(Math.Trunc(time.TotalMilliseconds));' + #13#10 + 
-        'end;' + #13#10 + 
+        'end;' + #13#10 +
+        #13#10 +
+        'class procedure TThread.Delay(time: TTimeSpan);' + #13#10 +
+        'begin' + #13#10 +
+        '  TThread.Delay(Math.Trunc(time.TotalMilliseconds));' + #13#10 +
+        'end;' + #13#10+
         #13#10 + 
         'procedure TExecutionContext.__SetThread(value: TThread);' + #13#10 +
         'begin' + #13#10 + 
@@ -227,6 +241,11 @@ end;
 function TThread_GetContext(Self: TSE2ScriptThread): Pointer;
 begin
   result := Self.Context;
+end;
+
+procedure TThread_SetContext(Self: TSE2ScriptThread; value: Pointer);
+begin
+  Self.Context := value;
 end;
 
 function TThread_GetOnDone(Self: TSE2ScriptThread): TNotifyEvent;
@@ -292,6 +311,44 @@ begin
   SysUtils.Sleep(time);
 end;
 
+procedure TThread_Delay(Self: TThread; time: integer);
+{$IFNDEF SEII_FPC}
+var ticks : cardinal;
+    event : THandle;
+    close : boolean;
+{$ENDIF}
+begin
+  {$IFDEF SEII_FPC}
+  SysUtils.Sleep(time);
+  {$ELSE}
+  if not Assigned(uSE2RunTime.OnScriptDelay) then
+     SysUtils.Sleep(time)
+  else
+  begin
+    event := CreateEvent(nil, False, False, nil);
+    try
+      ticks := GetTickCount + cardinal(time);
+      while (time > 0) and
+            (MsgWaitForMultipleObjects(1, event, False, time, QS_ALLINPUT) <> WAIT_TIMEOUT) do
+      begin
+        close := False;
+        if Assigned(uSE2RunTime.OnScriptDelay) then
+           uSE2RunTime.OnScriptDelay(close)
+        else
+           close := True;
+           
+        if close then
+           exit;
+
+        time := ticks - GetTickcount;
+      end;
+    finally
+      CloseHandle(event);
+    end;
+  end;
+  {$ENDIF}
+end;
+
 procedure Unit_GetSource(var Target: string);
 begin
   Target := C_UnitSource;
@@ -304,7 +361,8 @@ begin
     Target.Method['TThread.GetPriority[0]', C_UnitName] := @TThread_GetPriority;
     Target.Method['TThread.SetPriority[0]', C_UnitName] := @TThread_SetPriority;
     Target.Method['TThread.GetThreadState[0]', C_UnitName] := @TThread_GetThreadState;
-    Target.Method['TThread.GetContext[0]', C_UnitName] := @TThread_GetContext;
+    Target.Method['TThread.GetContext[0]', C_UnitName] := @TThread_GetContext;        
+    Target.Method['TThread.SetContext[0]', C_UnitName] := @TThread_SetContext;
     Target.Method['TThread.GetOnDone[0]', C_UnitName] := @TThread_GetOnDone;
     Target.Method['TThread.SetOnDone[0]', C_UnitName] := @TThread_SetOnDone;
     Target.Method['TThread.GetAffinity[0]', C_UnitName] := @TThread_GetAffinity;
@@ -316,6 +374,7 @@ begin
     Target.Method['TThread.Terminate[0]', C_UnitName] := @TThread_Terminate;
     Target.Method['TThread.WaitFor[0]', C_UnitName] := @TThread_WaitFor;
     Target.Method['TThread.Sleep[0]', C_UnitName] := @TThread_Sleep;
+    Target.Method['TThread.Delay[0]', C_UnitName] := @TThread_Delay;
   end
 end;
 

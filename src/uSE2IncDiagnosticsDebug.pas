@@ -40,7 +40,12 @@ const
         '  /// Stopwatch to measure time' + #13#10 + 
         '  TStopwatch = record' + #13#10 + 
         '  private' + #13#10 + 
+        '    class var FTotalTicks : int64;' + #13#10 + 
+        '    class function GetTotalElapsedTime: TTimeSpan;' + #13#10 + 
+        '  private' + #13#10 + 
         '    FRunning   : boolean;' + #13#10 + 
+        '    // Elapsed time after .Stop' + #13#10 + 
+        '    FDuration  : int64;' + #13#10 + 
         '    FStartTime : int64;' + #13#10 + 
         '  private' + #13#10 + 
         '    class var FFrequency : int64;' + #13#10 + 
@@ -57,8 +62,13 @@ const
         #13#10 + 
         '    /// Start the stop watch' + #13#10 + 
         '    procedure Start;' + #13#10 + 
+        '    /// Reset the time' + #13#10 + 
+        '    procedure Reset;' + #13#10 + 
         '    /// Stop the stop watch' + #13#10 + 
         '    procedure Stop;' + #13#10 + 
+        #13#10 + 
+        '    /// Returns ".Elapsed.ToString"' + #13#10 + 
+        '    function ToString: string;' + #13#10 + 
         #13#10 + 
         '    /// Time in ticks, the stopwatch has started' + #13#10 + 
         '    property StartTicks          : int64     read FStartTime;' + #13#10 + 
@@ -73,6 +83,12 @@ const
         #13#10 + 
         '    /// Frequency to convert "ticks" to "seconds" (seconds = "Ticks" / Frequency' + #13#10 + 
         '    class property Frequency     : int64     read FFrequency;' + #13#10 + 
+        #13#10 + 
+        '    /// Get the total ticks, every stopwatch had between .Start and .Stop' + #13#10 + 
+        '    /// Set the value to zero to reset the counter' + #13#10 + 
+        '    class property TotalTicks    : int64     read FTotalTicks write FTotalTicks;' + #13#10 + 
+        '    /// Get the total time, every stopwatch had between .Start and .Stop' + #13#10 + 
+        '    class property TotalTime     : TTimeSpan read GetTotalElapsedTime;' + #13#10 + 
         '  end;' + #13#10 +
         #13#10 +
         'implementation' + #13#10 + 
@@ -103,52 +119,74 @@ const
         #13#10 + 
         'function TStopwatch.GetElapsed: TTimeSpan;' + #13#10 + 
         'begin' + #13#10 + 
+        '  if TStopwatch.Frequency = 0 then' + #13#10 + 
+        '     TStopwatch.InitiateStopwatch;' + #13#10 + 
         '  if Self.FRunning then' + #13#10 + 
-        '  begin' + #13#10 + 
-        '    if TStopwatch.Frequency = 0 then' + #13#10 + 
-        '       TStopwatch.InitiateStopwatch;' + #13#10 + 
+        '    result := TTimeSpan.FromSeconds( (Self.FDuration + (TStopwatch.GetCurrentTicks - Self.FStartTime )) / TStopwatch.FFrequency )' + #13#10 + 
+        '  else' + #13#10 + 
+        '    result := TTimeSpan.FromSeconds( (Self.FDuration) / TStopwatch.FFrequency );' + #13#10 + 
+        'end;' + #13#10 + 
         #13#10 + 
-        '    result := TTimeSpan.FromSeconds( (TStopwatch.GetCurrentTicks - Self.FStartTime ) / TStopwatch.FFrequency );' + #13#10 + 
-        '  end;' + #13#10 + 
+        'function TStopwatch.ToString: string;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := Self.Elapsed.ToString;' + #13#10 + 
         'end;' + #13#10 + 
         #13#10 + 
         'function TStopwatch.GetElapsedTicks: int64;' + #13#10 + 
         'begin' + #13#10 + 
         '  if Self.FRunning then' + #13#10 + 
         '  begin' + #13#10 + 
-        '    result := TStopwatch.GetCurrentTicks - Self.FStartTime;' + #13#10 + 
+        '    result := Self.FDuration + (TStopwatch.GetCurrentTicks - Self.FStartTime);' + #13#10 + 
         '  end else' + #13#10 + 
-        '    result := 0;' + #13#10 + 
+        '    result := Self.FDuration;' + #13#10 + 
         'end;' + #13#10 + 
         #13#10 + 
         'function TStopwatch.GetElapsedMilliseconds: int64;' + #13#10 + 
         'begin' + #13#10 + 
-        '  if Self.FRunning then' + #13#10 + 
-        '  begin' + #13#10 + 
-        '    if TStopwatch.FFrequency = 0 then' + #13#10 + 
-        '       TStopwatch.InitiateStopwatch;' + #13#10 + 
+        '  if TStopwatch.FFrequency = 0 then' + #13#10 + 
+        '     TStopwatch.InitiateStopwatch;' + #13#10 + 
+        '  result := Self.FDuration;' + #13#10 + 
         #13#10 + 
-        '    result := Math.Round( (TStopwatch.GetCurrentTicks - Self.FStartTime) / TStopwatch.FFrequency * 1000.0);' + #13#10 + 
-        '  end else' + #13#10 + 
-        '    result := 0;' + #13#10 + 
+        '  if Self.FRunning then' + #13#10 + 
+        '     result := result + (TStopwatch.GetCurrentTicks - Self.FStartTime);' + #13#10 + 
+        #13#10 + 
+        '  result := Math.Round( (result) / TStopwatch.FFrequency * 1000.0);' + #13#10 + 
         'end;' + #13#10 + 
         #13#10 + 
         'class function TStopwatch.StartNew: TStopwatch;' + #13#10 + 
-        'begin' + #13#10 +
+        'begin' + #13#10 + 
         '  result.Start;' + #13#10 + 
         'end;' + #13#10 + 
         #13#10 + 
         'procedure TStopwatch.Start;' + #13#10 + 
         'begin' + #13#10 + 
-        '  Self.FRunning := True;' + #13#10 +
-        '  if TStopwatch.FFrequency = 0 then' + #13#10 +
-        '     TStopwatch.InitiateStopwatch;' + #13#10 +
+        '  Self.FRunning := True;' + #13#10 + 
+        '  if TStopwatch.FFrequency = 0 then' + #13#10 + 
+        '     TStopwatch.InitiateStopwatch;' + #13#10 + 
         '  Self.FStartTime := TStopwatch.GetCurrentTicks;' + #13#10 + 
         'end;' + #13#10 + 
         #13#10 + 
         'procedure TStopwatch.Stop;' + #13#10 + 
         'begin' + #13#10 + 
-        '  Self.FRunning := False;' + #13#10 + 
+        '  if Self.FRunning then' + #13#10 + 
+        '  begin' + #13#10 +
+        '    TStopwatch.FTotalTicks := TStopwatch.FTotalTicks + (Self.ElapsedTicks - Self.FDuration);' + #13#10 +
+        '    Self.FDuration := Self.ElapsedTicks;' + #13#10 +
+        '    Self.FRunning  := False;' + #13#10 +
+        '  end;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'procedure TStopwatch.Reset;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  Self.FDuration := 0;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'class function TStopwatch.GetTotalElapsedTime: TTimeSpan;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  if TStopwatch.Frequency = 0 then' + #13#10 + 
+        '     TStopwatch.InitiateStopwatch;' + #13#10 + 
+        #13#10 + 
+        '  result := TTimeSpan.FromSeconds( (TStopwatch.FTotalTicks ) / TStopwatch.FFrequency );' + #13#10 + 
         'end;' + #13#10 +
         #13#10 + 
         'end.';

@@ -146,6 +146,7 @@ var aClass : TSE2Class;
     method : TSE2Method;
     param  : TSE2Parameter;
     destruct : TSE2Method;
+    ClassNameMeth : TSE2Method;
 
   function FindType(const Name: string): TSE2Type;
   var i: integer;
@@ -288,7 +289,7 @@ begin
   Param.Visibility := visProtected;
   Method.Params.Insert(0, Param);
 
-  aClass.DynMethods := 2;
+  aClass.DynMethods := 3;
   result := aClass;
 
   // Assigned
@@ -361,6 +362,68 @@ begin
   PUSH [string]
   MAKE STR [ ... class name ... ]  = CNM
   POP TO -3
+  RET
+  *)
+
+  method.CallConvention := callRegister;
+  method.Visibility     := visPublic;
+
+  Param := TSE2Parameter.Create;
+  param.Name := 'Self';
+  param.AUnitName := C_SE2SystemUnitName;
+  Param.Visibility  := visPublic;
+  Param.Parent := Method;
+  Param.AType  := aClass;
+  Param.Visibility := visPrivate;
+  Param.IsStatic   := False;
+  Param.Visibility := visProtected;
+  Method.Params.Insert(0, Param);
+
+  method.ReturnValue          := TSE2Variable.Create;
+  method.ReturnValue.Name     := 'result';
+  method.ReturnValue.AUnitName := C_SE2SystemUnitName;
+  method.ReturnValue.AType    := FindType('string');
+  method.ReturnValue.Visibility := visPublic;
+
+  ClassNameMeth := method;
+
+  { ToString }
+
+  method := TSE2Method.Create;
+  AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Converts the object to a string';
+  method.Parent       := aClass;
+  method.Name         := 'ToString';
+  method.AUnitName    := C_SE2SystemUnitName;
+  method.IsStatic     := False;
+  method.MethodType   := mtFunction;
+  method.IsExternal   := False;
+  method.IsVirtual    := True;
+  method.Used         := True;
+  method.Visibility   := visPublic;
+  method.DynamicIndex := 2;
+
+
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btString), ''));     
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(5, 0), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALL(0), ClassNameMeth.GenLinkerName()));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-1, False), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-3, False), '')); 
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+
+
+  (*
+  PUSH FROM [-1 Dynamic]
+  PUSH string
+  PUSH FROM [-1 Dynamic]
+  PUSH RET [x]
+  CALL [System.TObject.ClassName]
+  POP
+  POP TO [-1 Dynamic]
+  POP TO [-3 Dynamic]
   RET
   *)
 
