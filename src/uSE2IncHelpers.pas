@@ -257,13 +257,19 @@ const
           '    /// Returns the day of the week (1 = Sunday, 7 = Saturday)' + #13#10 + 
           '    function DayOfWeek: integer;' + #13#10 + 
           '    /// Returns the absolute day index in the year' + #13#10 + 
-          '    function DayOfYear: integer;' + #13#10 + 
-          '    /// Convert to the system date string' + #13#10 + 
-          '    function DateToStr: string;' + #13#10 + 
-          '    /// Convert to the system time string' + #13#10 + 
-          '    function TimeToStr: string;' + #13#10 + 
-          '    function ToString: string; overload;' + #13#10 + 
-          '    function ToString(Format: string): string; overload;' + #13#10 + 
+          '    function DayOfYear: integer;' + #13#10 +
+          '    /// Convert to the system date string' + #13#10 +
+          '    function DateToStr: string; overload;' + #13#10 +
+          '    /// Convert to the system date string' + #13#10 +
+          '    function DateToStr(LanguageId: integer): string; overload;' + #13#10 +
+          '    /// Convert to the system time string' + #13#10 +
+          '    function TimeToStr: string; overload;' + #13#10 +    
+          '    /// Convert to the system time string' + #13#10 +
+          '    function TimeToStr(LanguageId: integer): string; overload;'+#13#10+
+          '    function ToString: string; overload;' + #13#10 +
+          '    function ToString(Format: string): string; overload;' + #13#10 +
+          '    function ToString(LanguageId: integer): string; overload;' + #13#10 +
+          '    function ToString(Format: string; LanguageId: integer): string; overload;' + #13#10 +
           '    /// Get the year' + #13#10 + 
           '    function Year: integer;' + #13#10 + 
           '    /// Get the month' + #13#10 + 
@@ -303,7 +309,7 @@ const
           '  result := @Self <> nil;' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TDateTimeHelper.Year: integer;' + #13#10 + 
+          'function TDateTimeHelper.Year: integer;' + #13#10 +
           'var y, m, d: word;' + #13#10 + 
           'begin' + #13#10 + 
           '  DateTime.DecodeDate(Self, y, m, d);' + #13#10 + 
@@ -382,23 +388,42 @@ const
           'function TDateTimeHelper.DayOfYear: integer;' + #13#10 + 
           'begin' + #13#10 + 
           '  result := DateTime.DayOfTheYear(Self);' + #13#10 + 
-          'end;' + #13#10 + 
-          'function TDateTimeHelper.DateToStr: string;' + #13#10 + 
-          'begin' + #13#10 + 
-          '  result := DateTime.DateToStr(Self);' + #13#10 + 
-          'end;' + #13#10 + 
-          'function TDateTimeHelper.TimeToStr: string;' + #13#10 + 
-          'begin' + #13#10 + 
-          '  result := DateTime.TimeToStr(Self);' + #13#10 + 
-          'end;' + #13#10 + 
-          'function TDateTimeHelper.ToString: string;' + #13#10 + 
-          'begin' + #13#10 + 
-          '  result := DateTime.DateTimeToStr(Self);' + #13#10 + 
-          'end;' + #13#10 + 
-          'function TDateTimeHelper.ToString(Format: string): string;' + #13#10 + 
-          'begin' + #13#10 + 
-          '  result := DateTime.FormatDateTime(Format, Self);' + #13#10 + 
-          'end;' + #13#10 + 
+          'end;' + #13#10 +
+          'function TDateTimeHelper.DateToStr: string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := DateTime.DateToStr(Self);' + #13#10 +
+          'end;' + #13#10 +    
+          'function TDateTimeHelper.DateToStr(LanguageId: integer): string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := DateTime.DateToStr(Self, LanguageId);' + #13#10 +
+          'end;' + #13#10 +
+          'function TDateTimeHelper.TimeToStr: string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := DateTime.TimeToStr(Self);' + #13#10 +
+          'end;' + #13#10 +     
+          'function TDateTimeHelper.TimeToStr(LanguageId: integer): string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := DateTime.TimeToStr(Self, LanguageId);' + #13#10 +
+          'end;' + #13#10 +
+          'function TDateTimeHelper.ToString: string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := DateTime.DateTimeToStr(Self);' + #13#10 +
+          'end;' + #13#10 +
+          'function TDateTimeHelper.ToString(Format: string): string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := DateTime.FormatDateTime(Format, Self);' + #13#10 +
+          'end;' + #13#10 +    
+          'function TDateTimeHelper.ToString(LanguageId: integer): string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := DateTime.DateTimeToStr(Self, LanguageId);' + #13#10 +
+          'end;' + #13#10 +
+          'function TDateTimeHelper.ToString(Format: string; LanguageId: integer): string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := DateTime.FormatDateTime(Format, Self, LanguageId);' + #13#10 +
+          'end;' + #13#10 +
+
+
+
           'function TStringHelper.Insert(Position: integer; value: string): string;' + #13#10 + 
           'begin' + #13#10 + 
           '  Strings.Insert(value, Self, Position);' + #13#10 + 

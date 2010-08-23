@@ -20,18 +20,24 @@ type
     FMinVersion  : TSE2ScriptEngineVersion;
     FUnitNames   : TStringList;
     FUnitSources : TList;
+    FFileName    : string;
   protected
     function GetSource(index: integer): string;
   public
-    constructor Create(Stream: TStream; AutoLoad: boolean); reintroduce;
+    constructor Create(Stream: TStream; AutoLoad: boolean); reintroduce; overload;
+    constructor Create(const FileName: string; AutoLoad: boolean = True); reintroduce; overload;
     destructor Destroy; override;
 
+    procedure  CloseStream;
     procedure  Clear;
 
     procedure  AddUnit(const UnitName, UnitSource: string);
     procedure  Save;
-    procedure  Load;
+    procedure  Load; overload;
+    procedure  Load(Stream: TStream); overload;
+    procedure  Load(const FileName: string); overload;
 
+    property   FileName    : string      read FFileName        write FFileName;
     property   Guid        : TGUID       read FGuid;
     property   UnitNames   : TStringList read FUnitNames;
     property   Source[index: integer]: string read GetSource;
@@ -54,6 +60,7 @@ type
   public
     constructor Create(Package: TSE2ScriptLibrary); reintroduce; overload;
     constructor Create(Stream: TStream; AutoLoad: boolean); reintroduce; overload;
+    constructor Create(const FileName: string; AutoLoad: boolean = True); reintroduce; overload;
     destructor  Destroy; override;
 
     function  CanCacheSource(index: integer): Boolean; override;
@@ -64,9 +71,8 @@ type
     procedure RegisterVariables(index: integer; const Target: TSE2RunAccess); override;
     procedure RegisterExceptions(index: Integer; const Target: TSE2RunAccess); override;
 
-
     property  GUID       : TGUID                   read GetGuid;
-    property  LoadTime   : TDateTime               read FLoadTime;
+    property  LoadTime   : TDateTime               read FLoadTime       write FLoadTime;
     property  MinVersion : TSE2ScriptEngineVersion read GetMinVersion;
     property  Package    : TSE2ScriptLibrary       read FPackage;
   end;
@@ -103,21 +109,45 @@ begin
   FUnitNames.Clear;
 end;
 
+procedure TSE2ScriptLibrary.CloseStream;
+begin
+  FStream.Free;
+  FStream := nil;
+end;
+
 constructor TSE2ScriptLibrary.Create(Stream: TStream; AutoLoad: boolean);
 begin
   inherited Create;
   FStream := Stream;
 
-  FUnitNames := TStringList.Create;
+  FUnitNames   := TStringList.Create;
   FUnitSources := TList.Create;
 
   if AutoLoad then
      Load;
 end;
 
+constructor TSE2ScriptLibrary.Create(const FileName: string;
+  AutoLoad: boolean = True);
+begin
+  inherited Create;
+  FFileName := FileName;
+  FStream   := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
+
+  FUnitNames   := TStringList.Create;
+  FUnitSources := TList.Create;
+
+  if AutoLoad then
+  begin
+    Load;
+    CloseStream;
+  end;
+end;
+
 destructor TSE2ScriptLibrary.Destroy;
 begin
-  Clear;
+  if FUnitSources <> nil then
+     Clear;
 
   FUnitNames.Free;
   FUnitSources.Free;
@@ -178,6 +208,21 @@ begin
   end;
 end;
 
+procedure TSE2ScriptLibrary.Load(Stream: TStream);
+begin
+  CloseStream;
+  Self.FStream := Stream;
+  Load;
+end;
+
+procedure TSE2ScriptLibrary.Load(const FileName: string);
+begin
+  CloseStream;
+  Self.FStream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
+  Load;
+  CloseStream;
+end;
+
 procedure TSE2ScriptLibrary.Save;
 var vers     : byte;
     id       : TSE2PackageStreamId;
@@ -226,6 +271,14 @@ constructor TSE2ScriptLibraryUnit.Create(Stream: TStream;
 begin
   inherited Create;
   FPackage  := TSE2ScriptLibrary.Create(Stream, AutoLoad);
+  FLoadTime := Now;
+end;
+
+constructor TSE2ScriptLibraryUnit.Create(const FileName: string;
+  AutoLoad: boolean);
+begin
+  inherited Create;
+  FPackage  := TSE2ScriptLibrary.Create(FileName, AutoLoad);
   FLoadTime := Now;
 end;
 

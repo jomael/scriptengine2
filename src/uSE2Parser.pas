@@ -4541,7 +4541,7 @@ begin
         PSE2OpFLOW_GOTO(Method.OpCodes[EqualJumps[i]].OpCode).Position := Method.OpCodes.Count;
       EqualJumps.Clear;
 
-      State.LoopStackSize := State.StackSize;
+      //State.LoopStackSize := State.StackSize;
 
       ReadNextToken;
       try
@@ -4974,7 +4974,7 @@ begin
   sesExcept :
       begin
         bIsExceptBlock := True;
-        PSE2OpSAFE_TRYEX(Method.OpCodes[OpCodePos2].OpCode).OpCode := soSAFE_TRYEX; 
+        PSE2OpSAFE_TRYEX(Method.OpCodes[OpCodePos2].OpCode).OpCode := soSAFE_TRYEX;
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0), ''));
       end;
   end;
@@ -7146,7 +7146,7 @@ begin
       try
         Method.Variables.Add(Variable);
         DeclareType(State, Variable, varName);
-        Variable.CodePos := Method.StackSize + State.LoopStackSize;
+        Variable.CodePos := State.StackSize + 1; // Method.StackSize + State.LoopStackSize;
         Variable.AType := aType;
 
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_PEX, ''));
