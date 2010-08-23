@@ -7146,7 +7146,7 @@ begin
       try
         Method.Variables.Add(Variable);
         DeclareType(State, Variable, varName);
-        Variable.CodePos := State.StackSize + 1; // Method.StackSize + State.LoopStackSize;
+        Variable.CodePos := State.StackSize; // Method.StackSize + State.LoopStackSize;
         Variable.AType := aType;
 
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_PEX, ''));
