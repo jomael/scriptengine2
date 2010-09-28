@@ -513,9 +513,16 @@ var pUnit : TSE2Unit;
     if Parent is TSE2Class then
     begin
       if Method <> nil then
+      begin
         if (aUnit <> FUnit) then
           if Method.Parent = Parent then
              vis := [visProtected, visPublic];
+      end else
+      begin
+        if (aUnit <> FUnit) and (State.CurrentOwner is TSE2Class) and (Parent <> nil) then
+          if TSE2Class(State.CurrentOwner).IsTypeOf(Parent) or (State.CurrentOwner = Parent) then
+             vis := [visProtected, visPublic];
+      end;
 
       p := Parent;
       while p <> nil do
@@ -1035,6 +1042,17 @@ begin
           RaiseError(petError, 'Name already declared "'+Tokenizer.Token.Value+'"');
           exit;
         end;
+
+        if State.CurrentOwner is TSE2Class then
+          if TSE2Class(State.CurrentOwner).IsPartial then
+            if FUnitList.FindItem(State.CurrentOwner.AUnitName) is TSE2Unit then
+              if TSE2Unit(FUnitList.FindItem(State.CurrentOwner.AUnitName))
+                  .ElemList.FindItem(Tokenizer.Token.Value, State.CurrentOwner.AUnitName, State.CurrentOwner, nil, nil, CAllVisibilities) <> nil then
+              begin
+                RaiseError(petError, 'Name already declared "'+Tokenizer.Token.Value+'"');
+                exit;
+              end;
+
         if NewVaribles.FindItem(Tokenizer.Token.Value) <> nil then
         begin
           RaiseError(petError, 'Name already declared "'+Tokenizer.Token.Value+'"');
@@ -1472,6 +1490,7 @@ var ClassType : TSE2Class;
     IsHelper  : boolean;
     IsSealed  : boolean;
     IsFirstPartial : boolean;
+    i, j      : integer;
 begin
   State.Method     := nil;
   State.AParent    := nil;
@@ -1479,7 +1498,7 @@ begin
 
   IsHelper  := False;
   IsPartial := False;
-  IsSealed  := False;    
+  IsSealed  := False;
 
   if Tokenizer.Token.AType in [sesSealed] then
   begin
@@ -1579,7 +1598,25 @@ begin
     IsFirstPartial := False;
     if IsPartial then
       if ClassType.InheritFrom = nil then
-        IsFirstPartial := True;
+        IsFirstPartial := True
+      else
+      begin
+        for i:=0 to FUnitList.Count-1 do
+          for j:=0 to TSE2Unit(FUnitList[i]).TypeList.Count-1 do
+            if TSE2BaseType(TSE2Unit(FUnitList[i]).TypeList.List.List[j]) is TSE2Class then
+              if TSE2Class(TSE2Unit(FUnitList[i]).TypeList.List.List[j]).IsTypeOf(ClassType) then
+                 RaiseError(petError, 'Can not extend partial class because "'+
+                       TSE2Class(TSE2Unit(FUnitList[i]).TypeList.List.List[j]).GetStrongName +
+                       '" has already derived from the class');
+
+        for j:=0 to TSE2Unit(FUnit).TypeList.Count-1 do
+          if TSE2BaseType(TSE2Unit(FUnit).TypeList.List.List[j]) is TSE2Class then
+            if TSE2Class(TSE2Unit(FUnit).TypeList.List.List[j]).IsTypeOf(ClassType) then
+               RaiseError(petError, 'Can not extend partial class because "'+
+                     TSE2Class(TSE2Unit(FUnit).TypeList.List.List[j]).GetStrongName +
+                     '" has already derived from the class');
+
+      end;
 
     if (Tokenizer.Token.AType = sesHelper) or IsHelper then
     begin
@@ -1622,19 +1659,16 @@ begin
 
       BaseClass := TSE2Class( TypeExpression(nil) );
       if BaseClass = nil then
-         RaiseError(petError, 'Unknown identifier')
+         RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"')
       else
       if not (BaseClass is TSE2Class) then
       begin
-         RaiseError(petError, 'Base type is not a class: ' + BaseClass.Name);
+         RaiseError(petError, 'Base type is not a class: ' + BaseClass.GetStrongName);
          exit;
       end;
-      //BaseClass := TSE2Class(FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Class])));
-      if BaseClass = nil then
-      begin
-        RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
-        exit;
-      end;
+
+      if TSE2Class(BaseClass).IsForwarded then
+         RaiseError(petError, 'Can not derive from incompleted class "' + TSE2Class(BaseClass).GetStrongName + '"');
 
       if TSE2Class(BaseClass).IsHelper then
       begin
@@ -2174,6 +2208,9 @@ var Method       : TSE2Method;
         Param.ParameterType := ParamType;
         Params.Add(Param);
         ReadNextToken;
+
+        ExpectToken([sesColon, sesDoublePoint]);
+
         if Tokenizer.Token.AType = sesColon then
            ReadNextToken;
       end;
@@ -2383,6 +2420,10 @@ begin
       if not IsTypeDeclaration then
       begin
         pMeth := TSE2Method(FindIdentifier(nil, Name, State.CurrentOwner, FUnit.Name, TSE2BaseTypeFilter.Create([TSE2Method])));
+        if (pMeth = nil) and (State.CurrentOwner is TSE2Class) then
+          if TSE2Class(State.CurrentOwner).IsPartial and not FUnit.IsName(State.CurrentOwner.AUnitName) then
+             pMeth := TSE2Method(FindIdentifier(nil, Name, State.CurrentOwner, State.CurrentOwner.AUnitName, TSE2BaseTypeFilter.Create([TSE2Method])));
+
         if pMeth <> nil then
         begin
           if not pMeth.IsOverload then
@@ -4947,26 +4988,26 @@ begin
         begin
           if Method.OpCodes[Method.Lists.ExitList[i]].OpCode.OpCode <> soSAFE_SJUMP then
           begin
-            PSE2OpSAFE_SJUMP(Method.OpCodes[i].OpCode).OpCode := soSAFE_SJUMP;
-            PSE2OpSAFE_SJUMP(Method.OpCodes[i].OpCode).Target := 0;
-            PSE2OpSAFE_SJUMP(Method.OpCodes[i].OpCode).ExitTo := Method.OpCodes.Count;
+            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).OpCode := soSAFE_SJUMP;
+            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).Target := 0;
+            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).ExitTo := Method.OpCodes.Count;
           end else
-          if PSE2OpSAFE_SJUMP(Method.OpCodes[i].OpCode).Target = 0 then
-             PSE2OpSAFE_SJUMP(Method.OpCodes[i].OpCode).Target := Method.OpCodes.Count;
+          if PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).Target = 0 then
+             PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).Target := Method.OpCodes.Count;
         end;
 
         for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
           if Method.OpCodes[Method.Lists.ContinueList[i]].OpCode.OpCode <> soSAFE_SJUMP then
           begin
-            PSE2OpSAFE_SJUMP(Method.OpCodes[i].OpCode).OpCode := soSAFE_SJUMP;
-            PSE2OpSAFE_SJUMP(Method.OpCodes[i].OpCode).ExitTo := Method.OpCodes.Count;
+            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode).OpCode := soSAFE_SJUMP;
+            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode).ExitTo := Method.OpCodes.Count;
           end;
 
         for i:=Method.Lists.BreakList.Count-1 downto oldBreakList do
           if Method.OpCodes[Method.Lists.BreakList[i]].OpCode.OpCode <> soSAFE_SJUMP then
           begin
-            PSE2OpSAFE_SJUMP(Method.OpCodes[i].OpCode).OpCode := soSAFE_SJUMP;
-            PSE2OpSAFE_SJUMP(Method.OpCodes[i].OpCode).ExitTo := Method.OpCodes.Count;
+            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.BreakList[i]].OpCode).OpCode := soSAFE_SJUMP;
+            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.BreakList[i]].OpCode).ExitTo := Method.OpCodes.Count;
           end;
 
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0), ''));
@@ -6300,11 +6341,18 @@ begin
   ExpectToken([sesIdentifier]);
 
   Item := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, FUnit.Name);
+  if Item = nil then
+    if State.CurrentOwner is TSE2Class then
+      if TSE2Class(State.CurrentOwner).IsPartial and not FUnit.IsName(State.CurrentOwner.AUnitName) then
+        Item := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, State.CurrentOwner.AUnitName);
+
   if Item <> nil then
     if Item.Parent = State.CurrentOwner then
     begin
       RaiseError(petError, 'Identifier already declared: "'+Tokenizer.Token.Value+'"');
     end;
+
+
 
   aProperty := TSE2Property.Create;
   DeclareType(State, aProperty, Tokenizer.Token.Value);
@@ -6384,7 +6432,7 @@ begin
     begin
       ReadNextToken;
       ExpectToken([sesIdentifier]);
-      aSource := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, FUnit.Name,
+      aSource := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, '',
                                 TSE2BaseTypeFilter.Create([TSE2Variable, TSE2Method]));
 
       if aSource = nil then
@@ -6435,7 +6483,11 @@ begin
       end else
       if aSource is TSE2Variable then
       begin
-        if (TSE2Variable(aSource).Parent <> aProperty.Parent) then
+        if aProperty.Parent = nil then
+           RaiseError(petError, 'Internal error: property parent is nil');
+           
+        if (not aProperty.Parent.IsTypeOf(TSE2Variable(aSource).Parent)) and
+           (TSE2Variable(aSource).Parent <> aProperty.Parent)  then
            RaiseError(petError, 'Property variable must have the same owner');
 
         if TSE2Variable(aSource).IsStatic <> aProperty.IsStatic then
@@ -6465,7 +6517,7 @@ begin
     begin
       ReadNextToken;
       ExpectToken([sesIdentifier]);
-      aSource := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, FUnit.Name,
+      aSource := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, '',
                                 TSE2BaseTypeFilter.Create([TSE2Variable, TSE2Method]));
 
       if aSource = nil then
@@ -6523,7 +6575,11 @@ begin
       end else
       if aSource is TSE2Variable then
       begin
-        if (TSE2Variable(aSource).Parent <> aProperty.Parent) then
+        if aProperty.Parent = nil then
+           RaiseError(petError, 'Internal error: property parent is nil');
+
+        if (not aProperty.Parent.IsTypeOf(TSE2Variable(aSource).Parent)) and
+           (TSE2Variable(aSource).Parent <> aProperty.Parent) then
            RaiseError(petError, 'Property variable must have the same owner');
 
         if TSE2Variable(aSource).IsStatic <> aProperty.IsStatic then
@@ -7146,7 +7202,7 @@ begin
       try
         Method.Variables.Add(Variable);
         DeclareType(State, Variable, varName);
-        Variable.CodePos := State.StackSize; // Method.StackSize + State.LoopStackSize;
+        Variable.CodePos := State.StackSize + Method.StackSize; // Method.StackSize + State.LoopStackSize;
         Variable.AType := aType;
 
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_PEX, ''));
@@ -7242,8 +7298,12 @@ begin
         begin
           if not TSE2Variable(FUnit.ElemList[i]).Used then
             if not (TSE2Variable(FUnit.ElemList[i]).Parent is TSE2Record) then
-             RaiseError(petHint, 'Variable "'+TSE2Variable(FUnit.ElemList[i]).Name+'" is declared but never used', TSE2Variable(FUnit.ElemList[i]).DeclPos,
-                        TSE2Variable(FUnit.ElemList[i]).DeclLine);
+            begin
+              if TSE2Variable(FUnit.ElemList[i]).Parent is TSE2Class then
+                if not TSE2Class(TSE2Variable(FUnit.ElemList[i]).Parent).IsPartial then
+                    RaiseError(petHint, 'Variable "'+TSE2Variable(FUnit.ElemList[i]).Name+'" is declared but never used', TSE2Variable(FUnit.ElemList[i]).DeclPos,
+                               TSE2Variable(FUnit.ElemList[i]).DeclLine);
+            end;
         end;
       end;
 end;

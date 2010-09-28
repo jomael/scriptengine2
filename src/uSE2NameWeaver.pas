@@ -83,7 +83,7 @@ begin
   NameHash := MakeHash(Name);
   for i:=FList.Count-1 downto 0 do
   begin
-    p := FList[i];
+    p := FList.List[i];
 
     if p^.NameHash = NameHash then
       if StringIdentical(p^.Name, Name) then

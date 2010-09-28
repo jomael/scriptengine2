@@ -25,7 +25,7 @@ uses
   { YOU ARE NOT ALLOWED TO CHANGE AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING LINE }
   uSE2IncDateTime, uSE2IncInfo, uSE2IncConsole, uSE2IncConvert, uSE2IncMath, uSE2IncStrings, uSE2IncTypes, uSE2IncSCriptInfo,
   uSE2IncScriptExceptions, uSE2IncExceptions, uSE2IncHelpers, uSE2IncTimeSpan, uSE2IncVersion, uSE2IncGuid,
-  uSE2IncSystemThreading, uSE2IncSyncObjs,
+  uSE2IncSystemThreading, uSE2IncSyncObjs, uSE2IncMultiCast,
   SysUtils;
 
 { TSE2SystemUnit }
@@ -90,22 +90,22 @@ begin
 
 
 
-  DoAddType('boolean', btBoolean, SizeOf(TbtU8), visPublic, nil, 'Represents a boolean value');
-  DoAddType('byte', btU8, SizeOf(TbtU8), visPublic, nil, 'Represents an unsigned 8 bit integer value');
-  DoAddType('shortint', btS8, SizeOf(TbtS8), visPublic, nil, 'Represents a signed 8 bit integer value');
-  DoAddType('word', btU16, SizeOf(TbtU16), visPublic, nil, 'Represents an unsigned 16 bit integer value');
-  DoAddType('smallint', btS16, SizeOf(TbtS16), visPublic, nil, 'Represents a signed 16 bit integer value');
-  DoAddType('cardinal', btU32, SizeOf(TbtU32), visPublic, nil, 'Represents an unsigned 32 bit integer value');
-  DoAddType(c_SE2Int32, btS32, SizeOf(TbtS32), visPublic, nil, 'Represents a signed 32 bit integer value');
+  DoAddType(C_SE2Boolean, btBoolean, SizeOf(TbtU8), visPublic, nil, 'Represents a boolean value');
+  DoAddType('Byte', btU8, SizeOf(TbtU8), visPublic, nil, 'Represents an unsigned 8 bit integer value');
+  DoAddType('Shortint', btS8, SizeOf(TbtS8), visPublic, nil, 'Represents a signed 8 bit integer value');
+  DoAddType('Word', btU16, SizeOf(TbtU16), visPublic, nil, 'Represents an unsigned 16 bit integer value');
+  DoAddType('Smallint', btS16, SizeOf(TbtS16), visPublic, nil, 'Represents a signed 16 bit integer value');
+  DoAddType('Cardinal', btU32, SizeOf(TbtU32), visPublic, nil, 'Represents an unsigned 32 bit integer value');
+  DoAddType(C_SE2Int32, btS32, SizeOf(TbtS32), visPublic, nil, 'Represents a signed 32 bit integer value');
   DoAddType(C_SE2Int64, btS64, SizeOf(TbtS64), visPublic, nil, 'Represents a signed 64 bit integer value');
   
-  DoAddType('LongWord', 0, 0, visPublic, FindType('cardinal'));
-  DoAddType('Longint', 0, 0, visPublic, FindType('integer'));
-  DoAddType('DWord', 0, 0, visPublic, FindType('cardinal'));
+  DoAddType('LongWord', 0, 0, visPublic, FindType('Cardinal'));
+  DoAddType('Longint', 0, 0, visPublic, FindType(C_SE2Int32));
+  DoAddType('DWord', 0, 0, visPublic, FindType('Cardinal'));
   DoAddType('THandle', 0, 0, visPublic, FindType('LongWord'));
 
   c := TSE2Constant.Create;
-  c.AType      := TSE2Type(FindType('boolean'));
+  c.AType      := TSE2Type(FindType(C_SE2Boolean));
   c.Name       := 'True';
   c.AUnitName   := C_SE2SystemUnitName;
   c.AsInteger  := 1;
@@ -113,7 +113,7 @@ begin
   AUnit.ElemList.Add(c);
 
   c := TSE2Constant.Create;
-  c.AType      := TSE2Type(FindType('boolean'));
+  c.AType      := TSE2Type(FindType(C_SE2Boolean));
   c.Name       := 'False';
   c.AUnitName   := C_SE2SystemUnitName;
   c.AsInteger  := 0;
@@ -122,15 +122,15 @@ begin
 
 
 
-  DoAddType('string', btString, SizeOf(Pointer), visPublic, nil, 'Represents a list of chars');
+  DoAddType(C_SE2String, btString, SizeOf(Pointer), visPublic, nil, 'Represents a list of chars');
   DoAddType('UTF8String', btUTF8String, SizeOf(Pointer), visPublic, nil, 'Represents a list of utf-8 encoded chars');
   DoAddType('WideString', btWideString, SizeOf(Pointer), visPublic, nil, 'Represents a list of utf-16 encoded chars');
   DoAddType('PChar', btPChar, SizeOf(Pointer), visPublic, nil, 'Represents a pointer to a list of chars');
 
-  DoAddType('single', btSingle, SizeOf(Single), visPublic, nil, 'Represents a single precision floating point value');
-  DoAddType('double', btDouble, SizeOf(Double), visPublic, nil, 'Represents a double precision floating point value');
+  DoAddType('Single', btSingle, SizeOf(Single), visPublic, nil, 'Represents a single precision floating point value');
+  DoAddType(C_SE2Double, btDouble, SizeOf(Double), visPublic, nil, 'Represents a double precision floating point value');
 
-  DoAddType('pointer', btPointer, SizeOf(Pointer), visPublic, nil, 'Represents a pointer to any value');
+  DoAddType('Pointer', btPointer, SizeOf(Pointer), visPublic, nil, 'Represents a pointer to any value');
 
   (*SetCompatible('byte'    , ['shortint', 'word', 'smallint', 'cardinal', 'integer', 'int64']);
   SetCompatible('shortint', ['byte', 'word', 'smallint', 'cardinal', 'integer', 'int64']);
@@ -337,7 +337,7 @@ begin
   method.ReturnValue          := TSE2Variable.Create;
   method.ReturnValue.Name     := 'result';
   method.ReturnValue.AUnitName := C_SE2SystemUnitName;
-  method.ReturnValue.AType    := FindType('boolean');
+  method.ReturnValue.AType    := FindType(C_SE2Boolean);
   method.ReturnValue.Visibility := visPublic;
 
   { ClassName }
@@ -382,7 +382,7 @@ begin
   method.ReturnValue          := TSE2Variable.Create;
   method.ReturnValue.Name     := 'result';
   method.ReturnValue.AUnitName := C_SE2SystemUnitName;
-  method.ReturnValue.AType    := FindType('string');
+  method.ReturnValue.AType    := FindType(C_SE2String);
   method.ReturnValue.Visibility := visPublic;
 
   ClassNameMeth := method;
@@ -444,7 +444,7 @@ begin
   method.ReturnValue          := TSE2Variable.Create;
   method.ReturnValue.Name     := 'result';
   method.ReturnValue.AUnitName := C_SE2SystemUnitName;
-  method.ReturnValue.AType    := FindType('string');
+  method.ReturnValue.AType    := FindType(C_SE2String);
   method.ReturnValue.Visibility := visPublic;
 
        (*
@@ -592,7 +592,7 @@ begin
   method.ReturnValue          := TSE2Variable.Create;
   method.ReturnValue.Name     := '!result';
   method.ReturnValue.AUnitName := C_SE2SystemUnitName;
-  method.ReturnValue.AType    := FindType('string');
+  method.ReturnValue.AType    := FindType(C_SE2String);
   method.ReturnValue.Visibility := visPublic;
 
   Param := TSE2Parameter.Create;
@@ -651,7 +651,7 @@ begin
   method.ReturnValue          := TSE2Variable.Create;
   method.ReturnValue.Name     := 'result';
   method.ReturnValue.AUnitName := C_SE2SystemUnitName;
-  method.ReturnValue.AType    := FindType('boolean');
+  method.ReturnValue.AType    := FindType(C_SE2Boolean);
   method.ReturnValue.Visibility := visPublic;
 end;
 
@@ -739,13 +739,13 @@ begin
   '    class property Instance : Pointer read FInstance;'+#13#10+
   '  end;'+#13#10+
   #13#10+
-  '  int8   = shortint;'+#13#10+
-  '  int16  = smallint;'+#13#10+
-  '  int32  = integer;'+#13#10+
-  '  uint8  = byte;'+#13#10+
-  '  uint16 = word;'+#13#10+
-  '  uint32 = cardinal;'+#13#10+
-  '  int    = int32;'+#13#10+
+  '  Int8   = shortint;'+#13#10+
+  '  Int16  = smallint;'+#13#10+
+  '  Int32  = integer;'+#13#10+
+  '  UInt8  = byte;'+#13#10+
+  '  UInt16 = word;'+#13#10+
+  '  UInt32 = cardinal;'+#13#10+
+  '  Int    = int32;'+#13#10+
   '  IntPtr = int64;'+#13#10+
   #13#10+
   'implementation end.';

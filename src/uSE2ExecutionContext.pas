@@ -589,10 +589,10 @@ begin
         case PSE2OpOP_COMPARE(OpCode).CompType of
         1 : CompareInt := Ord(FDataComparison.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
         2 : CompareInt := Ord(FDataComparison.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        3 : CompareInt := Ord(FDataComparison.Bigger(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        4 : CompareInt := Ord(FDataComparison.BiggerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        3 : CompareInt := Ord(not FDataComparison.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        4 : CompareInt := Ord(not FDataComparison.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
         5 : CompareInt := Ord(FDataComparison.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        6 : CompareInt := Ord(FDataComparison.UnEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        6 : CompareInt := Ord(not FDataComparison.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
         end;
 
 
@@ -621,10 +621,10 @@ begin
         case PSE2OpOP_COMPARE(OpCode).CompType of
         1 : CompareInt := Ord(FDataComparison.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
         2 : CompareInt := Ord(FDataComparison.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        3 : CompareInt := Ord(FDataComparison.Bigger(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        4 : CompareInt := Ord(FDataComparison.BiggerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        3 : CompareInt := Ord(not FDataComparison.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        4 : CompareInt := Ord(not FDataComparison.Smaller(r1 { VarDat[0] }, r2 { VarDat[1] }));
         5 : CompareInt := Ord(FDataComparison.SmallerEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
-        6 : CompareInt := Ord(FDataComparison.UnEqual(r1 { VarDat[0] }, r2 { VarDat[1] }));
+        6 : CompareInt := Ord(not FDataComparison.Equal(r1 { VarDat[0] }, r2 { VarDat[1] }));
         end;
 
         FStack.PushNew(btBoolean).tu8^ := CompareInt;
@@ -651,7 +651,10 @@ begin
              FStack[FStack.Size-1 + CompareInt] := r2 { VarDat[1] };
         end;
 
-        FStackHelper.SetVarData(FStack.Top, r1 { VarDat[0] });
+        if PSE2OpDAT_COPY_TO(OpCode).Static then
+          FStackHelper.SetVarData(FStack.Top, r1, FExecutionData.MemoryMngr)
+        else
+          FStackHelper.SetVarData(FStack.Top, r1 { VarDat[0] });
         FStack.Pop;
       end;
   soDAT_COPY_FROM :

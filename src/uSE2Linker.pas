@@ -60,15 +60,15 @@ type
     property UnitList : TSE2BaseTypeList read FUnitList write FUnitList;
   end;
 
-{var
+var
   DEBUG_TimeMeasure : int64;
-}
+
 implementation
 
 uses SysUtils
-     {, Windows }
+     , Windows
      ;
- {
+
 var
   TTimeMeasure_BeginTime    : array[0..1024] of int64;
   TTimeMeasure_CurrentIndex : integer = 0;
@@ -92,7 +92,7 @@ begin
   TTimeMeasure_CurrentIndex := TTimeMeasure_CurrentIndex - 1;
   QueryPerformanceCounter(t);
   DEBUG_TimeMeasure := DEBUG_TimeMeasure + (t - TTimeMeasure_BeginTime[TTimeMeasure_CurrentIndex]);
-end;         }
+end;
 
 { TSE2Linker }
 
@@ -111,7 +111,6 @@ function TSE2Linker.LinkProgram: TSE2PE;
 var i: integer;
 begin
   result := TSE2PE.Create;
-
   {$IFDEF SEII_SMART_LINKING}
   ProcessUsage;
   {$ENDIF}
@@ -120,6 +119,7 @@ begin
   // 1st of all - optimize
   for i:=0 to FUnitList.Count-1 do
     OptimizeMethods(TSE2Unit(FUnitList[i]));
+
 
 
   // Make as the 1st OpCode
@@ -135,9 +135,11 @@ begin
   for i:=0 to FUnitList.Count-1 do
     LinkClasses(result, TSE2Unit(FUnitList[i]));
 
+  //TTimeMeasure.Start;
   for i:=0 to FUnitList.Count-1 do
     LinkUnit(result, TSE2Unit(FUnitList[i]));
-    
+
+  //TTimeMeasure.Stop;
   // UnlinkOpCodes;
 
   PostLinkClasses(Result);
@@ -194,7 +196,8 @@ begin
   Meta.SourcePos  := AClass.DeclPos;
   Meta.SourceLine := AClass.DeclLine;
   Meta.ParamCount := AClass.ClassSize;
-  Meta.DynMethods.Count := AClass.DynMethods;
+  Meta.DynMethods.Count := AClass.DynMethods;  
+  Meta.MetaLinkName := 'META_['+Meta.Name+']['+Meta.AUnitName+']';
 
   if AClass.InheritFrom is TSE2Class then
      Meta.ParamDecl := AnsiString(AClass.InheritFrom.AUnitName + '.' + AClass.InheritFrom.Name);
@@ -245,6 +248,7 @@ begin
   Meta.SourceLine := ARecord.DeclLine;
   Meta.ParamCount := ARecord.RecordSize;
   Meta.DynMethods.Count := 0; //ARecord.DynMethods;
+  Meta.MetaLinkName := 'META_['+Meta.Name+']['+Meta.AUnitName+']';
 
   if ARecord.InheritFrom is TSE2Record then
      Meta.ParamDecl := AnsiString(ARecord.InheritFrom.AUnitName + '.' + ARecord.InheritFrom.Name);
@@ -353,15 +357,17 @@ var CodePos: integer;
     Meta   : TSE2MetaEntry;
 
   function FindClassMeta(const MetaName: string): integer;
-  var s: string;
+  var //s: string;
       n: integer;
   begin
     n := MakeHash(MetaName);
     for result := 0 to PE.MetaData.Count-1 do
     begin
-      s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
-      if n = MakeHash(s) then
-        if s = MetaName then
+      if n = PE.MetaData[result].MetaLinkHash then
+        if MetaName = PE.MetaData[result].MetaLinkName then
+      //s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
+      //if n = MakeHash(s) then
+        //if s = MetaName then
            exit;
     end;
     result := -1;
@@ -373,15 +379,18 @@ var CodePos: integer;
   end;
 
   function FindRecordMeta(const MetaName: string; const default: integer = -1): integer;
-  var s: string;
+  var //s: string;
       n: integer;
   begin
     n := MakeHash(MetaName);
     for result := 0 to PE.MetaData.Count-1 do
-    begin
-      s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
-      if n = MakeHash(s) then
-        if s = MetaName then
+    begin               
+      if n = PE.MetaData[result].MetaLinkHash then
+        if MetaName = PE.MetaData[result].MetaLinkName then
+
+      //s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
+      //if n = MakeHash(s) then
+        //if s = MetaName then
            exit;
     end;
     result := default;
@@ -393,6 +402,11 @@ var CodePos: integer;
     meta := PE.MetaData[FindClassMeta('META_'+aClass.GenLinkerName)];
     if meta <> nil then
     begin
+      if meta.DynMethods.Count <= Method.DynamicIndex then
+         raise Exception.Create('Dyn Method assignment failed: ' + IntToStr(Method.DynamicIndex) + ' is not in range! Max: ' + IntToStr(meta.DynMethods.Count) +
+               #13#10 + 'Class: ' + aClass.GetStrongName +
+               #13#10 + 'Method: ' + Method.GetStrongName +
+               #13#10 + 'Declaration: ' + IntToStr(Method.DeclLine));
       meta.DynMethods[Method.DynamicIndex] := (Method.CodePos);
     end;
   end;
@@ -491,16 +505,16 @@ procedure TSE2Linker.LinkMethods(PE: TSE2PE; AUnit: TSE2Unit);
 var i: integer;
 begin
   for i:=0 to AUnit.ElemList.Count-1 do
-    if AUnit.ElemList[i] is TSE2Method then
-      LinkMethod(PE, TSE2Method(AUnit.ElemList[i]));
+    if TObject(AUnit.ElemList.List.List[i]) is TSE2Method then
+      LinkMethod(PE, TSE2Method(AUnit.ElemList.List.List[i]));
 
   if AUnit.AInitialization <> nil then
     for i:=0 to AUnit.AInitialization.Count-1 do
-       LinkMethod(PE, TSE2Method(AUnit.AInitialization[i]));
+       LinkMethod(PE, TSE2Method(AUnit.AInitialization.List.List[i]));
 
   if AUnit.AFinalization <> nil then    
     for i:=0 to AUnit.AFinalization.Count-1 do
-       LinkMethod(PE, TSE2Method(AUnit.AFinalization[i]));
+       LinkMethod(PE, TSE2Method(AUnit.AFinalization.List.List[i]));
 
   if AUnit.Main <> nil then
      LinkMethod(PE, AUnit.Main);
@@ -1268,7 +1282,7 @@ var i: integer;
 begin
   for i:=0 to PE.MetaData.Count-1 do
     if PE.MetaData[i].MetaType = mtClass then
-      PostLinkClass(PE, PE.MetaData[i]); 
+      PostLinkClass(PE, PE.MetaData[i]);
 end;
 
 function TSE2Linker.GetParentClass(PE: TSE2PE;

@@ -129,11 +129,15 @@ type
     FParamDecl  : AnsiString;
     FDynIndex   : integer;
 
+    FMetaLinkName : string;
+    FMetaLinkHash : integer;
+
     FMetaType   : TSE2MetaType;
     FRTTI       : TSE2RTTIList;
     FDynMethods : TSE2DynMethodList;
   protected
-    function GetHasResult: boolean;
+    function  GetHasResult: boolean;
+    procedure SetMetaLinkName(const value: string);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -146,6 +150,8 @@ type
     property MetaType   : TSE2MetaType read FMetaType   write FMetaType;
     property Name       : string     read FName         write FName;
     property AUnitName  : string     read FUnitName     write FUnitName;
+    property MetaLinkName : string   read FMetaLinkName write SetMetaLinkName;
+    property MetaLinkHash : integer  read FMetaLinkHash;
 
     property DynIndex   : integer    read FDynIndex     write FDynIndex;
     property SourcePos  : integer    read FSourcePos    write FSourcePos;
@@ -185,6 +191,7 @@ type
 
     property  Items[index: integer]: TSE2MetaEntry  read GetItem; default;
     property  Count                : integer        read GetCount;
+    property  List                 : TList          read FList;
   end;
 
   TSE2PE = class(TSE2Object)
@@ -631,6 +638,12 @@ begin
   begin
      FDynMethods.SaveToStream(Stream);
   end;
+end;
+
+procedure TSE2MetaEntry.SetMetaLinkName(const value: string);
+begin
+  FMetaLinkName := value;
+  FMetaLinkHash := MakeHash(FMetaLinkName);
 end;
 
 { TSE2MetaList }
