@@ -43,6 +43,10 @@ type
     constructor Create; override;
     destructor Destroy; override;
 
+    function  Parse(const Tokenizer: TSE2Tokenizer): TSE2BaseTypeList; overload;
+    function  Parse(const Reader: TSE2Reader): TSE2BaseTypeList; overload;
+    function  Parse(const ScriptSource: string): TSE2BaseTypeList; overload;
+
     function  Compile(const Tokenizer: TSE2Tokenizer): TSE2PE; overload;
     function  Compile(const Reader: TSE2Reader): TSE2PE; overload;
     function  Compile(const ScriptSource: string): TSE2PE; overload;
@@ -62,6 +66,31 @@ type
 implementation
 
 { TSE2Compiler }
+
+function TSE2Compiler.Parse(
+  const Tokenizer: TSE2Tokenizer): TSE2BaseTypeList;
+begin
+  FCompiledUnits.Clear;
+  FLines := 0;
+
+  if FUnitCache <> nil then
+     FUnitCache.CheckForChanges;
+
+  if DoCompile(Tokenizer) <> nil then
+     result := FUnitList
+  else
+     result := nil;
+end;
+
+function TSE2Compiler.Parse(const Reader: TSE2Reader): TSE2BaseTypeList;
+begin
+  result := Parse(TSE2Tokenizer.Create(Reader));
+end;
+
+function TSE2Compiler.Parse(const ScriptSource: string): TSE2BaseTypeList;
+begin
+  result := Parse(TSE2StringReader.Create(ScriptSource));
+end;
 
 function TSE2Compiler.Compile(const Tokenizer: TSE2Tokenizer): TSE2PE;
 var Linker: TSE2Linker;

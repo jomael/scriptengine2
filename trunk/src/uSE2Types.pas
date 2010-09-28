@@ -104,6 +104,7 @@ type
     //function   IsCompatible(Action: TSE2TokenType; const ToObj: TSE2BaseType): boolean; overload;
     //function   IsCompatible(Action: TSE2TokenType; ToObj: array of TSE2BaseType): boolean; overload;
 
+    property   CachedUniqueId  : string             read FCachedUniqueID;
     property   InlineDoc       : string             read FInlineDoc      write FInlineDoc;
     property   Name            : string             read FName           write SetName;
     property   NameHash        : integer            read FNameHash;
@@ -174,6 +175,7 @@ type
     property  Count                : integer        read GetCount;
     property  OwnsObjs             : boolean        read FOwnsObjs     write FOwnsObjs;
     property  SetID                : boolean        read FSetID        write FSetID;
+    property  List                 : TList          read FList;
   end;
 
 (*  TSE2Compatibility = class(TSE2Object)
@@ -936,6 +938,7 @@ begin
   if FSetID then
      SetEntryID(Item);
   FList.Insert(Index, Item);
+
 end;
 
 procedure TSE2BaseTypeList.Clear;
@@ -1230,11 +1233,12 @@ begin
         Stream.Read(FSetID, SizeOf(FSetID));
 
         Stream.Read(count, SizeOf(count));
+        FList.Count := count;
         for i:=0 to count-1 do
         begin
           obj := uSE2UnitCache.GetClassByName(TSE2StreamHelper.ReadString(Stream)).Create;
           obj.LoadFromStream(Stream, Weaver);
-          FList.Add(obj);
+          FList[i] := (obj);
         end;
       end
   else RaiseIncompatibleStream;

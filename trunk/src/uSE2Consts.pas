@@ -115,12 +115,12 @@ const
   C_SE2TObjectName              = 'TObject';
   C_SE2TExternalObjectName      = 'TExternalObject';
   C_SE2ThreadingUnit            = 'System.Threading';
-  C_SE2Boolean                  = 'boolean';
-  C_SE2Int32                    = 'integer';
-  C_SE2Int64                    = 'int64';   
-  C_SE2String                   = 'string';
-  C_SE2Double                   = 'double';   
-  C_SE2Pointer                  = 'pointer';
+  C_SE2Boolean                  = 'Boolean';
+  C_SE2Int32                    = 'Integer';
+  C_SE2Int64                    = 'Int64';
+  C_SE2String                   = 'String';
+  C_SE2Double                   = 'Double';
+  C_SE2Pointer                  = 'Pointer';
   C_SE2PEHeaderStr              : AnsiString = 'SEII_PE';
 
   C_SE2ExceptionObject          = 'EException';
@@ -180,7 +180,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 3; Build: 2);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 3; Build: 3);
 
 
 function SE2SplitFullQualifiedName(const Input: string; var AUnitName, ATypeName: string): boolean;
@@ -411,7 +411,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 08, 23);
+  result := EncodeDate(2010, 09, 28);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }

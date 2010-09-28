@@ -22,8 +22,7 @@ uses
 function InternalMethodHandler(MethodPtr: Pointer; const AStackPtr: Pointer; _EDX: Pointer): integer; forward;
 
 procedure SE2MethodScriptCallHandler;
-asm
-
+asm                  
     // save base pointer
     push ebp
     mov ebp, esp

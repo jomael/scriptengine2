@@ -43,9 +43,9 @@ type
     function  Equal(Param1, Param2: PSE2VarData): boolean;
     function  Smaller(Param1, Param2: PSE2VarData): boolean;
     function  SmallerEqual(Param1, Param2: PSE2VarData): boolean;
-    function  Bigger(Param1, Param2: PSE2VarData): boolean;
-    function  BiggerEqual(Param1, Param2: PSE2VarData): boolean;
-    function  UnEqual(Param1, Param2: PSE2VarData): boolean;
+    // Bigger      = not SmallerEqual function  Bigger(Param1, Param2: PSE2VarData): boolean;
+    // BiggerEqual = not Smaller      function  BiggerEqual(Param1, Param2: PSE2VarData): boolean;
+    // UnEqual     = not Equal        function  UnEqual(Param1, Param2: PSE2VarData): boolean;
   end;
 
 implementation
@@ -1232,7 +1232,7 @@ begin
 end;
 
 { TSE2VarCompare }
-
+                   {
 function TSE2VarCompare.Bigger(Param1, Param2: PSE2VarData): boolean;
 begin
   result := False;
@@ -1379,8 +1379,8 @@ begin
   btUTF8String :
       begin
         case Param2.AType of
-        btString       : result := PbtUTF8String(Param1^.tString^)^ > PbtUTF8String(Param2^.tString^)^;
-        btUTF8String,
+        btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ > PbtUTF8String(Param2^.tString^)^;
+        btString,
         btWideString,
         btPChar        :
             begin
@@ -1392,9 +1392,9 @@ begin
   btWideString :
       begin
         case Param2.AType of
-        btString       : result := PbtWideString(Param1^.tString^)^ > PbtWideString(Param2^.tString^)^;
+        btWideString       : result := PbtWideString(Param1^.tString^)^ > PbtWideString(Param2^.tString^)^;
         btUTF8String,
-        btWideString,
+        btString,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -1405,10 +1405,10 @@ begin
   btPChar :
       begin
         case Param2.AType of
-        btString       : result := PbtPChar(Param1^.tString^)^ > PbtPChar(Param2^.tString^)^;
+        btPChar       : result := PbtPChar(Param1^.tString^)^ > PbtPChar(Param2^.tString^)^;
         btUTF8String,
         btWideString,
-        btPChar        :
+        btString        :
             begin
               FVarHelp.ConvertContent(Param2, btPChar);
               result := PbtPChar(Param1^.tString^)^ > PbtPChar(Param2^.tString^)^;
@@ -1416,8 +1416,8 @@ begin
         end;
       end;
   end;
-end;
-
+end;                        }
+                     {
 function TSE2VarCompare.BiggerEqual(Param1,
   Param2: PSE2VarData): boolean;
 begin
@@ -1565,8 +1565,8 @@ begin
   btUTF8String :
       begin
         case Param2.AType of
-        btString       : result := PbtUTF8String(Param1^.tString^)^ >= PbtUTF8String(Param2^.tString^)^;
-        btUTF8String,
+        btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ >= PbtUTF8String(Param2^.tString^)^;
+        btString,
         btWideString,
         btPChar        :
             begin
@@ -1578,9 +1578,9 @@ begin
   btWideString :
       begin
         case Param2.AType of
-        btString       : result := PbtWideString(Param1^.tString^)^ >= PbtWideString(Param2^.tString^)^;
+        btWideString       : result := PbtWideString(Param1^.tString^)^ >= PbtWideString(Param2^.tString^)^;
         btUTF8String,
-        btWideString,
+        btString,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -1591,10 +1591,10 @@ begin
   btPChar :
       begin
         case Param2.AType of
-        btString       : result := PbtPChar(Param1^.tString^)^ >= PbtPChar(Param2^.tString^)^;
+        btPChar       : result := PbtPChar(Param1^.tString^)^ >= PbtPChar(Param2^.tString^)^;
         btUTF8String,
         btWideString,
-        btPChar        :
+        btString        :
             begin
               FVarHelp.ConvertContent(Param2, btPChar);
               result := PbtPChar(Param1^.tString^)^ >= PbtPChar(Param2^.tString^)^;
@@ -1602,7 +1602,7 @@ begin
         end;
       end;
   end;
-end;
+end; }
 
 constructor TSE2VarCompare.Create(VarHelper: TSE2VarHelper);
 begin
@@ -1764,8 +1764,8 @@ begin
   btUTF8String :
       begin
         case Param2.AType of
-        btString       : result := PbtUTF8String(Param1^.tString^)^ = PbtUTF8String(Param2^.tString^)^;
-        btUTF8String,
+        btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ = PbtUTF8String(Param2^.tString^)^;
+        btString,
         btWideString,
         btPChar        :
             begin
@@ -1777,9 +1777,9 @@ begin
   btWideString :
       begin
         case Param2.AType of
-        btString       : result := PbtWideString(Param1^.tString^)^ = PbtWideString(Param2^.tString^)^;
+        btWideString       : result := PbtWideString(Param1^.tString^)^ = PbtWideString(Param2^.tString^)^;
         btUTF8String,
-        btWideString,
+        btString,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -1790,10 +1790,10 @@ begin
   btPChar :
       begin
         case Param2.AType of
-        btString       : result := PbtPChar(Param1^.tString^)^ = PbtPChar(Param2^.tString^)^;
+        btPChar       : result := PbtPChar(Param1^.tString^)^ = PbtPChar(Param2^.tString^)^;
         btUTF8String,
         btWideString,
-        btPChar        :
+        btString        :
             begin
               FVarHelp.ConvertContent(Param2, btPChar);
               result := PbtPChar(Param1^.tString^)^ = PbtPChar(Param2^.tString^)^;
@@ -1950,8 +1950,8 @@ begin
   btUTF8String :
       begin
         case Param2.AType of
-        btString       : result := PbtUTF8String(Param1^.tString^)^ < PbtUTF8String(Param2^.tString^)^;
-        btUTF8String,
+        btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ < PbtUTF8String(Param2^.tString^)^;
+        btString,
         btWideString,
         btPChar        :
             begin
@@ -1963,9 +1963,9 @@ begin
   btWideString :
       begin
         case Param2.AType of
-        btString       : result := PbtWideString(Param1^.tString^)^ < PbtWideString(Param2^.tString^)^;
+        btWideString       : result := PbtWideString(Param1^.tString^)^ < PbtWideString(Param2^.tString^)^;
         btUTF8String,
-        btWideString,
+        btString,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -1976,10 +1976,10 @@ begin
   btPChar :
       begin
         case Param2.AType of
-        btString       : result := PbtPChar(Param1^.tString^)^ < PbtPChar(Param2^.tString^)^;
+        btPChar       : result := PbtPChar(Param1^.tString^)^ < PbtPChar(Param2^.tString^)^;
         btUTF8String,
         btWideString,
-        btPChar        :
+        btString        :
             begin
               FVarHelp.ConvertContent(Param2, btPChar);
               result := PbtPChar(Param1^.tString^)^ < PbtPChar(Param2^.tString^)^;
@@ -2135,8 +2135,8 @@ begin
   btUTF8String :
       begin
         case Param2.AType of
-        btString       : result := PbtUTF8String(Param1^.tString^)^ <= PbtUTF8String(Param2^.tString^)^;
-        btUTF8String,
+        btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ <= PbtUTF8String(Param2^.tString^)^;
+        btString,
         btWideString,
         btPChar        :
             begin
@@ -2148,9 +2148,9 @@ begin
   btWideString :
       begin
         case Param2.AType of
-        btString       : result := PbtWideString(Param1^.tString^)^ <= PbtWideString(Param2^.tString^)^;
+        btWideString       : result := PbtWideString(Param1^.tString^)^ <= PbtWideString(Param2^.tString^)^;
         btUTF8String,
-        btWideString,
+        btString,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -2161,10 +2161,10 @@ begin
   btPChar :
       begin
         case Param2.AType of
-        btString       : result := PbtPChar(Param1^.tString^)^ <= PbtPChar(Param2^.tString^)^;
+        btPChar       : result := PbtPChar(Param1^.tString^)^ <= PbtPChar(Param2^.tString^)^;
         btUTF8String,
         btWideString,
-        btPChar        :
+        btString        :
             begin
               FVarHelp.ConvertContent(Param2, btPChar);
               result := PbtPChar(Param1^.tString^)^ <= PbtPChar(Param2^.tString^)^;
@@ -2174,7 +2174,7 @@ begin
   else result := False;
   end;
 end;
-
+                    {
 function TSE2VarCompare.UnEqual(Param1,
   Param2: PSE2VarData): boolean;
 begin
@@ -2330,8 +2330,8 @@ begin
   btUTF8String :
       begin
         case Param2.AType of
-        btString       : result := PbtUTF8String(Param1^.tString^)^ <> PbtUTF8String(Param2^.tString^)^;
-        btUTF8String,
+        btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ <> PbtUTF8String(Param2^.tString^)^;
+        btString,
         btWideString,
         btPChar        :
             begin
@@ -2343,9 +2343,9 @@ begin
   btWideString :
       begin
         case Param2.AType of
-        btString       : result := PbtWideString(Param1^.tString^)^ <> PbtWideString(Param2^.tString^)^;
+        btWideString       : result := PbtWideString(Param1^.tString^)^ <> PbtWideString(Param2^.tString^)^;
         btUTF8String,
-        btWideString,
+        btString,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -2356,10 +2356,10 @@ begin
   btPChar :
       begin
         case Param2.AType of
-        btString       : result := PbtPChar(Param1^.tString^)^ <> PbtPChar(Param2^.tString^)^;
+        btPChar       : result := PbtPChar(Param1^.tString^)^ <> PbtPChar(Param2^.tString^)^;
         btUTF8String,
         btWideString,
-        btPChar        :
+        btString   :
             begin
               FVarHelp.ConvertContent(Param2, btPChar);
               result := PbtPChar(Param1^.tString^)^ <> PbtPChar(Param2^.tString^)^;
@@ -2367,7 +2367,7 @@ begin
         end;
       end;
   end;
-end;
+end;                        }
 
 initialization
 

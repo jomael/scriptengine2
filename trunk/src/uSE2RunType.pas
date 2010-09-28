@@ -46,11 +46,14 @@ type
     constructor Create(MemMngr: TSE2MemoryManager; OnRecordDelete: TSE2VarEvent);
 
     function  CreateVarData(aType: TSE2TypeIdent): PSE2VarData;
-    procedure CreateVarContent(Data: PSE2VarData);
+    procedure CreateVarContent(Data: PSE2VarData); overload;
+    procedure CreateVarContent(Data: PSE2VarData; MM: TSE2MemoryManager); overload;
     procedure ClearVarContent(Data: PSE2VarData);
-    procedure FreeVarContent(Data: PSE2VarData);
+    procedure FreeVarContent(Data: PSE2VarData); overload;
+    procedure FreeVarContent(Data: PSE2VarData; MM: TSE2MemoryManager); overload;
     procedure FreeVarData(Data: PSE2VarData);
-    procedure SetVarData(Source, Dest: PSE2VarData);
+    procedure SetVarData(Source, Dest: PSE2VarData); overload;
+    procedure SetVarData(Source, Dest: PSE2VarData; MM: TSE2MemoryManager); overload;
     function  VarHasValue(Data: PSE2VarData; Value: Pointer): boolean;
     procedure ConvertContent(Data: PSE2VarData; newType: TSE2TypeIdent);
 
@@ -580,6 +583,50 @@ begin
   end;
 end;
 
+procedure TSE2VarHelper.CreateVarContent(Data: PSE2VarData;
+  MM: TSE2MemoryManager);
+var pS : PbtString;
+    pW : PbtWideString;
+    pU : PbtUTF8String;
+    pC : PbtPChar;
+begin
+  if Data.RefContent then
+  begin
+    Data.tPointer := nil;
+    exit;
+  end;
+
+  if Data <> nil then
+     Data.tPointer := MM.GetMem(TSE2MemorySize[Data.AType]);
+
+  case Data.AType of
+  btString        :
+      begin
+        New(pS);
+        pS^ := '';
+        Pointer(Data.tString^) := pS;
+      end;
+  btWideString    :
+      begin
+        New(pW);
+        pW^ := '';
+        Pointer(Data.tString^) := pW;
+      end;
+  btUTF8String    :
+      begin
+        New(pU);
+        pU^ := '';
+        Pointer(Data.tString^) := pU;
+      end;
+  btPChar         :
+      begin
+        New(pC);
+        pC^ := '';
+        Pointer(Data.tString^) := pC;
+      end;
+  end;
+end;
+
 procedure TSE2VarHelper.ClearVarContent(Data: PSE2VarData);
 begin
   if not Data.RefContent then
@@ -604,6 +651,51 @@ begin
 end;
 
 procedure TSE2VarHelper.FreeVarContent(Data: PSE2VarData);
+begin
+  if Data <> nil then
+  begin
+    if not Data.RefContent then
+      if Data.tPointer <> nil then
+      begin
+        case Data.AType of
+        btString      :
+            begin
+              PbtString(Data.tString^)^     := '';
+              Dispose(PbtString(Data.tString^));
+            end;
+        btWideString  :
+            begin
+              PbtWideString(Data.tString^)^ := '';
+              Dispose(PbtWideString(Data.tString^));
+            end;
+        btUTF8String  :
+            begin
+              PbtUTF8String(Data.tString^)^ := '';
+              Dispose(PbtUTF8String(Data.tString^));
+            end;
+        btPChar       :
+            begin
+              PbtPChar(Data.tString^)^      := '';
+              Dispose(PbtPChar(Data.tString^));
+            end;
+        btRecord      :
+            begin
+              //if @FOnRecordDelete <> nil then
+              //FOnRecordDelete(Data);
+            end;
+        btArray       : ;
+        btObject      : ;
+        end;
+
+        MM.FreeMem(Data.tPointer);
+      end;
+    Data.tPointer := nil;
+    Data.AType    := $FF;
+  end;
+end;
+
+procedure TSE2VarHelper.FreeVarContent(Data: PSE2VarData;
+  MM: TSE2MemoryManager);
 begin
   if Data <> nil then
   begin
@@ -704,6 +796,49 @@ begin
         FreeVarContent(Dest);
         Dest.AType := Source.AType;
         CreateVarContent(Dest);
+      end;
+    end;
+
+    case Source^.AType of
+    btString      : PbtString(Dest.tString^)^     := PbtString(Source.tString^)^;
+    btWideString  : PbtWideString(Dest.tString^)^ := PbtWideString(Source.tString^)^;
+    btUTF8String  : PbtUTF8String(Dest.tString^)^ := PbtUTF8String(Source.tString^)^;
+    btPChar       : PbtPChar(Dest.tString^)^      := PbtPChar(Source.tString^)^;
+    (*btRecord      :
+        begin
+          uSE2SystemUnit.DestroyScriptRecord(PPointer(Dest^.tPointer)^);
+          PPointer(Dest^.tPointer)^ := PPointer(Source^.tPointer)^;
+        end; *)
+    else Move(Source^.tPointer^, Dest^.tPointer^, TSE2MemorySize[Source.AType]);
+    end;
+  end;
+end;
+
+procedure TSE2VarHelper.SetVarData(Source, Dest: PSE2VarData;
+  MM: TSE2MemoryManager);
+begin
+  if (Source = nil) or (Dest = nil) then
+     exit;
+
+  if Dest^.RefContent then
+  begin
+    case Source^.AType of
+    btString      : PbtString(Dest.tString^)^     := PbtString(Source.tString^)^;
+    btWideString  : PbtWideString(Dest.tString^)^ := PbtWideString(Source.tString^)^;
+    btUTF8String  : PbtUTF8String(Dest.tString^)^ := PbtUTF8String(Source.tString^)^;
+    btPChar       : PbtPChar(Dest.tString^)^      := PbtPChar(Source.tString^)^;
+    else Move(Source^.tPointer^, Dest^.tPointer^, TSE2MemorySize[Dest^.AType]);
+    end;
+  end else
+  begin
+
+    if not ((Dest.AType = btProcPtr) and (Source.AType in [btProcPtr, btPointer])) then
+    begin
+      if Dest.AType <> Source.AType then
+      begin
+        FreeVarContent(Dest, MM);
+        Dest.AType := Source.AType;
+        CreateVarContent(Dest, MM);
       end;
     end;
 

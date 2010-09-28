@@ -1521,10 +1521,11 @@ begin
         {$IFDEF SEII_FPC}
           {$HINTS ON}
         {$ENDIF}
+        FList.Count := count;
         for i:=0 to count-1 do
         begin
           p := TSE2LinkOpCode.Create(nil, '');
-          FList.Add(p);
+          FList[i] := (p);
           p.LoadFromStream(Stream);
         end;
       end;

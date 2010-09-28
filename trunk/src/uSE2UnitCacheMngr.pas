@@ -209,7 +209,7 @@ procedure TSE2UnitCacheMngr.PublishEntry(Entry: TSE2BaseType;
   Weaver: TSE2NameWeaver);
 var i: integer;
 begin
-  Weaver.SetValues(Entry.GetUniqueName(), Entry);
+  Weaver.SetValues( Entry.GetUniqueName(), Entry);
 
   if Entry is TSE2Method then
   begin
@@ -220,7 +220,7 @@ begin
     //  PublishEntry(TSE2Method(Entry).Variables[i], Weaver);
 
     for i:=0 to TSE2Method(Entry).Types.Count-1 do
-      PublishEntry(TSE2Method(Entry).Types[i], Weaver);
+      PublishEntry(TSE2Method(Entry).Types.List.List[i], Weaver);
 
     //if TSE2Method(Entry).ReturnValue <> nil then
     //   PublishEntry(TSE2Method(Entry).ReturnValue, Weaver);
@@ -237,10 +237,10 @@ begin
     PublishEntry(aUnit.Strings[i], Weaver);
 
   for i:=0 to aUnit.TypeList.Count-1 do
-    PublishEntry(aUnit.TypeList[i], Weaver);
+    PublishEntry(aUnit.TypeList.List.List[i], Weaver);
 
   for i:=0 to aUnit.ElemList.Count-1 do
-    PublishEntry(aUnit.ElemList[i], Weaver);
+    PublishEntry(aUnit.ElemList.List.List[i], Weaver);
 
   //for i:=0 to aUnit.AInitialization.Count-1 do
   //  PublishEntry(aUnit.AInitialization[i], Weaver);
@@ -257,7 +257,7 @@ procedure TSE2UnitCacheMngr.PublishUnits(UnitList: TSE2BaseTypeList;
 var i: integer;
 begin
   for i:=0 to UnitList.Count-1 do
-    PublishUnit(TSE2Unit(UnitList[i]), Weaver);
+    PublishUnit(TSE2Unit(UnitList.List.List[i]), Weaver);
 end;
 
 procedure TSE2UnitCacheMngr.CheckForChanges;
