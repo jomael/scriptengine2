@@ -1,7 +1,7 @@
 unit uFileAccess;
 
 {$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
+  {$MODE DELPHI}
 {$ENDIF}
 
 interface
@@ -21,7 +21,7 @@ const
         '  IO.Streams;' + #13#10 +
         #13#10 + 
         'type' + #13#10 + 
-        '  File = partial class(TExternalObject)' + #13#10 +
+        '  File = sealed partial class(TExternalObject)' + #13#10 +
         '  public' + #13#10 + 
         '    class function Create(const FileName: string): boolean; external;' + #13#10 +
         '    class function OpenRead(const FileName: string): TStream; external; overload;' + #13#10 + 
@@ -34,7 +34,7 @@ const
         '    class function LastModified(const Path: string): TDateTime; external;'+ #13#10 +
         '  end;' + #13#10 + 
         #13#10 + 
-        '  Folder = partial class(TExternalObject)' + #13#10 +
+        '  Folder = sealed partial class(TExternalObject)' + #13#10 +
         '  public' + #13#10 + 
         '    class function Create(const Path: string): boolean; external;' + #13#10 + 
         '    class function Delete(const Path: string): boolean; external; overload;' + #13#10 + 

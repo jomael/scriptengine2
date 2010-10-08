@@ -4,21 +4,25 @@ library Streams;
 
 
 uses
+  uSE2DLLMemoryManager,
   SysUtils,
   Classes,
   uSE2PackageAPI in '..\..\units\Script Engine\Package\uSE2PackageAPI.pas',
   uBasicStreams in 'units\uBasicStreams.pas',
   uMemoryStream in 'units\uMemoryStream.pas',
-  uResourceStream in 'units\uResourceStream.pas';
+  uResourceStream in 'units\uResourceStream.pas',
+  uStreamHelper in 'units\uStreamHelper.pas';
 
 {$R *.res}
+
+{$LIBPREFIX 'lib'}
 
 // Package Version
 procedure PackageMinimumVersion(var Version: TSE2Version); stdcall;
 begin
   Version.Major := 0;
-  Version.Minor := 3;
-  Version.Patch := 6;
+  Version.Minor := 4;
+  Version.Patch := 9;
   Version.Build := 0;
 end;
 
@@ -33,35 +37,10 @@ begin
   result := 0;
 end;
 
-var
-  {$IFDEF DELPHI2005UP}
-  oldMM : TMemoryManagerEx;
-  newMM : TMemoryManagerEx;
-  {$ELSE}
-  oldMM : TMemoryManager;
-  newMM : TMemoryManager;
-  {$ENDIF}
-  useMM : boolean;
-
 // Package Finalization
 procedure PackageFinalize; stdcall;
 begin
-  if useMM then
-  begin
-    SetMemoryManager(oldMM);
-    useMM := False;
-  end;
-end;
 
-procedure PackageSetMM(const MemoryManager: {$IFDEF DELPHI2005UP} TMemoryManagerEx {$ELSE} TMemoryManager {$ENDIF}); stdcall;
-begin
-  if not useMM then
-  begin
-    GetMemoryManager(oldMM);
-    newMM := MemoryManager;
-    SetMemoryManager(newMM);
-    useMM := True;
-  end;
 end;
 
 function PackageInitModule(Module: TPackageModule): integer; stdcall;
@@ -79,7 +58,7 @@ type
 
 function PackageNumModules: integer; stdcall;
 begin
-  result := 3;
+  result := 4;
 end;
 
 procedure PackageRegisterModule(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister); stdcall;
@@ -88,11 +67,19 @@ begin
   0 : CBasicStreamsRegister(Module, Data, CallBack);
   1 : uMemoryStream.RegisterMethods(Module, Data, CallBack);
   2 : uResourceStream.RegisterMethods(Module, Data, CallBack);
+  3 : uStreamHelper.RegisterMethods(Module, Data, CallBack);
+  end;
+end;         
+
+procedure PackageRegisterExceptions(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageExceptionsReg); stdcall;
+begin
+  case Module of
+  0 : uBasicStreams.RegisterExceptions(Module, Data, CallBack);
   end;
 end;
 
 function GetModuleData(Module: TPackageModule; pName: PAnsiChar; BuffSize: integer; SendType: TDataSendType): integer;
-var s: string;
+var s: AnsiString;
 begin
   result := -1;
   if not (SendType in [dataName, dataSource]) then
@@ -117,6 +104,13 @@ begin
         case SendType of
         dataName   : s := uResourceStream.C_UnitName;
         dataSource : s := uResourceStream.C_UnitSource;
+        end;
+      end;
+  3     :
+      begin
+        case SendType of
+        dataName   : s := uStreamHelper.C_UnitName;       
+        dataSource : s := uStreamHelper.C_UnitSource;
         end;
       end;
   else exit;
@@ -159,14 +153,14 @@ exports
   PackageGetGUID name CSE2PackageGUID,
   PackageInitialize name CSE2PackageInitialize,
   PackageFinalize name CSE2PackageFinalize,
-  PackageSetMM name {$IFDEF DELPHI2005UP} CSE2PackageSetMMEx {$ELSE} CSE2PackageSetMM {$ENDIF},
   PackageNumModules name CSE2PackageNumModules,
   PackageInitModule name CSE2PackageInitModule,
   PackageFinalizeModule name CSE2PackageFinalizeModule,
   PackageModuleSize name CSE2PackageModuleSize,
   PackageGetModuleName name CSE2PackageGetModuleName,
   PackageGetModuleSource name CSE2PackageGetModuleSource,
-  PackageRegisterModule name CSE2PackageRegisterModule;
+  PackageRegisterModule name CSE2PackageRegisterModule,
+  PackageRegisterExceptions name CSE2PackageRegExceptions;
 
 
 end.

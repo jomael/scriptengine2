@@ -1,7 +1,7 @@
 unit uThreadListImport;
 
 {$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
+  {$MODE DELPHI}
 {$ENDIF}
 
 interface

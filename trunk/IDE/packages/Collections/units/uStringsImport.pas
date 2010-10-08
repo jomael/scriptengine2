@@ -1,7 +1,7 @@
 unit uStringsImport;
 
 {$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
+  {$MODE DELPHI}
 {$ENDIF}
 
 interface
@@ -18,9 +18,14 @@ const
         'interface' + #13#10 + 
         #13#10 + 
         'uses' + #13#10 + 
-        '  Streams;' + #13#10 + 
+        '  IO.Streams;' + #13#10 + 
         #13#10 + 
-        'type' + #13#10 + 
+        'type' + #13#10 +
+        '  EStringListError = class(EExternalException)'+#13#10+
+        '  public'+#13#10+
+        '    constructor Create(const Message: string); override;'+#13#10+
+        '  end;'+#13#10+
+        #13#10 +
         '  TStrings = class(TPersistent)' + #13#10 + 
         '  private' + #13#10 + 
         '    function  GetCapacity: integer; external;' + #13#10 + 
@@ -84,14 +89,18 @@ const
         '    property ValueFromIndex[Index: Integer]: string read GetValueFromIndex write SetValueFromIndex;' + #13#10 + 
         '    property NameValueSeparator: string read GetNameValueSeparator write SetNameValueSeparator;' + #13#10 + 
         '    property Strings[Index: Integer]: string read GetString write PutString;' + #13#10 + 
-        '    property Text: string read GetTextStr write SetTextStr;' + #13#10 + 
-        '  end;' + #13#10 + 
-        #13#10 + 
-        'implementation' + #13#10 + 
+        '    property Text: string read GetTextStr write SetTextStr;' + #13#10 +
+        '  end;' + #13#10 +
+        #13#10 +
+        'implementation' + #13#10 +   
+        #13#10 +                  
+        'constructor EStringListError.Create(const Message: string);' + #13#10 +
+        'begin inherited; end;' + #13#10 +
         #13#10 + 
         'end.';
 
-procedure RegisterMethods(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister);
+procedure RegisterMethods(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister);  
+procedure RegisterExceptions(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageExceptionsReg);
 
 implementation
 
@@ -382,6 +391,11 @@ begin
   CallBack(Module, Data, @TStrings_SaveToFile, 'TStrings.SaveToFile[0]');
   CallBack(Module, Data, @TStrings_SaveToStream, 'TStrings.SaveToStream[0]');
   CallBack(Module, Data, @TStrings_SetText, 'TStrings.SetText[0]');
+end;
+
+procedure RegisterExceptions(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageExceptionsReg);
+begin
+  CallBack(Module, Data, EStringListError, 'EStringListError');
 end;
 
 end.

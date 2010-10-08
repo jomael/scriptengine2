@@ -1,7 +1,7 @@
 unit uResourceStream;
 
 {$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
+  {$MODE DELPHI}
 {$ENDIF}
 
 interface
@@ -11,9 +11,9 @@ uses
   uSE2PackageAPI;
 
 const
-  C_UnitName   = 'Streams';
+  C_UnitName   = 'IO.Streams';
   C_UnitSource = 
-        'unit Streams;' + #13#10 + 
+        'unit IO.Streams;' + #13#10 + 
         #13#10 + 
         'interface' + #13#10 + 
         #13#10 + 

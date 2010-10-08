@@ -1,7 +1,7 @@
-unit uFileStreamModule;           
+unit uFileStreamModule;
 
 {$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
+  {$MODE DELPHI}
 {$ENDIF}
 
 interface

@@ -1,7 +1,7 @@
 unit uListImport;
 
 {$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
+  {$MODE DELPHI}
 {$ENDIF}
 
 interface
@@ -9,6 +9,11 @@ interface
 uses
   Classes,
   uSE2PackageAPI;
+
+{
+  EListError = class(Exception);
+  EStringListError = class(Exception);
+}
 
 const
   C_UnitName   = 'Collections';
@@ -20,7 +25,12 @@ const
         'type' + #13#10 + 
         '  TListNotification = (lnAdded, lnExtracted, lnDeleted);' + #13#10 + 
         '  TListAssignOp = (laCopy, laAnd, laOr, laXor, laSrcUnique, laDestUnique);' + #13#10 + 
-        '  TDuplicates = (dupIgnore, dupAccept, dupError);' + #13#10 + 
+        '  TDuplicates = (dupIgnore, dupAccept, dupError);' + #13#10 +
+        #13#10 +
+        '  EListError = class(EExternalException)'+#13#10+
+        '  public'+#13#10+
+        '    constructor Create(const Message: string); override;'+#13#10+
+        '  end;'+#13#10+
         #13#10 + 
         '  TList = class(TExternalObject)' + #13#10 + 
         '  private' + #13#10 + 
@@ -56,10 +66,14 @@ const
         '  end;' + #13#10 + 
         #13#10 + 
         'implementation' + #13#10 + 
-        #13#10 + 
+        #13#10 +                  
+        'constructor EListError.Create(const Message: string);' + #13#10 +
+        'begin inherited; end;' + #13#10 + 
+        #13#10 +
         'end.';
 
 procedure RegisterMethods(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister);
+procedure RegisterExceptions(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageExceptionsReg);
 
 implementation
 
@@ -209,6 +223,11 @@ begin
   CallBack(Module, Data, @TList_Assign, 'TList.Assign[0]');
   CallBack(Module, Data, @TList_Assign1, 'TList.Assign[1]');
   CallBack(Module, Data, @TList_Assign2, 'TList.Assign[2]');
+end;
+
+procedure RegisterExceptions(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageExceptionsReg);
+begin
+  CallBack(Module, Data, EListError, 'EListError');
 end;
 
 end.
