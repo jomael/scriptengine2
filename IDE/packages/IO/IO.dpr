@@ -2,18 +2,17 @@ library IO;
 
 {$INCLUDE ScriptEngine.inc}
 
-{$R *.res}
-
-{$LIBPREFIX 'lib'}
-
 uses
   uSE2DLLMemoryManager,
   SysUtils,
-  Classes,
   uSE2PackageAPI in '..\..\units\Script Engine\Package\uSE2PackageAPI.pas',
   uBasicModule in 'units\uBasicModule.pas',
-  uFileStreamModule in 'units\uFileStreamModule.pas',
-  uFileAccess in 'units\uFileAccess.pas';
+  uFileAccess in 'units\uFileAccess.pas',
+  uFileStreamModule in 'units\uFileStreamModule.pas';
+
+{$R *.res}
+
+{$LIBPREFIX 'lib'}
 
 // Package Version
 procedure PackageMinimumVersion(var Version: TSE2Version); stdcall;
@@ -107,7 +106,7 @@ begin
 end;
 
 function GetModuleData(Module: TPackageModule; pName: PAnsiChar; BuffSize: integer; SendType: TDataSendType): integer;
-var s: string;
+var s: AnsiString;
 begin
   result := -1;
   if not (SendType in [dataName, dataSource]) then

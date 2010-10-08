@@ -1,7 +1,7 @@
 unit uBasicModule;
 
 {$IFDEF FPC}
-{$MODE OBJFPC}{$H+}
+  {$MODE DELPHI}
 {$ENDIF}
 
 interface
@@ -20,7 +20,7 @@ const
         '  TFileName   = string;'+#13#10+
         '  TFolderName = string;'+#13#10+
         #13#10+
-        '  FileName = partial class(TExternalObject)'+#13#10+
+        '  FileName = sealed partial class(TExternalObject)'+#13#10+
         '  public'+#13#10+
         '    class function GetFileName(const FileName: TFileName): TFileName; external;'+#13#10+
         '    class function GetFileNameWithoutExtension(const FileName: TFileName): TFileName; external;'+#13#10+
@@ -48,7 +48,7 @@ const
         '    function CompareFileName(const Compare: TFileName): integer;'+#13#10+
         '  end;'+#13#10+
         #13#10+
-        '  FolderName = partial class(TExternalObject)'+#13#10+
+        '  FolderName = sealed partial class(TExternalObject)'+#13#10+
         '  public'+#13#10+
         '    class function GetParentFolder(const Folder: TFolderName): TFolderName; external;'+#13#10+
         '    class function IncludeTrailingPathDelimiter(const Folder: TFolderName): TFolderName; external;'+#13#10+

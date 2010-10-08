@@ -1,7 +1,7 @@
 unit uFloatList;
 
 {$IFDEF FPC}
-{$MODE DELPHI}
+  {$MODE DELPHI}
 {$ENDIF}
 
 interface
