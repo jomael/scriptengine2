@@ -600,7 +600,7 @@ begin
              pVarRecords.Add(Self.AddRecord(PPointer(Param.tPointer)^,
                               TSE2ExecutionContext(FRunTime).ExecutionData.AppCode.MetaData[ MetaData.RTTI.FindSize(btRecord, i) ]));
            end;
-        btString, btUTF8String, btWideString, btPChar :
+        btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar :
            Self.AddPointer(PPointer(Param.tString)^);
         end;
       end else
@@ -619,7 +619,10 @@ begin
         btString,
         btWideString,
         btUTF8String,
-        btPChar       : Self.AddPointer(PPointer(Param^.tString^)^);
+        btPChar,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar   : Self.AddPointer(PPointer(Param^.tString^)^);
         btObject,
         btPointer     : Self.AddPointer(Pointer(Param^.tPointer^));
         btProcPtr     :
@@ -656,7 +659,10 @@ begin
         btString,
         btWideString,
         btUTF8String,
-        btPChar         : Self.SetResultPointer(Pointer(ReturnVar.tString^));
+        btPChar,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar     : Self.SetResultPointer(Pointer(ReturnVar.tString^));
         btProcPtr       : Self.SetResultPointer(Pointer(ReturnVar.tPointer));
         btRecord        :
             begin
@@ -725,7 +731,10 @@ begin
       btString             : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
       btUTF8String         : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
       btWideString         : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
-      btPChar              : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
+      btPChar              : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);  
+      btAnsiString         : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
+      btPAnsiChar          : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
+      btPWideChar          : PPointer(ReturnVar^.tString^)^     := Pointer(Self.AsPointer);
       {$ENDIF}
       end;
     end;

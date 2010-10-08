@@ -28,14 +28,14 @@ You can set up the options for the ScriptEngine II here.
 {This define will enable the caching for stack data during the execution of the
  script. If you enable this define, the runtime will execute faster and causes
  less memory fragmentation. But the memory usage will increase for about
- 32 KBytes per RunTime-Instance. You should only disable this define under 
- special circumstances.} 
+ 32 KBytes per RunTime-Instance. You should only disable this define under
+ special circumstances.}
 {$define SEII_UseRunTimeCache}
 
 {This define will make the runtime cache bigger. The cache has a default size of
  32 KB, with this define it has 1.5 MB. Note that this size is needed for every
- instance of TSE2RunTime. The bigger cache has the advantage, that more stack 
- items fit into the cache and that small classes and records are stored inside 
+ instance of TSE2RunTime. The bigger cache has the advantage, that more stack
+ items fit into the cache and that small classes and records are stored inside
  the cache. This define will be ignored if SEII_UseRunTimeCache is disabled.}
 {$define SEII_BigRunTimeCache}
 
@@ -347,7 +347,7 @@ You can set up the options for the ScriptEngine II here.
 
 { defines for Delphi 2010 }
 {$IFDEF VER210}
-  {$DEFINE VER140UP}  
+  {$DEFINE VER140UP}
   {$DEFINE VER150UP}  
   {$DEFINE VER160UP}
   {$DEFINE DELPHI}
@@ -368,6 +368,36 @@ You can set up the options for the ScriptEngine II here.
   {$DEFINE DELPHI2007UP}  
   {$DEFINE DELPHI2009UP}   
   {$DEFINE DELPHI2010UP}
+  {$DEFINE BDS}
+  {$DEFINE BDS4}
+  {$DEFINE BDS3UP}
+  {$DEFINE BDS4UP}
+{$ENDIF}
+
+// defines for newer, unknown versions (takes delphi 3 as base version)
+{$IFNDEF VER220}
+  {$DEFINE VER140UP}  
+  {$DEFINE VER150UP}  
+  {$DEFINE VER160UP}
+  {$DEFINE DELPHI}
+  {$DEFINE DELPHI10} 
+  {$DEFINE DELPHI2010}
+  {$DEFINE DELPHI1UP}
+  {$DEFINE DELPHI2UP}
+  {$DEFINE DELPHI3UP}
+  {$DEFINE DELPHI4UP}
+  {$DEFINE DELPHI5UP}
+  {$DEFINE DELPHI6UP}
+  {$DEFINE DELPHI7UP}
+  {$DEFINE DELPHI9UP}
+  {$DEFINE DELPHI10A}  
+  {$DEFINE DELPHI10UP}
+  {$DEFINE DELPHI2005UP}
+  {$DEFINE DELPHI2006UP}  
+  {$DEFINE DELPHI2007UP}  
+  {$DEFINE DELPHI2009UP}
+  {$DEFINE DELPHI2010UP}  
+  {$DEFINE DELPHIXE0UP}
   {$DEFINE BDS}
   {$DEFINE BDS4}
   {$DEFINE BDS3UP}

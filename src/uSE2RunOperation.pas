@@ -189,6 +189,9 @@ begin
         btString       : PbtString(Param1^.tString^)^ := PbtString(Param1^.tString^)^ + PbtString(Param2^.tString^)^;
         btUTF8String,
         btWideString,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btString);
@@ -202,6 +205,9 @@ begin
         btUTF8String   : PbtUTF8String(Param1^.tString^)^ := PbtUTF8String(Param1^.tString^)^ + PbtUTF8String(Param2^.tString^)^;
         btString,
         btWideString,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btUTF8String);
@@ -214,7 +220,10 @@ begin
         case Param2.AType of
         btWideString   : PbtWideString(Param1^.tString^)^ := PbtWideString(Param1^.tString^)^ + PbtWideString(Param2^.tString^)^;
         btString,
-        btUTF8String,
+        btUTF8String,   
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -224,13 +233,16 @@ begin
       end;
   btPChar :
       begin
-        if not (Param2.AType in [btPChar, btString, btUTF8String, btWideString]) then
+        if not (Param2.AType in [btPChar, btString, btUTF8String, btWideString, btAnsiString, btPAnsiChar, btPWideChar]) then
            exit;
         FVarHelp.ConvertContent(Param1, btString);
         case Param2.AType of
         btString       : PbtString(Param1^.tString^)^ := PbtString(Param1^.tString^)^ + PbtString(Param2^.tString^)^;
         btUTF8String,
         btWideString,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btString);
@@ -238,6 +250,60 @@ begin
             end;
         end;
         FVarHelp.ConvertContent(Param1, btPChar);
+      end;
+  btAnsiString :
+      begin
+        case Param2.AType of
+        btAnsiString       : PbtAnsiString(Param1^.tString^)^ := PbtAnsiString(Param1^.tString^)^ + PbtAnsiString(Param2^.tString^)^;
+        btString,
+        btUTF8String,
+        btWideString,
+        btPAnsiChar,
+        btPWideChar,
+        btPChar        :
+            begin
+              FVarHelp.ConvertContent(Param2, btAnsiString);
+              PbtAnsiString(Param1^.tString^)^ := PbtAnsiString(Param1^.tString^)^ + PbtAnsiString(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btPAnsiChar :
+      begin
+        if not (Param2.AType in [btPChar, btString, btUTF8String, btWideString, btAnsiString, btPAnsiChar, btPWideChar]) then
+           exit;
+        FVarHelp.ConvertContent(Param1, btAnsiString);
+        case Param2.AType of
+        btAnsiString   : PbtAnsiString(Param1^.tString^)^ := PbtAnsiString(Param1^.tString^)^ + PbtAnsiString(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,
+        btString,
+        btPAnsiChar,
+        btPWideChar,
+        btPChar        :
+            begin
+              FVarHelp.ConvertContent(Param2, btAnsiString);
+              PbtAnsiString(Param1^.tString^)^ := PbtAnsiString(Param1^.tString^)^ + PbtAnsiString(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btPWideChar :
+      begin               
+        if not (Param2.AType in [btPChar, btString, btUTF8String, btWideString, btAnsiString, btPAnsiChar, btPWideChar]) then
+           exit;
+        FVarHelp.ConvertContent(Param1, btWideString);
+        case Param2.AType of
+        btWideString   : PbtWideString(Param1^.tString^)^ := PbtWideString(Param1^.tString^)^ + PbtWideString(Param2^.tString^)^;
+        btString,
+        btUTF8String,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
+        btPChar        :
+            begin
+              FVarHelp.ConvertContent(Param2, btWideString);
+              PbtWideString(Param1^.tString^)^ := PbtWideString(Param1^.tString^)^ + PbtWideString(Param2^.tString^)^;
+            end;
+        end;
       end;
   end;
 end;
@@ -1232,377 +1298,6 @@ begin
 end;
 
 { TSE2VarCompare }
-                   {
-function TSE2VarCompare.Bigger(Param1, Param2: PSE2VarData): boolean;
-begin
-  result := False;
-  case Param1.AType of
-  btU8 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tu8^ > Param2^.tu8^;
-        btS8        : result := Param1^.tu8^ > Param2^.ts8^;
-        btU16       : result := Param1^.tu8^ > Param2^.tu16^;
-        btS16       : result := Param1^.tu8^ > Param2^.ts16^;
-        btU32       : result := Param1^.tu8^ > Param2^.tu32^;
-        btS32       : result := Param1^.tu8^ > Param2^.ts32^;
-        btS64       : result := Param1^.tu8^ > Param2^.ts64^;
-        btSingle    : result := Param1^.tu8^ > Param2^.tSingle^;
-        btDouble    : result := Param1^.tu8^ > Param2^.tDouble^;
-        end;
-      end;
-  btS8 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts8^ > Param2^.tu8^;
-        btS8        : result := Param1^.ts8^ > Param2^.ts8^;
-        btU16       : result := Param1^.ts8^ > Param2^.tu16^;
-        btS16       : result := Param1^.ts8^ > Param2^.ts16^;
-        btU32       : result := Param1^.ts8^ > Param2^.tu32^;
-        btS32       : result := Param1^.ts8^ > Param2^.ts32^;
-        btS64       : result := Param1^.ts8^ > Param2^.ts64^;
-        btSingle    : result := Param1^.ts8^ > Param2^.tSingle^;
-        btDouble    : result := Param1^.ts8^ > Param2^.tDouble^;
-        end;
-      end;
-  btU16 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tu16^ > Param2^.tu8^;
-        btS8        : result := Param1^.tu16^ > Param2^.ts8^;
-        btU16       : result := Param1^.tu16^ > Param2^.tu16^;
-        btS16       : result := Param1^.tu16^ > Param2^.ts16^;
-        btU32       : result := Param1^.tu16^ > Param2^.tu32^;
-        btS32       : result := Param1^.tu16^ > Param2^.ts32^;
-        btS64       : result := Param1^.tu16^ > Param2^.ts64^;
-        btSingle    : result := Param1^.tu16^ > Param2^.tSingle^;
-        btDouble    : result := Param1^.tu16^ > Param2^.tDouble^;
-        end;
-      end;
-  btS16 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts16^ > Param2^.tu8^;
-        btS8        : result := Param1^.ts16^ > Param2^.ts8^;
-        btU16       : result := Param1^.ts16^ > Param2^.tu16^;
-        btS16       : result := Param1^.ts16^ > Param2^.ts16^;
-        btU32       : result := Param1^.ts16^ > Param2^.tu32^;
-        btS32       : result := Param1^.ts16^ > Param2^.ts32^;
-        btS64       : result := Param1^.ts16^ > Param2^.ts64^;
-        btSingle    : result := Param1^.ts16^ > Param2^.tSingle^;
-        btDouble    : result := Param1^.ts16^ > Param2^.tDouble^;
-        end;
-      end;
-  btU32 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tu32^ > Param2^.tu8^;
-        btS8        : result := Param1^.tu32^ > Param2^.ts8^;
-        btU16       : result := Param1^.tu32^ > Param2^.tu16^;
-        btS16       : result := Param1^.tu32^ > Param2^.ts16^;
-        btU32       : result := Param1^.tu32^ > Param2^.tu32^;
-        btS32       : result := Param1^.tu32^ > Param2^.ts32^;
-        btS64       : result := Param1^.tu32^ > Param2^.ts64^;
-        btSingle    : result := Param1^.tu32^ > Param2^.tSingle^;
-        btDouble    : result := Param1^.tu32^ > Param2^.tDouble^;
-        end;
-      end;
-  btS32 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts32^ > Param2^.tu8^;
-        btS8        : result := Param1^.ts32^ > Param2^.ts8^;
-        btU16       : result := Param1^.ts32^ > Param2^.tu16^;
-        btS16       : result := Param1^.ts32^ > Param2^.ts16^;
-        btU32       : result := Param1^.ts32^ > Param2^.tu32^;
-        btS32       : result := Param1^.ts32^ > Param2^.ts32^;
-        btS64       : result := Param1^.ts32^ > Param2^.ts64^;
-        btSingle    : result := Param1^.ts32^ > Param2^.tSingle^;
-        btDouble    : result := Param1^.ts32^ > Param2^.tDouble^;
-        end;
-      end;
-  btS64 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts64^ > Param2^.tu8^;
-        btS8        : result := Param1^.ts64^ > Param2^.ts8^;
-        btU16       : result := Param1^.ts64^ > Param2^.tu16^;
-        btS16       : result := Param1^.ts64^ > Param2^.ts16^;
-        btU32       : result := Param1^.ts64^ > Param2^.tu32^;
-        btS32       : result := Param1^.ts64^ > Param2^.ts32^;
-        btS64       : result := Param1^.ts64^ > Param2^.ts64^;
-        btSingle    : result := Param1^.ts64^ > Param2^.tSingle^;
-        btDouble    : result := Param1^.ts64^ > Param2^.tDouble^;
-        end;
-      end;
-  btSingle :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tSingle^ > Param2^.tu8^;
-        btS8        : result := Param1^.tSingle^ > Param2^.ts8^;
-        btU16       : result := Param1^.tSingle^ > Param2^.tu16^;
-        btS16       : result := Param1^.tSingle^ > Param2^.ts16^;
-        btU32       : result := Param1^.tSingle^ > Param2^.tu32^;
-        btS32       : result := Param1^.tSingle^ > Param2^.ts32^;
-        btS64       : result := Param1^.tSingle^ > Param2^.ts64^;
-        btSingle    : result := Param1^.tSingle^ > Param2^.tSingle^;
-        btDouble    : result := Param1^.tSingle^ > Param2^.tDouble^;
-        end;
-      end;
-  btDouble :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tDouble^ > Param2^.tu8^;
-        btS8        : result := Param1^.tDouble^ > Param2^.ts8^;
-        btU16       : result := Param1^.tDouble^ > Param2^.tu16^;
-        btS16       : result := Param1^.tDouble^ > Param2^.ts16^;
-        btU32       : result := Param1^.tDouble^ > Param2^.tu32^;
-        btS32       : result := Param1^.tDouble^ > Param2^.ts32^;
-        btS64       : result := Param1^.tDouble^ > Param2^.ts64^;
-        btSingle    : result := Param1^.tDouble^ > Param2^.tSingle^;
-        btDouble    : result := Param1^.tDouble^ > Param2^.tDouble^;
-        end;      
-      end;
-  btString :
-      begin
-        case Param2.AType of
-        btString       : result := PbtString(Param1^.tString^)^ > PbtString(Param2^.tString^)^;
-        btUTF8String,
-        btWideString,
-        btPChar        :
-            begin
-              FVarHelp.ConvertContent(Param2, btString);
-              result := PbtString(Param1^.tString^)^ > PbtString(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  btUTF8String :
-      begin
-        case Param2.AType of
-        btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ > PbtUTF8String(Param2^.tString^)^;
-        btString,
-        btWideString,
-        btPChar        :
-            begin
-              FVarHelp.ConvertContent(Param2, btUTF8String);
-              result := PbtUTF8String(Param1^.tString^)^ > PbtUTF8String(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  btWideString :
-      begin
-        case Param2.AType of
-        btWideString       : result := PbtWideString(Param1^.tString^)^ > PbtWideString(Param2^.tString^)^;
-        btUTF8String,
-        btString,
-        btPChar        :
-            begin
-              FVarHelp.ConvertContent(Param2, btWideString);
-              result := PbtWideString(Param1^.tString^)^ > PbtWideString(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  btPChar :
-      begin
-        case Param2.AType of
-        btPChar       : result := PbtPChar(Param1^.tString^)^ > PbtPChar(Param2^.tString^)^;
-        btUTF8String,
-        btWideString,
-        btString        :
-            begin
-              FVarHelp.ConvertContent(Param2, btPChar);
-              result := PbtPChar(Param1^.tString^)^ > PbtPChar(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  end;
-end;                        }
-                     {
-function TSE2VarCompare.BiggerEqual(Param1,
-  Param2: PSE2VarData): boolean;
-begin
-  result := False;
-  case Param1.AType of
-  btU8 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tu8^ >= Param2^.tu8^;
-        btS8        : result := Param1^.tu8^ >= Param2^.ts8^;
-        btU16       : result := Param1^.tu8^ >= Param2^.tu16^;
-        btS16       : result := Param1^.tu8^ >= Param2^.ts16^;
-        btU32       : result := Param1^.tu8^ >= Param2^.tu32^;
-        btS32       : result := Param1^.tu8^ >= Param2^.ts32^;
-        btS64       : result := Param1^.tu8^ >= Param2^.ts64^;
-        btSingle    : result := Param1^.tu8^ >= Param2^.tSingle^;
-        btDouble    : result := Param1^.tu8^ >= Param2^.tDouble^;
-        end;
-      end;
-  btS8 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts8^ >= Param2^.tu8^;
-        btS8        : result := Param1^.ts8^ >= Param2^.ts8^;
-        btU16       : result := Param1^.ts8^ >= Param2^.tu16^;
-        btS16       : result := Param1^.ts8^ >= Param2^.ts16^;
-        btU32       : result := Param1^.ts8^ >= Param2^.tu32^;
-        btS32       : result := Param1^.ts8^ >= Param2^.ts32^;
-        btS64       : result := Param1^.ts8^ >= Param2^.ts64^;
-        btSingle    : result := Param1^.ts8^ >= Param2^.tSingle^;
-        btDouble    : result := Param1^.ts8^ >= Param2^.tDouble^;
-        end;
-      end;
-  btU16 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tu16^ >= Param2^.tu8^;
-        btS8        : result := Param1^.tu16^ >= Param2^.ts8^;
-        btU16       : result := Param1^.tu16^ >= Param2^.tu16^;
-        btS16       : result := Param1^.tu16^ >= Param2^.ts16^;
-        btU32       : result := Param1^.tu16^ >= Param2^.tu32^;
-        btS32       : result := Param1^.tu16^ >= Param2^.ts32^;
-        btS64       : result := Param1^.tu16^ >= Param2^.ts64^;
-        btSingle    : result := Param1^.tu16^ >= Param2^.tSingle^;
-        btDouble    : result := Param1^.tu16^ >= Param2^.tDouble^;
-        end;
-      end;
-  btS16 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts16^ >= Param2^.tu8^;
-        btS8        : result := Param1^.ts16^ >= Param2^.ts8^;
-        btU16       : result := Param1^.ts16^ >= Param2^.tu16^;
-        btS16       : result := Param1^.ts16^ >= Param2^.ts16^;
-        btU32       : result := Param1^.ts16^ >= Param2^.tu32^;
-        btS32       : result := Param1^.ts16^ >= Param2^.ts32^;
-        btS64       : result := Param1^.ts16^ >= Param2^.ts64^;
-        btSingle    : result := Param1^.ts16^ >= Param2^.tSingle^;
-        btDouble    : result := Param1^.ts16^ >= Param2^.tDouble^;
-        end;
-      end;
-  btU32 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tu32^ >= Param2^.tu8^;
-        btS8        : result := Param1^.tu32^ >= Param2^.ts8^;
-        btU16       : result := Param1^.tu32^ >= Param2^.tu16^;
-        btS16       : result := Param1^.tu32^ >= Param2^.ts16^;
-        btU32       : result := Param1^.tu32^ >= Param2^.tu32^;
-        btS32       : result := Param1^.tu32^ >= Param2^.ts32^;
-        btS64       : result := Param1^.tu32^ >= Param2^.ts64^;
-        btSingle    : result := Param1^.tu32^ >= Param2^.tSingle^;
-        btDouble    : result := Param1^.tu32^ >= Param2^.tDouble^;
-        end;
-      end;
-  btS32 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts32^ >= Param2^.tu8^;
-        btS8        : result := Param1^.ts32^ >= Param2^.ts8^;
-        btU16       : result := Param1^.ts32^ >= Param2^.tu16^;
-        btS16       : result := Param1^.ts32^ >= Param2^.ts16^;
-        btU32       : result := Param1^.ts32^ >= Param2^.tu32^;
-        btS32       : result := Param1^.ts32^ >= Param2^.ts32^;
-        btS64       : result := Param1^.ts32^ >= Param2^.ts64^;
-        btSingle    : result := Param1^.ts32^ >= Param2^.tSingle^;
-        btDouble    : result := Param1^.ts32^ >= Param2^.tDouble^;
-        end;
-      end;
-  btS64 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts64^ >= Param2^.tu8^;
-        btS8        : result := Param1^.ts64^ >= Param2^.ts8^;
-        btU16       : result := Param1^.ts64^ >= Param2^.tu16^;
-        btS16       : result := Param1^.ts64^ >= Param2^.ts16^;
-        btU32       : result := Param1^.ts64^ >= Param2^.tu32^;
-        btS32       : result := Param1^.ts64^ >= Param2^.ts32^;
-        btS64       : result := Param1^.ts64^ >= Param2^.ts64^;
-        btSingle    : result := Param1^.ts64^ >= Param2^.tSingle^;
-        btDouble    : result := Param1^.ts64^ >= Param2^.tDouble^;
-        end;
-      end;
-  btSingle :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tSingle^ >= Param2^.tu8^;
-        btS8        : result := Param1^.tSingle^ >= Param2^.ts8^;
-        btU16       : result := Param1^.tSingle^ >= Param2^.tu16^;
-        btS16       : result := Param1^.tSingle^ >= Param2^.ts16^;
-        btU32       : result := Param1^.tSingle^ >= Param2^.tu32^;
-        btS32       : result := Param1^.tSingle^ >= Param2^.ts32^;
-        btS64       : result := Param1^.tSingle^ >= Param2^.ts64^;
-        btSingle    : result := Param1^.tSingle^ >= Param2^.tSingle^;
-        btDouble    : result := Param1^.tSingle^ >= Param2^.tDouble^;
-        end;
-      end;
-  btDouble :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tDouble^ >= Param2^.tu8^;
-        btS8        : result := Param1^.tDouble^ >= Param2^.ts8^;
-        btU16       : result := Param1^.tDouble^ >= Param2^.tu16^;
-        btS16       : result := Param1^.tDouble^ >= Param2^.ts16^;
-        btU32       : result := Param1^.tDouble^ >= Param2^.tu32^;
-        btS32       : result := Param1^.tDouble^ >= Param2^.ts32^;
-        btS64       : result := Param1^.tDouble^ >= Param2^.ts64^;
-        btSingle    : result := Param1^.tDouble^ >= Param2^.tSingle^;
-        btDouble    : result := Param1^.tDouble^ >= Param2^.tDouble^;
-        end;      
-      end;
-  btString :
-      begin
-        case Param2.AType of
-        btString       : result := PbtString(Param1^.tString^)^ >= PbtString(Param2^.tString^)^;
-        btUTF8String,
-        btWideString,
-        btPChar        :
-            begin
-              FVarHelp.ConvertContent(Param2, btString);
-              result := PbtString(Param1^.tString^)^ >= PbtString(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  btUTF8String :
-      begin
-        case Param2.AType of
-        btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ >= PbtUTF8String(Param2^.tString^)^;
-        btString,
-        btWideString,
-        btPChar        :
-            begin
-              FVarHelp.ConvertContent(Param2, btUTF8String);
-              result := PbtUTF8String(Param1^.tString^)^ >= PbtUTF8String(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  btWideString :
-      begin
-        case Param2.AType of
-        btWideString       : result := PbtWideString(Param1^.tString^)^ >= PbtWideString(Param2^.tString^)^;
-        btUTF8String,
-        btString,
-        btPChar        :
-            begin
-              FVarHelp.ConvertContent(Param2, btWideString);
-              result := PbtWideString(Param1^.tString^)^ >= PbtWideString(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  btPChar :
-      begin
-        case Param2.AType of
-        btPChar       : result := PbtPChar(Param1^.tString^)^ >= PbtPChar(Param2^.tString^)^;
-        btUTF8String,
-        btWideString,
-        btString        :
-            begin
-              FVarHelp.ConvertContent(Param2, btPChar);
-              result := PbtPChar(Param1^.tString^)^ >= PbtPChar(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  end;
-end; }
 
 constructor TSE2VarCompare.Create(VarHelper: TSE2VarHelper);
 begin
@@ -1754,6 +1449,9 @@ begin
         btString       : result := PbtString(Param1^.tString^)^ = PbtString(Param2^.tString^)^;
         btUTF8String,
         btWideString,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btString);
@@ -1767,6 +1465,9 @@ begin
         btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ = PbtUTF8String(Param2^.tString^)^;
         btString,
         btWideString,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btUTF8String);
@@ -1780,6 +1481,9 @@ begin
         btWideString       : result := PbtWideString(Param1^.tString^)^ = PbtWideString(Param2^.tString^)^;
         btUTF8String,
         btString,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -1792,11 +1496,62 @@ begin
         case Param2.AType of
         btPChar       : result := PbtPChar(Param1^.tString^)^ = PbtPChar(Param2^.tString^)^;
         btUTF8String,
-        btWideString,
+        btWideString,  
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btString        :
             begin
               FVarHelp.ConvertContent(Param2, btPChar);
               result := PbtPChar(Param1^.tString^)^ = PbtPChar(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btAnsiString :
+      begin
+        case Param2.AType of
+        btAnsiString       : result := PbtAnsiString(Param1^.tString^)^ = PbtAnsiString(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,
+        btPAnsiChar,
+        btPWideChar,
+        btPChar,
+        btString        :
+            begin
+              FVarHelp.ConvertContent(Param2, btAnsiString);
+              result := PbtAnsiString(Param1^.tString^)^ = PbtAnsiString(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btPAnsiChar :
+      begin
+        case Param2.AType of
+        btPAnsiChar       : result := PbtPAnsiChar(Param1^.tString^)^ = PbtPAnsiChar(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,  
+        btAnsiString,
+        btPWideChar,
+        btPChar,
+        btString        :
+            begin
+              FVarHelp.ConvertContent(Param2, btPAnsiChar);
+              result := PbtPAnsiChar(Param1^.tString^)^ = PbtPAnsiChar(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btPWideChar :
+      begin
+        case Param2.AType of
+        btPWideChar       : result := PbtPWideChar(Param1^.tString^)^ = PbtPWideChar(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,  
+        btAnsiString,
+        btPAnsiChar,
+        btPChar,
+        btString        :
+            begin
+              FVarHelp.ConvertContent(Param2, btPWideChar);
+              result := PbtPWideChar(Param1^.tString^)^ = PbtPWideChar(Param2^.tString^)^;
             end;
         end;
       end;
@@ -1940,6 +1695,9 @@ begin
         btString       : result := PbtString(Param1^.tString^)^ < PbtString(Param2^.tString^)^;
         btUTF8String,
         btWideString,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btString);
@@ -1952,7 +1710,10 @@ begin
         case Param2.AType of
         btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ < PbtUTF8String(Param2^.tString^)^;
         btString,
-        btWideString,
+        btWideString,    
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btUTF8String);
@@ -1965,7 +1726,10 @@ begin
         case Param2.AType of
         btWideString       : result := PbtWideString(Param1^.tString^)^ < PbtWideString(Param2^.tString^)^;
         btUTF8String,
-        btString,
+        btString,      
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -1978,11 +1742,62 @@ begin
         case Param2.AType of
         btPChar       : result := PbtPChar(Param1^.tString^)^ < PbtPChar(Param2^.tString^)^;
         btUTF8String,
-        btWideString,
+        btWideString,    
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btString        :
             begin
               FVarHelp.ConvertContent(Param2, btPChar);
               result := PbtPChar(Param1^.tString^)^ < PbtPChar(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btAnsiString :
+      begin
+        case Param2.AType of
+        btAnsiString       : result := PbtAnsiString(Param1^.tString^)^ < PbtAnsiString(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,
+        btPAnsiChar,
+        btPWideChar,
+        btPChar,
+        btString        :
+            begin
+              FVarHelp.ConvertContent(Param2, btAnsiString);
+              result := PbtAnsiString(Param1^.tString^)^ < PbtAnsiString(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btPAnsiChar :
+      begin
+        case Param2.AType of
+        btPAnsiChar       : result := PbtPAnsiChar(Param1^.tString^)^ < PbtPAnsiChar(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,
+        btAnsiString,
+        btPWideChar,
+        btPChar,
+        btString        :
+            begin
+              FVarHelp.ConvertContent(Param2, btPAnsiChar);
+              result := PbtPAnsiChar(Param1^.tString^)^ < PbtPAnsiChar(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btPWideChar :
+      begin
+        case Param2.AType of
+        btPWideChar       : result := PbtPWideChar(Param1^.tString^)^ < PbtPWideChar(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,
+        btAnsiString,
+        btPAnsiChar,
+        btPChar,
+        btString        :
+            begin
+              FVarHelp.ConvertContent(Param2, btPWideChar);
+              result := PbtPWideChar(Param1^.tString^)^ < PbtPWideChar(Param2^.tString^)^;
             end;
         end;
       end;
@@ -2125,6 +1940,9 @@ begin
         btString       : result := PbtString(Param1^.tString^)^ <= PbtString(Param2^.tString^)^;
         btUTF8String,
         btWideString,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btString);
@@ -2137,7 +1955,10 @@ begin
         case Param2.AType of
         btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ <= PbtUTF8String(Param2^.tString^)^;
         btString,
-        btWideString,
+        btWideString,     
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btUTF8String);
@@ -2150,7 +1971,10 @@ begin
         case Param2.AType of
         btWideString       : result := PbtWideString(Param1^.tString^)^ <= PbtWideString(Param2^.tString^)^;
         btUTF8String,
-        btString,
+        btString,      
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btPChar        :
             begin
               FVarHelp.ConvertContent(Param2, btWideString);
@@ -2163,7 +1987,10 @@ begin
         case Param2.AType of
         btPChar       : result := PbtPChar(Param1^.tString^)^ <= PbtPChar(Param2^.tString^)^;
         btUTF8String,
-        btWideString,
+        btWideString,  
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar,
         btString        :
             begin
               FVarHelp.ConvertContent(Param2, btPChar);
@@ -2171,203 +1998,57 @@ begin
             end;
         end;
       end;
+  btAnsiString :
+      begin
+        case Param2.AType of
+        btAnsiString       : result := PbtAnsiString(Param1^.tString^)^ <= PbtAnsiString(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,
+        btPAnsiChar,
+        btPWideChar,
+        btPChar,
+        btString        :
+            begin
+              FVarHelp.ConvertContent(Param2, btAnsiString);
+              result := PbtAnsiString(Param1^.tString^)^ <= PbtAnsiString(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btPAnsiChar :
+      begin
+        case Param2.AType of
+        btPAnsiChar     : result := PbtPAnsiChar(Param1^.tString^)^ <= PbtPAnsiChar(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,  
+        btAnsiString,
+        btPWideChar,
+        btPChar,
+        btString        :
+            begin
+              FVarHelp.ConvertContent(Param2, btPAnsiChar);
+              result := PbtPAnsiChar(Param1^.tString^)^ <= PbtPAnsiChar(Param2^.tString^)^;
+            end;
+        end;
+      end;
+  btPWideChar :
+      begin
+        case Param2.AType of
+        btPWideChar       : result := PbtPWideChar(Param1^.tString^)^ <= PbtPWideChar(Param2^.tString^)^;
+        btUTF8String,
+        btWideString,  
+        btAnsiString,
+        btPAnsiChar,
+        btPChar,
+        btString        :
+            begin
+              FVarHelp.ConvertContent(Param2, btPWideChar);
+              result := PbtPWideChar(Param1^.tString^)^ <= PbtPWideChar(Param2^.tString^)^;
+            end;
+        end;
+      end;
   else result := False;
   end;
 end;
-                    {
-function TSE2VarCompare.UnEqual(Param1,
-  Param2: PSE2VarData): boolean;
-begin
-  result := False;
-  case Param1.AType of
-  btU8 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tu8^ <> Param2^.tu8^;
-        btS8        : result := Param1^.tu8^ <> Param2^.ts8^;
-        btU16       : result := Param1^.tu8^ <> Param2^.tu16^;
-        btS16       : result := Param1^.tu8^ <> Param2^.ts16^;
-        btU32       : result := Param1^.tu8^ <> Param2^.tu32^;
-        btS32       : result := Param1^.tu8^ <> Param2^.ts32^;
-        btS64       : result := Param1^.tu8^ <> Param2^.ts64^;
-        btSingle    : result := Param1^.tu8^ <> Param2^.tSingle^;
-        btDouble    : result := Param1^.tu8^ <> Param2^.tDouble^;
-        end;
-      end;
-  btS8 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts8^ <> Param2^.tu8^;
-        btS8        : result := Param1^.ts8^ <> Param2^.ts8^;
-        btU16       : result := Param1^.ts8^ <> Param2^.tu16^;
-        btS16       : result := Param1^.ts8^ <> Param2^.ts16^;
-        btU32       : result := Param1^.ts8^ <> Param2^.tu32^;
-        btS32       : result := Param1^.ts8^ <> Param2^.ts32^;
-        btS64       : result := Param1^.ts8^ <> Param2^.ts64^;
-        btSingle    : result := Param1^.ts8^ <> Param2^.tSingle^;
-        btDouble    : result := Param1^.ts8^ <> Param2^.tDouble^;
-        end;
-      end;
-  btU16 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tu16^ <> Param2^.tu8^;
-        btS8        : result := Param1^.tu16^ <> Param2^.ts8^;
-        btU16       : result := Param1^.tu16^ <> Param2^.tu16^;
-        btS16       : result := Param1^.tu16^ <> Param2^.ts16^;
-        btU32       : result := Param1^.tu16^ <> Param2^.tu32^;
-        btS32       : result := Param1^.tu16^ <> Param2^.ts32^;
-        btS64       : result := Param1^.tu16^ <> Param2^.ts64^;
-        btSingle    : result := Param1^.tu16^ <> Param2^.tSingle^;
-        btDouble    : result := Param1^.tu16^ <> Param2^.tDouble^;
-        end;        
-      end;
-  btS16 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts16^ <> Param2^.tu8^;
-        btS8        : result := Param1^.ts16^ <> Param2^.ts8^;
-        btU16       : result := Param1^.ts16^ <> Param2^.tu16^;
-        btS16       : result := Param1^.ts16^ <> Param2^.ts16^;
-        btU32       : result := Param1^.ts16^ <> Param2^.tu32^;
-        btS32       : result := Param1^.ts16^ <> Param2^.ts32^;
-        btS64       : result := Param1^.ts16^ <> Param2^.ts64^;
-        btSingle    : result := Param1^.ts16^ <> Param2^.tSingle^;
-        btDouble    : result := Param1^.ts16^ <> Param2^.tDouble^;
-        end;
-      end;
-  btU32 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tu32^ <> Param2^.tu8^;
-        btS8        : result := Param1^.tu32^ <> Param2^.ts8^;
-        btU16       : result := Param1^.tu32^ <> Param2^.tu16^;
-        btS16       : result := Param1^.tu32^ <> Param2^.ts16^;
-        btU32       : result := Param1^.tu32^ <> Param2^.tu32^;
-        btS32       : result := Param1^.tu32^ <> Param2^.ts32^;
-        btS64       : result := Param1^.tu32^ <> Param2^.ts64^;
-        btSingle    : result := Param1^.tu32^ <> Param2^.tSingle^;
-        btDouble    : result := Param1^.tu32^ <> Param2^.tDouble^;
-        end;
-      end;
-  btS32 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts32^ <> Param2^.tu8^;
-        btS8        : result := Param1^.ts32^ <> Param2^.ts8^;
-        btU16       : result := Param1^.ts32^ <> Param2^.tu16^;
-        btS16       : result := Param1^.ts32^ <> Param2^.ts16^;
-        btU32       : result := Param1^.ts32^ <> Param2^.tu32^;
-        btS32       : result := Param1^.ts32^ <> Param2^.ts32^;
-        btS64       : result := Param1^.ts32^ <> Param2^.ts64^;
-        btSingle    : result := Param1^.ts32^ <> Param2^.tSingle^;
-        btDouble    : result := Param1^.ts32^ <> Param2^.tDouble^;
-        end;
-      end;
-  btS64 :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.ts64^ <> Param2^.tu8^;
-        btS8        : result := Param1^.ts64^ <> Param2^.ts8^;
-        btU16       : result := Param1^.ts64^ <> Param2^.tu16^;
-        btS16       : result := Param1^.ts64^ <> Param2^.ts16^;
-        btU32       : result := Param1^.ts64^ <> Param2^.tu32^;
-        btS32       : result := Param1^.ts64^ <> Param2^.ts32^;
-        btS64       : result := Param1^.ts64^ <> Param2^.ts64^;
-        btSingle    : result := Param1^.ts64^ <> Param2^.tSingle^;
-        btDouble    : result := Param1^.ts64^ <> Param2^.tDouble^;
-        end;
-      end;
-  btSingle :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tSingle^ <> Param2^.tu8^;
-        btS8        : result := Param1^.tSingle^ <> Param2^.ts8^;
-        btU16       : result := Param1^.tSingle^ <> Param2^.tu16^;
-        btS16       : result := Param1^.tSingle^ <> Param2^.ts16^;
-        btU32       : result := Param1^.tSingle^ <> Param2^.tu32^;
-        btS32       : result := Param1^.tSingle^ <> Param2^.ts32^;
-        btS64       : result := Param1^.tSingle^ <> Param2^.ts64^;
-        btSingle    : result := Param1^.tSingle^ <> Param2^.tSingle^;
-        btDouble    : result := Param1^.tSingle^ <> Param2^.tDouble^;
-        end;
-      end;
-  btDouble :
-      begin
-        case Param2.AType of
-        btU8        : result := Param1^.tDouble^ <> Param2^.tu8^;
-        btS8        : result := Param1^.tDouble^ <> Param2^.ts8^;
-        btU16       : result := Param1^.tDouble^ <> Param2^.tu16^;
-        btS16       : result := Param1^.tDouble^ <> Param2^.ts16^;
-        btU32       : result := Param1^.tDouble^ <> Param2^.tu32^;
-        btS32       : result := Param1^.tDouble^ <> Param2^.ts32^;
-        btS64       : result := Param1^.tDouble^ <> Param2^.ts64^;
-        btSingle    : result := Param1^.tDouble^ <> Param2^.tSingle^;
-        btDouble    : result := Param1^.tDouble^ <> Param2^.tDouble^;
-        end;      
-      end;
-  btPointer, btObject, btProcPtr :
-      begin
-        case Param2.AType of
-        btPointer,
-        btProcPtr,
-        btObject        : result := Pointer(Param1^.tPointer^) <> Pointer(Param2^.tPointer^);
-        end;
-      end;
-  btString :
-      begin
-        case Param2.AType of
-        btString       : result := PbtString(Param1^.tString^)^ <> PbtString(Param2^.tString^)^;
-        btUTF8String,
-        btWideString,
-        btPChar        :
-            begin
-              FVarHelp.ConvertContent(Param2, btString);
-              result := PbtString(Param1^.tString^)^ <> PbtString(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  btUTF8String :
-      begin
-        case Param2.AType of
-        btUTF8String       : result := PbtUTF8String(Param1^.tString^)^ <> PbtUTF8String(Param2^.tString^)^;
-        btString,
-        btWideString,
-        btPChar        :
-            begin
-              FVarHelp.ConvertContent(Param2, btUTF8String);
-              result := PbtUTF8String(Param1^.tString^)^ <> PbtUTF8String(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  btWideString :
-      begin
-        case Param2.AType of
-        btWideString       : result := PbtWideString(Param1^.tString^)^ <> PbtWideString(Param2^.tString^)^;
-        btUTF8String,
-        btString,
-        btPChar        :
-            begin
-              FVarHelp.ConvertContent(Param2, btWideString);
-              result := PbtWideString(Param1^.tString^)^ <> PbtWideString(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  btPChar :
-      begin
-        case Param2.AType of
-        btPChar       : result := PbtPChar(Param1^.tString^)^ <> PbtPChar(Param2^.tString^)^;
-        btUTF8String,
-        btWideString,
-        btString   :
-            begin
-              FVarHelp.ConvertContent(Param2, btPChar);
-              result := PbtPChar(Param1^.tString^)^ <> PbtPChar(Param2^.tString^)^;
-            end;
-        end;
-      end;
-  end;
-end;                        }
 
 initialization
 

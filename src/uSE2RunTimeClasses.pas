@@ -187,6 +187,18 @@ begin
         begin
           PbtPChar(PPointer(PtrInt(AClass) + p.Offset)^)^ := PbtPChar(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
         end;
+    btAnsiString     :
+        begin
+          PbtAnsiString(PPointer(PtrInt(AClass) + p.Offset)^)^ := PbtAnsiString(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
+        end;
+    btPAnsiChar      :
+        begin
+          PbtPAnsiChar(PPointer(PtrInt(AClass) + p.Offset)^)^ := PbtPAnsiChar(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
+        end;
+    btPWideChar      :
+        begin
+          PbtPWideChar(PPointer(PtrInt(AClass) + p.Offset)^)^ := PbtPWideChar(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
+        end;
     btArray      :
         begin
 
@@ -224,6 +236,18 @@ begin
         begin
           PbtPChar(PPointer(PtrInt(ADest) + p.Offset)^)^ := PbtPChar(PPointer(PtrInt(ASource) + p.Offset)^)^;
         end;
+    btAnsiString     :
+        begin
+          PbtAnsiString(PPointer(PtrInt(ADest) + p.Offset)^)^ := PbtAnsiString(PPointer(PtrInt(ASource) + p.Offset)^)^;
+        end;
+    btPAnsiChar      :
+        begin
+          PbtPAnsiChar(PPointer(PtrInt(ADest) + p.Offset)^)^ := PbtPAnsiChar(PPointer(PtrInt(ASource) + p.Offset)^)^;
+        end;
+    btPWideChar      :
+        begin
+          PbtPWideChar(PPointer(PtrInt(ADest) + p.Offset)^)^ := PbtPWideChar(PPointer(PtrInt(ASource) + p.Offset)^)^;
+        end;
     btArray      :
         begin
 
@@ -244,6 +268,9 @@ var i  : integer;
     pW : PbtWideString;
     pU : PbtUTF8String;
     pC : PbtPChar;
+    pAS: PbtAnsiString;
+    pAC: PbtPAnsiChar;
+    pWC: PbtPWideChar;
     pP : Pointer;
 begin
   for i:=0 to Flist.Count-1 do
@@ -274,6 +301,24 @@ begin
           pC^ := PbtPChar(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
           PPointer(PtrInt(AClass) + p.Offset)^ := pC;
         end;
+    btAnsiString     :
+        begin
+          New(pAS);
+          pAS^ := PbtAnsiString(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pAS;
+        end;  
+    btPAnsiChar      :
+        begin
+          New(pAC);
+          pAC^ := PbtPAnsiChar(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pAC;
+        end;       
+    btPWideChar      :
+        begin
+          New(pWC);
+          pWC^ := PbtPWideChar(PPointer(PtrInt(ADataSource) + p.Offset)^)^;
+          PPointer(PtrInt(AClass) + p.Offset)^ := pWC;
+        end;
     btArray      :
         begin
 
@@ -295,6 +340,9 @@ var i  : integer;
     pW : PbtWideString;
     pU : PbtUTF8String;
     pC : PbtPChar;
+    pAS: PbtAnsiString;
+    pAC: PbtPAnsiChar;
+    pWC: PbtPWideChar;
     pP : Pointer;
 begin
   for i:=0 to Flist.Count-1 do
@@ -325,6 +373,24 @@ begin
           pC^ := '';
           PPointer(PtrInt(AClass) + p.Offset)^ := pC;
         end;
+    btAnsiString     :
+        begin
+          New(pAS);
+          pAS^ := '';
+          PPointer(PtrInt(AClass) + p.Offset)^ := pAS;
+        end;   
+    btPAnsiChar      :
+        begin
+          New(pAC);
+          pAC^ := '';
+          PPointer(PtrInt(AClass) + p.Offset)^ := pAC;
+        end;          
+    btPWideChar      :
+        begin
+          New(pWC);
+          pWC^ := '';
+          PPointer(PtrInt(AClass) + p.Offset)^ := pWC;
+        end;
     btArray      :
         begin
 
@@ -347,6 +413,9 @@ var i  : integer;
     pW : PbtWideString;
     pU : PbtUTF8String;
     pC : PbtPChar;
+    pAS: PbtAnsiString;
+    pAC: PbtPAnsiChar;
+    pWC: PbtPWideChar;
     //pP : Pointer;
 begin
   for i:=0 to Meta.RTTI.Count-1 do
@@ -377,6 +446,24 @@ begin
           pC^ := '';
           PPointer(PtrInt(ADest) + p.Offset)^ := pC;
         end;
+    btAnsiString     :
+        begin
+          New(pAS);
+          pAS^ := '';
+          PPointer(PtrInt(ADest) + p.Offset)^ := pAS;
+        end; 
+    btPAnsiChar      :
+        begin
+          New(pAC);
+          pAC^ := '';
+          PPointer(PtrInt(ADest) + p.Offset)^ := pAC;
+        end;    
+    btPWideChar      :
+        begin
+          New(pWC);
+          pWC^ := '';
+          PPointer(PtrInt(ADest) + p.Offset)^ := pWC;
+        end;
     btArray      :
         begin
 
@@ -396,6 +483,9 @@ var i  : integer;
     pW : PbtWideString;
     pU : PbtUTF8String;
     pC : PbtPChar;
+    pAS: PbtAnsiString;
+    pAC: PbtPAnsiChar;
+    pWC: PbtPWideChar;
     pP : Pointer;
 begin
   if Self = nil then
@@ -428,6 +518,24 @@ begin
           pC^ := '';
           Dispose(pC);
         end;
+    btAnsiString     :
+        begin
+          pAS := PPointer(PtrInt(AClass) + p.Offset)^;
+          pAS^ := '';
+          Dispose(pAS);
+        end; 
+    btPAnsiChar      :
+        begin
+          pAC := PPointer(PtrInt(AClass) + p.Offset)^;
+          pAC^ := '';
+          Dispose(pAC);
+        end;    
+    btPWideChar      :
+        begin
+          pWC := PPointer(PtrInt(AClass) + p.Offset)^;
+          pWC^ := '';
+          Dispose(pWC);
+        end;
     btArray      :
         begin
 
@@ -450,6 +558,9 @@ var i  : integer;
     pW : PbtWideString;
     pU : PbtUTF8String;
     pC : PbtPChar;
+    pAS: PbtAnsiString;
+    pAC: PbtPAnsiChar;
+    pWC: PbtPWideChar;
 begin
   for i:=0 to Meta.RTTI.Count-1 do
   begin
@@ -478,6 +589,24 @@ begin
           pC := PPointer(PtrInt(AData) + p.Offset)^;
           pC^ := '';
           Dispose(pC);
+        end;
+    btAnsiString     :
+        begin
+          pAS := PPointer(PtrInt(AData) + p.Offset)^;
+          pAS^ := '';
+          Dispose(pAS);
+        end;
+    btPAnsiChar      :
+        begin
+          pAC := PPointer(PtrInt(AData) + p.Offset)^;
+          pAC^ := '';
+          Dispose(pAC);
+        end;    
+    btPWideChar      :
+        begin
+          pWC := PPointer(PtrInt(AData) + p.Offset)^;
+          pWC^ := '';
+          Dispose(pWC);
         end;
     btArray      :
         begin
@@ -509,6 +638,9 @@ begin
     btString,
     btUTF8String,
     btWideString,
+    btAnsiString,
+    btPAnsiChar,
+    btPWideChar,
     btPChar :
         begin
           PPointer(PPointer(PtrInt(ADest) + p.Offset)^)^ := PPointer(PtrInt(ASource) + p.Offset)^;
@@ -537,6 +669,9 @@ begin
     btString,
     btUTF8String,
     btWideString,
+    btAnsiString,
+    btPWideChar,
+    btPAnsiChar,
     btPChar :
         begin
           PPointer(PtrInt(ADest) + p.Offset)^    := PPointer(PPointer(PtrInt(ASource) + p.Offset)^)^;
@@ -604,6 +739,9 @@ begin
     btString,
     btUTF8String,
     btWideString,
+    btPAnsiChar,
+    btPWideChar,
+    btAnsiString,
     btPChar  :
         begin
           New(Entry);
@@ -645,6 +783,9 @@ begin
     btString,
     btUTF8String,
     btWideString,
+    btPAnsiChar,
+    btPWideChar,
+    btAnsiString,
     btPChar  :
         begin
           New(Entry);

@@ -100,7 +100,7 @@ var CallInfo     : PSE2NativeCallEntry;
       ParamType in
         [btU8, btS8, btU16, btS16, btU32, btS32,
          btPointer, btObject, btRecord,
-         btString, btUTF8String, btWideString, btPChar];
+         btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar];
   end;
 
   function  PointerSize(ParamType: TSE2TypeIdent; isVarParam: boolean): integer;
@@ -172,7 +172,7 @@ var CallInfo     : PSE2NativeCallEntry;
 
     PtrOffset := 3;
     if ScriptMethod.HasResult then
-      if ScriptMethod.ResultType in [btString, btUTF8String, btWideString] then
+      if ScriptMethod.ResultType in [btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar] then
         PtrOffset := 4;
 
     RegPtr   := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 0);
@@ -238,7 +238,7 @@ var CallInfo     : PSE2NativeCallEntry;
 
     PtrOffset := 3;
     if ScriptMethod.HasResult then
-      if ScriptMethod.ResultType in [btString, btUTF8String, btWideString] then
+      if ScriptMethod.ResultType in [btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar] then
         PtrOffset := 4;
 
     RegPtr   := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 0);
@@ -366,10 +366,13 @@ var CallInfo     : PSE2NativeCallEntry;
         begin
           newEntry := RunTime.Stack.PushNew(aParamType);
           case aParamType of
-          btString     : PbtString(newEntry.tString^)^     := string(PPointer(Data)^);
-          btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
-          btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
-          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
+          btString     : PbtString(newEntry.tString^)^     := TbtString(PPointer(Data)^);
+          btWideString : PbtWideString(newEntry.tString^)^ := TbtWideString(PPointer(Data)^);
+          btUTF8String : PbtUTF8String(newEntry.tString^)^ := TbtUTF8STring(PPointer(Data)^);
+          btPChar      : PbtPChar(newEntry.tString^)^      := TbtPChar(PPointer(Data)^);
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(PPointer(Data)^);
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(PPointer(Data)^);
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(PPointer(Data)^);
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -377,10 +380,13 @@ var CallInfo     : PSE2NativeCallEntry;
         begin
           newEntry := RunTime.Stack.PushNew(aParamType);
           case aParamType of
-          btString     : PbtString(newEntry.tString^)^     := string(PPointer(Data)^);
-          btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
-          btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
-          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
+          btString     : PbtString(newEntry.tString^)^     := TbtString(PPointer(Data)^);
+          btWideString : PbtWideString(newEntry.tString^)^ := TbtWideString(PPointer(Data)^);
+          btUTF8String : PbtUTF8String(newEntry.tString^)^ := TbtUTF8STring(PPointer(Data)^);
+          btPChar      : PbtPChar(newEntry.tString^)^      := TbtPChar(PPointer(Data)^);
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(PPointer(Data)^);
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(PPointer(Data)^);
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(PPointer(Data)^);
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -388,10 +394,13 @@ var CallInfo     : PSE2NativeCallEntry;
         begin
           newEntry := RunTime.Stack.PushNew(aParamType);
           case aParamType of
-          btString     : PbtString(newEntry.tString^)^     := string(PPointer(Data)^);
-          btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
-          btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
-          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
+          btString     : PbtString(newEntry.tString^)^     := TbtString(PPointer(Data)^);
+          btWideString : PbtWideString(newEntry.tString^)^ := TbtWideString(PPointer(Data)^);
+          btUTF8String : PbtUTF8String(newEntry.tString^)^ := TbtUTF8STring(PPointer(Data)^);
+          btPChar      : PbtPChar(newEntry.tString^)^      := TbtPChar(PPointer(Data)^);
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(PPointer(Data)^);
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(PPointer(Data)^);
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(PPointer(Data)^);
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -399,10 +408,13 @@ var CallInfo     : PSE2NativeCallEntry;
         begin
           newEntry := RunTime.Stack.PushNew(aParamType);
           case aParamType of
-          btString     : PbtString(newEntry.tString^)^     := string(PPointer(Data)^);
-          btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
-          btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
-          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
+          btString     : PbtString(newEntry.tString^)^     := TbtString(PPointer(Data)^);
+          btWideString : PbtWideString(newEntry.tString^)^ := TbtWideString(PPointer(Data)^);
+          btUTF8String : PbtUTF8String(newEntry.tString^)^ := TbtUTF8STring(PPointer(Data)^);
+          btPChar      : PbtPChar(newEntry.tString^)^      := TbtPChar(PPointer(Data)^);
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(PPointer(Data)^);
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(PPointer(Data)^);
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(PPointer(Data)^);
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -410,10 +422,38 @@ var CallInfo     : PSE2NativeCallEntry;
         begin
           newEntry := RunTime.Stack.PushNew(aParamType);
           case aParamType of
-          btString     : PbtString(newEntry.tString^)^     := Utf8ToAnsi(UTF8Encode(WideString(PPointer(Data)^)));
+          btString     :
+              begin
+                PbtString(newEntry.tString^)^ :=
+                  {$IFDEF DELPHI2009UP}
+                    string(WideString(PPointer(Data)^));
+                  {$ELSE}
+                    Utf8ToAnsi(UTF8Encode(WideString(PPointer(Data)^)));
+                  {$ENDIF}
+              end;
           btWideString : PbtWideString(newEntry.tString^)^ := WideString(PPointer(Data)^);
-          btUTF8String : PbtUTF8String(newEntry.tString^)^ := UTF8Encode(WideString(PPointer(Data)^));
-          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(Utf8ToAnsi(UTF8Encode(WideString(PPointer(Data)^))));
+          btUTF8String :
+              begin
+                PbtUTF8String(newEntry.tString^)^ :=
+                  {$IFDEF DELPHI2009UP}
+                    UTF8Encode(WideString(PPointer(Data)^));
+                  {$ELSE}
+                    UTF8Encode(WideString(PPointer(Data)^));
+                  {$ENDIF}
+              end;
+          btPChar      :
+              begin
+                PbtPChar(newEntry.tString^)^      :=
+                  {$IFDEF DELPHI2009UP}
+                    PChar(WideString(PPointer(Data)^));
+                  {$ELSE}
+                    PChar(Utf8ToAnsi(UTF8Encode(WideString(PPointer(Data)^))));
+                  {$ENDIF}
+              end;
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(WideString(PPointer(Data)^));
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(AnsiString(WideString(PPointer(Data)^)));
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(WideString(PPointer(Data)^));
+
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -519,9 +559,9 @@ var CallInfo     : PSE2NativeCallEntry;
             SetVariableContent(aParamType, vtExtended, Parameter);
         btDouble :
             SetVariableContent(aParamType, vtExtended, Pointer(integer(Parameter) - SizeOf(Pointer)));
-        btString, btUTF8String :
+        btString, btUTF8String, btAnsiString :
             SetVariableContent(aParamType, vtAnsiString, Parameter);
-        btPChar :
+        btPChar, btPAnsiChar, btPWideChar :
             SetVariableContent(aParamType, vtPChar, Parameter);
         btChar :
             SetVariableContent(aParamType, vtChar, Parameter);
@@ -543,14 +583,12 @@ var CallInfo     : PSE2NativeCallEntry;
             SetVariableContent(aParamType, vtInt64, PPointer(Parameter)^);
         btSingle, btDouble :
             SetVariableContent(aParamType, vtExtended, PPointer(Parameter)^);
-        btString :
-            SetVariableContent(aParamType, vtAnsiString, PPointer(Parameter)^);
-        btUTF8String :
+        btString, btUTF8String, btAnsiString :
             SetVariableContent(aParamType, vtAnsiString, PPointer(Parameter)^);
         btWideString :
             SetVariableContent(aParamType, vtWideString, PPointer(Parameter)^);
-        btPChar :
-            SetVariableContent(aParamType, vtAnsiString, PPointer(Parameter)^);
+        btPChar, btPAnsiChar, btPWideChar :
+            SetVariableContent(aParamType, vtPChar, PPointer(Parameter)^);
         btPointer, btArray, btObject :
             SetVariableContent(aParamType, vtPointer, PPointer(Parameter)^);
         btRecord :
@@ -597,6 +635,9 @@ var CallInfo     : PSE2NativeCallEntry;
         btUTF8String   : PbtUTF8String(PPointer(Parameter)^)^ := PbtUTF8String(Data^.tString^)^;
         btWideString   : PbtWideString(PPointer(Parameter)^)^ := PbtWideString(Data^.tString^)^;
         btPChar        : PbtPChar(PPointer(Parameter)^)^      := PbtPChar(Data^.tString^)^;
+        btAnsiString   : PbtAnsiString(PPointer(Parameter)^)^ := PbtAnsiString(Data^.tString^)^; 
+        btPWideChar    : PbtPWideChar(PPointer(Parameter)^)^  := PbtPWideChar(Data^.tString^)^;
+        btPAnsiChar    : PbtPAnsiChar(PPointer(Parameter)^)^  := PbtPAnsiChar(Data^.tString^)^;
         btPointer,
         btArray        : PPointer(PPointer(Parameter)^)^    := Pointer(Data^.tPointer^);
         btRecord       :
@@ -667,6 +708,33 @@ var CallInfo     : PSE2NativeCallEntry;
             {$ELSE}
             Parameter := Pointer(integer(AStackPtr) + SizeOf(Pointer) * 0);
             PbtPChar(Parameter^)^ := PbtPChar(Data^.tString^)^;
+            {$ENDIF}
+          end;
+      btAnsiString     :
+          begin
+            {$IFDEF SEII_FPC_STRING_EAX}
+            result := integer(PPointer(Data^.tString^)^);
+            {$ELSE}
+            Parameter := pointer(integer(AStackPtr) + SizeOf(Pointer) * 0 );
+            PbtAnsiString(Parameter^)^ := PbtAnsiString(Data^.tString^)^;
+            {$ENDIF}
+          end;
+      btPAnsiChar     :
+          begin
+            {$IFDEF SEII_FPC_STRING_EAX}
+            result := integer(PPointer(Data^.tString^)^);
+            {$ELSE}
+            Parameter := pointer(integer(AStackPtr) + SizeOf(Pointer) * 0 );
+            PbtPAnsiChar(Parameter^)^ := PbtPAnsiChar(Data^.tString^)^;
+            {$ENDIF}
+          end;
+      btPWideChar     :
+          begin
+            {$IFDEF SEII_FPC_STRING_EAX}
+            result := integer(PPointer(Data^.tString^)^);
+            {$ELSE}
+            Parameter := pointer(integer(AStackPtr) + SizeOf(Pointer) * 0 );
+            PbtPWideChar(Parameter^)^ := PbtPWideChar(Data^.tString^)^;
             {$ENDIF}
           end;
       {

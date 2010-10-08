@@ -27,7 +27,10 @@ type
       btString,
       btWideString,
       btPChar,
-      btUTF8String     : (tString     : Pointer);   // tString -> PString -> 'abc'
+      btUTF8String,
+      btAnsiString,
+      btPAnsiChar,
+      btPWideChar     : (tString     : Pointer);   // tString -> PString -> 'abc'
       btPointer,
       btRecord,
       btArray,
@@ -66,18 +69,55 @@ type
   end;
 
   TSE2StringHelper = class(TObject)
+    { String }
     class procedure StringToUTF8(Input, Output: Pointer);
     class procedure StringToWide(Input, Output: Pointer);
     class procedure StringToChar(Input, Output: Pointer);
+    class procedure StringToAnsiString(Input, Ouptut: Pointer);
+    class procedure StringToPAnsiChar(Input, Output: Pointer);
+    class procedure StringToPWideChar(Input, Output: Pointer);
+    { UTF-8}
     class procedure UTF8ToString(Input, Output: Pointer);
     class procedure UTF8ToWide(Input, Output: Pointer);
     class procedure UTF8ToChar(Input, Output: Pointer);
+    class procedure UTF8ToAnsiString(Input, Ouptut: Pointer);
+    class procedure UTF8ToPAnsiChar(Input, Output: Pointer);
+    class procedure UTF8ToPWideChar(Input, Output: Pointer);
+    { WideString }
     class procedure WideToString(Input, Output: Pointer);
     class procedure WideToUTF8(Input, Output: Pointer);
     class procedure WideToChar(Input, Output: Pointer);
+    class procedure WideToAnsiString(Input, Ouptut: Pointer);
+    class procedure WideToPAnsiChar(Input, Output: Pointer);
+    class procedure WideToPWideChar(Input, Output: Pointer);
+    { PChar }
     class procedure CharToString(Input, Output: Pointer);
     class procedure CharToUTF8(Input, Output: Pointer);
     class procedure CharToWide(Input, Output: Pointer);
+    class procedure CharToAnsiString(Input, Ouptut: Pointer);
+    class procedure CharToPAnsiChar(Input, Output: Pointer);
+    class procedure CharToPWideChar(Input, Output: Pointer);
+    { AnsiString }
+    class procedure AnsiStringToString(Input, Ouptut: Pointer);
+    class procedure AnsiStringToUTF8(Input, Output: Pointer);
+    class procedure AnsiStringToWide(Input, Output: Pointer);
+    class procedure AnsiStringToChar(Input, Output: Pointer);
+    class procedure AnsiStringToPAnsiChar(Input, Output: Pointer);
+    class procedure AnsiStringToPWideChar(Input, Output: Pointer);
+    { PAnsiChar }
+    class procedure PAnsiCharToString(Input, Ouptut: Pointer);
+    class procedure PAnsiCharToUTF8(Input, Output: Pointer);
+    class procedure PAnsiCharToWide(Input, Output: Pointer);
+    class procedure PAnsiCharToChar(Input, Output: Pointer);
+    class procedure PAnsiCharToAnsiString(Input, Output: Pointer);
+    class procedure PAnsiCharToPWideChar(Input, Output: Pointer);
+    { PWideChar }      
+    class procedure PWideCharToString(Input, Ouptut: Pointer);
+    class procedure PWideCharToUTF8(Input, Output: Pointer);
+    class procedure PWideCharToWide(Input, Output: Pointer);
+    class procedure PWideCharToChar(Input, Output: Pointer);
+    class procedure PWideCharToAnsiString(Input, Output: Pointer);
+    class procedure PWideCharToPAnsiChar(Input, Output: Pointer);
   end;
 
   TSE2VarPool = class(TObject)
@@ -276,7 +316,10 @@ begin
     btString,
     btWideString,
     btPChar,
-    btUTF8String     : v := SizeOf(Pointer);
+    btUTF8String,
+    btAnsiString,
+    btPAnsiChar,
+    btPWideChar     : v := SizeOf(Pointer);
     btPointer,
     btRecord,
     btArray,
@@ -295,6 +338,9 @@ var newData  : Pointer;
     pU       : PbtUTF8String;
     pW       : PbtWideString;
     pC       : PbtPChar;
+    pAS      : PbtAnsiString;
+    pAC      : PbtPAnsiChar;
+    pWC      : PbtPWideChar;
 begin
   if Data.RefContent then
      exit;
@@ -460,9 +506,24 @@ begin
               TSE2StringHelper.StringToWide(Data.tString, newData);
             end;
         btPChar        :
-            begin          
+            begin
               New(pC);  pC^ := ''; PPointer(newData)^ := pC;
               TSE2StringHelper.StringToChar(Data.tString, newData);
+            end;
+        btAnsiString :
+            begin
+              New(pAS); pAS^ := ''; PPointer(newData)^ := pAS;
+              TSE2StringHelper.StringToAnsiString(Data.tString, newData);
+            end;
+        btPAnsiChar :
+            begin
+              New(pAC); pAC^ := ''; PPointer(newData)^ := pAC;
+              TSE2StringHelper.StringToPAnsiChar(Data.tString, newData);
+            end;
+        btPWideChar :
+            begin
+              New(pWC); pWC^ := ''; PPointer(newData)^ := pWC;
+              TSE2StringHelper.StringToPWideChar(Data.tString, newData);
             end;
         end;
       end;
@@ -479,53 +540,208 @@ begin
               New(pW); pW^ := ''; PPointer(newData)^ := pW;
               TSE2StringHelper.UTF8ToWide(Data.tString, newData);
             end;
-        btPChar        : 
+        btPChar        :
             begin
               New(pC); pC^ := ''; PPointer(newData)^ := pC;
               TSE2StringHelper.UTF8ToChar(Data.tString, newData);
+            end;
+        btAnsiString :
+            begin
+              New(pAS); pAS^ := ''; PPointer(newData)^ := pAS;
+              TSE2StringHelper.UTF8ToAnsiString(Data.tString, newData);
+            end;
+        btPAnsiChar :
+            begin
+              New(pAC); pAC^ := ''; PPointer(newData)^ := pAC;
+              TSE2StringHelper.UTF8ToPAnsiChar(Data.tString, newData);
+            end;
+        btPWideChar :
+            begin
+              New(pWC); pWC^ := ''; PPointer(newData)^ := pWC;
+              TSE2StringHelper.UTF8ToPWideChar(Data.tString, newData);
             end;
         end;
       end;
   btWideString :
       begin
         case newType of
-        btString       : 
+        btString       :
             begin
               New(pS); pS^ := ''; PPointer(newData)^ := pS;
               TSE2StringHelper.WideToString(Data.tString, newData);
             end;
-        btUTF8String   : 
+        btUTF8String   :
             begin
               New(pU); pU^ := ''; PPointer(newData)^ := pU;
               TSE2StringHelper.WideToUTF8(Data.tString, newData);
             end;
-        btPChar        : 
+        btPChar        :
             begin
               New(pC); pC^ := ''; PPointer(newData)^ := pC;
               TSE2StringHelper.WideToChar(Data.tString, newData);
+            end;
+        btAnsiString :
+            begin
+              New(pAS); pAS^ := ''; PPointer(newData)^ := pAS;
+              TSE2StringHelper.WideToAnsiString(Data.tString, newData);
+            end;
+        btPAnsiChar :
+            begin
+              New(pAC); pAC^ := ''; PPointer(newData)^ := pAC;
+              TSE2StringHelper.WideToPAnsiChar(Data.tString, newData);
+            end;
+        btPWideChar :
+            begin
+              New(pWC); pWC^ := ''; PPointer(newData)^ := pWC;
+              TSE2StringHelper.WideToPWideChar(Data.tString, newData);
             end;
         end;
       end;
   btPChar :
       begin
         case newType of
-        btString       : 
+        btString       :
             begin
               New(pS); pS^ := ''; PPointer(newData)^ := pS;
               TSE2StringHelper.CharToString(Data.tString, newData);
             end;
-        btUTF8String   : 
+        btUTF8String   :
             begin
               New(pU); pU^ := ''; PPointer(newData)^ := pU;
               TSE2StringHelper.CharToUTF8(Data.tString, newData);
             end;
-        btWideString   : 
+        btWideString   :
             begin
               New(pW); pW^ := ''; PPointer(newData)^ := pW;
               TSE2StringHelper.CharToWide(Data.tString, newData);
             end;
+        btAnsiString :
+            begin
+              New(pAS); pAS^ := ''; PPointer(newData)^ := pAS;
+              TSE2StringHelper.CharToAnsiString(Data.tString, newData);
+            end;
+        btPAnsiChar :
+            begin
+              New(pAC); pAC^ := ''; PPointer(newData)^ := pAC;
+              TSE2StringHelper.CharToPAnsiChar(Data.tString, newData);
+            end;
+        btPWideChar :
+            begin
+              New(pWC); pWC^ := ''; PPointer(newData)^ := pWC;
+              TSE2StringHelper.CharToPWideChar(Data.tString, newData);
+            end;
         end;
       end;
+
+  btAnsiString :
+      begin
+        case newType of
+        btString       : 
+            begin
+              New(pS); pS^ := ''; PPointer(newData)^ := pS;
+              TSE2StringHelper.AnsiStringToString(Data.tString, newData);
+            end;
+        btUTF8String   :
+            begin
+              New(pU); pU^ := ''; PPointer(newData)^ := pU;
+              TSE2StringHelper.AnsiStringToUTF8(Data.tString, newData);
+            end;
+        btWideString   :
+            begin
+              New(pW); pW^ := ''; PPointer(newData)^ := pW;
+              TSE2StringHelper.AnsiStringToWide(Data.tString, newData);
+            end;
+        btPChar        :
+            begin
+              New(pC); pC^ := ''; PPointer(newData)^ := pC;
+              TSE2StringHelper.AnsiStringToChar(Data.tString, newData);
+            end;
+        btPAnsiChar :
+            begin
+              New(pAC); pAC^ := ''; PPointer(newData)^ := pAC;
+              TSE2StringHelper.AnsiStringToPAnsiChar(Data.tString, newData);
+            end;
+        btPWideChar :
+            begin
+              New(pWC); pWC^ := ''; PPointer(newData)^ := pWC;
+              TSE2StringHelper.AnsiStringToPWideChar(Data.tString, newData);
+            end;
+        end;
+      end;
+
+  btPAnsiChar :
+      begin
+        case newType of
+        btString       : 
+            begin
+              New(pS); pS^ := ''; PPointer(newData)^ := pS;
+              TSE2StringHelper.PAnsiCharToString(Data.tString, newData);
+            end;
+        btUTF8String   :
+            begin
+              New(pU); pU^ := ''; PPointer(newData)^ := pU;
+              TSE2StringHelper.PAnsiCharToUTF8(Data.tString, newData);
+            end;
+        btWideString   : 
+            begin
+              New(pW); pW^ := ''; PPointer(newData)^ := pW;
+              TSE2StringHelper.PAnsiCharToWide(Data.tString, newData);
+            end;    
+        btPChar        :
+            begin
+              New(pC); pC^ := ''; PPointer(newData)^ := pC;
+              TSE2StringHelper.PAnsiCharToChar(Data.tString, newData);
+            end;
+        btAnsiString :
+            begin
+              New(pAS); pAS^ := ''; PPointer(newData)^ := pAS;
+              TSE2StringHelper.PAnsiCharToAnsiString(Data.tString, newData);
+            end;
+        btPWideChar :
+            begin
+              New(pWC); pWC^ := ''; PPointer(newData)^ := pWC;
+              TSE2StringHelper.PAnsiCharToPWideChar(Data.tString, newData);
+            end;
+        end;
+      end;
+
+  btPWideChar :
+      begin
+        case newType of
+        btString       : 
+            begin
+              New(pS); pS^ := ''; PPointer(newData)^ := pS;
+              TSE2StringHelper.PWideCharToString(Data.tString, newData);
+            end;
+        btUTF8String   :
+            begin
+              New(pU); pU^ := ''; PPointer(newData)^ := pU;
+              TSE2StringHelper.PWideCharToUTF8(Data.tString, newData);
+            end;
+        btWideString   :
+            begin
+              New(pW); pW^ := ''; PPointer(newData)^ := pW;
+              TSE2StringHelper.PWideCharToWide(Data.tString, newData);
+            end;
+        btPChar        :
+            begin
+              New(pC); pC^ := ''; PPointer(newData)^ := pC;
+              TSE2StringHelper.PWideCharToChar(Data.tString, newData);
+            end;
+        btAnsiString :
+            begin
+              New(pAS); pAS^ := ''; PPointer(newData)^ := pAS;
+              TSE2StringHelper.PWideCharToAnsiString(Data.tString, newData);
+            end;
+        btPAnsiChar :
+            begin
+              New(pAC); pAC^ := ''; PPointer(newData)^ := pAC;
+              TSE2StringHelper.PWideCharToPAnsiChar(Data.tString, newData);
+            end;
+        end;
+      end;
+
+
   end;
 
   if FreeData then
@@ -545,6 +761,9 @@ var pS : PbtString;
     pW : PbtWideString;
     pU : PbtUTF8String;
     pC : PbtPChar;
+    pAS: PbtAnsiString;
+    pAC: PbtPAnsiChar;
+    pWC: PbtPWideChar;
 begin
   if Data.RefContent then
   begin
@@ -579,6 +798,24 @@ begin
         New(pC);
         pC^ := '';
         Pointer(Data.tString^) := pC;
+      end;
+  btAnsiString :
+      begin
+        New(pAS);
+        pAS^ := '';
+        Pointer(Data.tString^) := pAS;
+      end;
+  btPAnsiChar :
+      begin
+        New(pAC);
+        pAC^ := '';
+        Pointer(Data.tString^) := pAC;
+      end;
+  btPWideChar :
+      begin
+        New(pWC);
+        pWC^ := '';
+        Pointer(Data.tString^) := pWC;
       end;
   end;
 end;
@@ -588,7 +825,10 @@ procedure TSE2VarHelper.CreateVarContent(Data: PSE2VarData;
 var pS : PbtString;
     pW : PbtWideString;
     pU : PbtUTF8String;
-    pC : PbtPChar;
+    pC : PbtPChar;    
+    pAS: PbtAnsiString;
+    pAC: PbtPAnsiChar;
+    pWC: PbtPWideChar;
 begin
   if Data.RefContent then
   begin
@@ -623,6 +863,24 @@ begin
         New(pC);
         pC^ := '';
         Pointer(Data.tString^) := pC;
+      end;    
+  btAnsiString :
+      begin
+        New(pAS);
+        pAS^ := '';
+        Pointer(Data.tString^) := pAS;
+      end;
+  btPAnsiChar :
+      begin
+        New(pAC);
+        pAC^ := '';
+        Pointer(Data.tString^) := pAC;
+      end;
+  btPWideChar :
+      begin
+        New(pWC);
+        pWC^ := '';
+        Pointer(Data.tString^) := pWC;
       end;
   end;
 end;
@@ -636,6 +894,9 @@ begin
       btWideString  : PbtWideString(Data.tString^)^ := '';
       btUTF8String  : PbtUTF8String(Data.tString^)^ := '';
       btPChar       : PbtPChar(Data.tString^)^      := '';
+      btAnsiString  : PbtAnsiString(Data.tString^)^ := '';
+      btPAnsiChar   : PbtPAnsiChar(Data.tString^)^  := '';
+      btPWideChar   : PbtPWideChar(Data.tString^)^  := '';
       else
           FillChar(Data.tPointer^, TSE2MemorySize[Data.AType], 0);
       end;
@@ -677,6 +938,21 @@ begin
             begin
               PbtPChar(Data.tString^)^      := '';
               Dispose(PbtPChar(Data.tString^));
+            end;
+        btAnsiString       :
+            begin
+              PbtAnsiString(Data.tString^)^      := '';
+              Dispose(PbtAnsiString(Data.tString^));
+            end;
+        btPAnsiChar       :
+            begin
+              PbtPAnsiChar(Data.tString^)^      := '';
+              Dispose(PbtPAnsiChar(Data.tString^));
+            end;
+        btPWideChar       :
+            begin
+              PbtPWideChar(Data.tString^)^      := '';
+              Dispose(PbtPWideChar(Data.tString^));
             end;
         btRecord      :
             begin
@@ -722,6 +998,21 @@ begin
             begin
               PbtPChar(Data.tString^)^      := '';
               Dispose(PbtPChar(Data.tString^));
+            end;
+        btAnsiString       :
+            begin
+              PbtAnsiString(Data.tString^)^      := '';
+              Dispose(PbtAnsiString(Data.tString^));
+            end;
+        btPAnsiChar       :
+            begin
+              PbtPAnsiChar(Data.tString^)^      := '';
+              Dispose(PbtPAnsiChar(Data.tString^));
+            end;
+        btPWideChar       :
+            begin
+              PbtPWideChar(Data.tString^)^      := '';
+              Dispose(PbtPWideChar(Data.tString^));
             end;
         btRecord      :
             begin
@@ -784,6 +1075,9 @@ begin
     btWideString  : PbtWideString(Dest.tString^)^ := PbtWideString(Source.tString^)^;
     btUTF8String  : PbtUTF8String(Dest.tString^)^ := PbtUTF8String(Source.tString^)^;
     btPChar       : PbtPChar(Dest.tString^)^      := PbtPChar(Source.tString^)^;
+    btAnsiString  : PbtAnsiString(Dest.tString^)^ := PbtAnsiString(Source.tString^)^;  
+    btPAnsiChar   : PbtPAnsiChar(Dest.tString^)^  := PbtPAnsiChar(Source.tString^)^; 
+    btPWideChar   : PbtPWideChar(Dest.tString^)^  := PbtPWideChar(Source.tString^)^;
     else Move(Source^.tPointer^, Dest^.tPointer^, TSE2MemorySize[Dest^.AType]);
     end;
   end else
@@ -804,6 +1098,9 @@ begin
     btWideString  : PbtWideString(Dest.tString^)^ := PbtWideString(Source.tString^)^;
     btUTF8String  : PbtUTF8String(Dest.tString^)^ := PbtUTF8String(Source.tString^)^;
     btPChar       : PbtPChar(Dest.tString^)^      := PbtPChar(Source.tString^)^;
+    btAnsiString  : PbtAnsiString(Dest.tString^)^ := PbtAnsiString(Source.tString^)^;
+    btPAnsiChar   : PbtPAnsiChar(Dest.tString^)^  := PbtPAnsiChar(Source.tString^)^;
+    btPWideChar   : PbtPWideChar(Dest.tString^)^  := PbtPWideChar(Source.tString^)^;
     (*btRecord      :
         begin
           uSE2SystemUnit.DestroyScriptRecord(PPointer(Dest^.tPointer)^);
@@ -826,7 +1123,10 @@ begin
     btString      : PbtString(Dest.tString^)^     := PbtString(Source.tString^)^;
     btWideString  : PbtWideString(Dest.tString^)^ := PbtWideString(Source.tString^)^;
     btUTF8String  : PbtUTF8String(Dest.tString^)^ := PbtUTF8String(Source.tString^)^;
-    btPChar       : PbtPChar(Dest.tString^)^      := PbtPChar(Source.tString^)^;
+    btPChar       : PbtPChar(Dest.tString^)^      := PbtPChar(Source.tString^)^;  
+    btAnsiString  : PbtAnsiString(Dest.tString^)^ := PbtAnsiString(Source.tString^)^;
+    btPAnsiChar   : PbtPAnsiChar(Dest.tString^)^  := PbtPAnsiChar(Source.tString^)^;
+    btPWideChar   : PbtPWideChar(Dest.tString^)^  := PbtPWideChar(Source.tString^)^;
     else Move(Source^.tPointer^, Dest^.tPointer^, TSE2MemorySize[Dest^.AType]);
     end;
   end else
@@ -846,7 +1146,10 @@ begin
     btString      : PbtString(Dest.tString^)^     := PbtString(Source.tString^)^;
     btWideString  : PbtWideString(Dest.tString^)^ := PbtWideString(Source.tString^)^;
     btUTF8String  : PbtUTF8String(Dest.tString^)^ := PbtUTF8String(Source.tString^)^;
-    btPChar       : PbtPChar(Dest.tString^)^      := PbtPChar(Source.tString^)^;
+    btPChar       : PbtPChar(Dest.tString^)^      := PbtPChar(Source.tString^)^;  
+    btAnsiString  : PbtAnsiString(Dest.tString^)^ := PbtAnsiString(Source.tString^)^;
+    btPAnsiChar   : PbtPAnsiChar(Dest.tString^)^  := PbtPAnsiChar(Source.tString^)^;
+    btPWideChar   : PbtPWideChar(Dest.tString^)^  := PbtPWideChar(Source.tString^)^;
     (*btRecord      :
         begin
           uSE2SystemUnit.DestroyScriptRecord(PPointer(Dest^.tPointer)^);
@@ -872,10 +1175,14 @@ begin
   btS64      : result := Data^.ts64^       = PInt64(Value)^;
   btSingle   : result := Data^.tSingle^    = PSingle(Value)^;
   btDouble   : result := Data^.tDouble^    = PDouble(Value)^;
-  btString   : result := Data^.tString     = PPointer(Value)^;
-  btUTF8String : result := Data^.tString   = PPointer(Value)^;
-  btWideString : result := Data^.tString   = PPointer(Value)^;
-  btPChar      : result := Data^.tString   = PPointer(Value)^;
+
+  btString,
+  btUTF8String,
+  btWideString,
+  btPChar,
+  btAnsiString,
+  btPAnsiChar,
+  btPWideChar  : result := Data^.tString   = PPointer(Value)^;
   btPointer,
   btRecord,
   btObject    : result := Data^.tPointer   = PPointer(Value)^;
@@ -910,6 +1217,9 @@ begin
         PbtUTF8String(Data.tString^)^ := value;
       {$ENDIF}
   btPChar           : PbtPChar(Data.tString^)^      := PChar(value);
+  btAnsiString      : PbtAnsiString(Data.tString^)^ := AnsiString(value);
+  btPAnsiChar       : PbtPAnsiChar(Data.tString^)^  := PAnsiChar(AnsiString(value));
+  btPWideChar       : PbtPWideChar(Data.tString^)^  := PWideChar(WideString(value));
   end;
 end;
 
@@ -927,7 +1237,7 @@ begin
   btU8, btS8, btU16, btS16,
   btU32, btS32, btS64,
   btSingle, btDouble,
-  btString, btWideString, btUTF8String,
+  btString, btWideString, btUTF8String, btPChar, btPAnsiChar, btPWideChar, btAnsiString,
   btPointer, btObject :
       Move(Data.tPointer^, Target^, TSE2MemorySize[Data.AType]);
   else
@@ -1204,6 +1514,73 @@ end;
 
 { TSE2StringHelper }
 
+class procedure TSE2StringHelper.AnsiStringToChar(Input, Output: Pointer);
+begin
+  PbtPChar(Output^)^ := PChar(string(PbtAnsiString(Input^)^));
+end;
+
+class procedure TSE2StringHelper.AnsiStringToPAnsiChar(Input,
+  Output: Pointer);
+begin
+  PbtPAnsiChar(Output^)^ := PAnsiChar(PbtAnsiString(Input^)^);
+end;
+
+class procedure TSE2StringHelper.AnsiStringToPWideChar(Input,
+  Output: Pointer);
+begin
+  PbtPWideChar(Output^)^ :=
+    PWideChar(
+      {$IFDEF DELPHI2009UP}
+         UTF8ToWideString( AnsiToUtf8( string(PbtAnsiString(Input^)^)))
+      {$ELSE}
+         UTF8Decode(AnsiToUtf8(PbtAnsiString(Input^)^))
+      {$ENDIF}
+    );
+end;
+
+class procedure TSE2StringHelper.AnsiStringToString(Input,
+  Ouptut: Pointer);
+begin
+  PbtString(Ouptut^)^ := string(PbtAnsiString(Input^)^);
+end;
+
+class procedure TSE2StringHelper.AnsiStringToUTF8(Input, Output: Pointer);
+begin
+  PbtUTF8String(Output^)^ := AnsiToUtf8(string(PbtAnsiString(Input^)^));
+end;
+
+class procedure TSE2StringHelper.AnsiStringToWide(Input, Output: Pointer);
+begin
+  PbtWideString(Output^)^ :=
+    {$IFDEF DELPHI2009UP}
+       UTF8ToWideString( AnsiToUtf8( string(PbtAnsiString(Input^)^)));
+    {$ELSE}
+       UTF8Decode(AnsiToUtf8(PbtAnsiString(Input^)^));
+    {$ENDIF}
+end;
+
+class procedure TSE2StringHelper.CharToAnsiString(Input, Ouptut: Pointer);
+begin
+  PbtAnsiString(Ouptut^)^ := AnsiString(PbtPChar(Input^)^);
+end;
+
+class procedure TSE2StringHelper.CharToPAnsiChar(Input, Output: Pointer);
+begin
+  PbtPAnsiChar(Output^)^ := PAnsiChar(PbtPChar(Input^)^);
+end;
+
+class procedure TSE2StringHelper.CharToPWideChar(Input, Output: Pointer);
+begin
+  PbtPWideChar(Output^)^ :=
+    PWideChar(
+      {$IFDEF DELPHI2009UP}
+         PbtChar(Input^)^
+      {$ELSE}
+         UTF8Decode(AnsiToUtf8(string(PbtPChar(Input^)^)))
+      {$ENDIF}
+    );
+end;
+
 class procedure TSE2StringHelper.CharToString(Input, Output: Pointer);
 begin
   PbtString(Output^)^ := string(PbtPChar(Input^)^);
@@ -1211,17 +1588,115 @@ end;
 
 class procedure TSE2StringHelper.CharToUTF8(Input, Output: Pointer);
 begin
+  {$IFDEF DELPHI2009UP}
+  PbtUTF8String(Output^)^ := UTF8Encode(string(PbtPChar(Input^)^));
+  {$ELSE}
   PbtUTF8String(Output^)^ := AnsiToUtf8(string(PbtPChar(Input^)^));
+  {$ENDIF}
 end;
 
 class procedure TSE2StringHelper.CharToWide(Input, Output: Pointer);
 begin
   PbtWideString(Output^)^ :=
     {$IFDEF DELPHI2009UP}
-       UTF8ToWideString( AnsiToUtf8( string(PbtPChar(Input^)^) ));
+       string(PbtPChar(Input^)^);
     {$ELSE}
        UTF8Decode(AnsiToUtf8(string(PbtPChar(Input^)^)));
     {$ENDIF}
+end;
+
+class procedure TSE2StringHelper.PAnsiCharToAnsiString(Input,
+  Output: Pointer);
+begin
+  PbtAnsiString(Output^)^ := AnsiString(PbtPAnsiChar(Input^)^);
+end;
+
+class procedure TSE2StringHelper.PAnsiCharToChar(Input, Output: Pointer);
+begin
+  {$IFDEF DELPHI2009UP}
+  PbtPChar(Output^)^ := PChar(string(PbtPAnsiChar(Input^)^));
+  {$ELSE}
+  PbtPChar(Output^)^ := PChar(PbtPAnsiChar(Input^)^);
+  {$ENDIF}
+end;
+
+class procedure TSE2StringHelper.PAnsiCharToPWideChar(Input,
+  Output: Pointer);
+begin
+  PbtPWideChar(Output^)^ :=
+    PWideChar(
+      {$IFDEF DELPHI2009UP}
+         UTF8ToWideString( AnsiToUtf8( string(PbtAnsiString(Input^)^)))
+      {$ELSE}
+         UTF8Decode(AnsiToUtf8(PbtAnsiString(Input^)^))
+      {$ENDIF}
+    );
+end;
+
+class procedure TSE2StringHelper.PAnsiCharToString(Input, Ouptut: Pointer);
+begin
+  PbtString(Ouptut^)^ := string(PbtPAnsiChar(Input^)^);
+end;
+
+class procedure TSE2StringHelper.PAnsiCharToUTF8(Input, Output: Pointer);
+begin
+  PbtUTF8String(Output^)^ := AnsiToUtf8(string(PbtPAnsiChar(Input^)^));
+end;
+
+class procedure TSE2StringHelper.PAnsiCharToWide(Input, Output: Pointer);
+begin
+  PbtWideString(Output^)^ :=
+    {$IFDEF DELPHI2009UP}
+       UTF8ToWideString( AnsiToUtf8( string(PbtPAnsiChar(Input^)^) ));
+    {$ELSE}
+       UTF8Decode(AnsiToUtf8(AnsiString(PbtPAnsiChar(Input^)^)));
+    {$ENDIF}
+end;
+
+class procedure TSE2StringHelper.PWideCharToAnsiString(Input,
+  Output: Pointer);
+begin
+  PbtAnsiString(Output^)^ := AnsiString(Utf8ToAnsi(UTF8Encode(PbtPWideChar(Input^)^)));
+end;
+
+class procedure TSE2StringHelper.PWideCharToChar(Input, Output: Pointer);
+begin
+  {$IFDEF DELPHI2009UP}
+  PbtPChar(Output^)^ := PChar(PbtPWideChar(Input^)^);
+  {$ELSE}
+  PbtPChar(Output^)^ := PChar(Utf8ToAnsi(UTF8Encode(PbtPWideChar(Input^)^)));
+  {$ENDIF}
+end;
+
+class procedure TSE2StringHelper.PWideCharToPAnsiChar(Input,
+  Output: Pointer);
+begin
+  PbtPAnsiChar(Output^)^ := PAnsiChar(AnsiString(Utf8ToAnsi(UTF8Encode(PbtPWideChar(Input^)^))));
+end;
+
+class procedure TSE2StringHelper.PWideCharToString(Input, Ouptut: Pointer);
+begin
+  {$IFDEF DELPHI2009UP}
+  PbtString(Ouptut^)^ := string(PbtPWideChar(Input^)^);
+  {$ELSE}
+  PbtString(Ouptut^)^ := Utf8ToAnsi(UTF8Encode(PbtPWideChar(Input^)^));
+  {$ENDIF}
+end;
+
+class procedure TSE2StringHelper.PWideCharToUTF8(Input, Output: Pointer);
+begin
+  PbtUTF8String(Output^)^ := UTF8Encode(PbtPWideChar(Input^)^);
+end;
+
+class procedure TSE2StringHelper.PWideCharToWide(Input, Output: Pointer);
+begin
+  PbtWideString(Output^)^ := PbtPWideChar(Input^)^;
+end;
+
+class procedure TSE2StringHelper.StringToAnsiString(Input,
+  Ouptut: Pointer);
+begin
+  PbtAnsiString(Ouptut^)^ := AnsiString(PbtString(Input^)^);
 end;
 
 class procedure TSE2StringHelper.StringToChar(Input, Output: Pointer);
@@ -1229,29 +1704,77 @@ begin
   PbtPChar(Output^)^ := PChar(PbtString(Input^)^);
 end;
 
+class procedure TSE2StringHelper.StringToPAnsiChar(Input, Output: Pointer);
+begin
+  PbtPAnsiChar(Output^)^ := PAnsiChar(AnsiString(PbtString(Input^)^));
+end;
+
+class procedure TSE2StringHelper.StringToPWideChar(Input, Output: Pointer);
+begin
+  PbtPWideChar(Output^)^ :=
+    PWideChar(
+      {$IFDEF DELPHI2009UP}
+         PChar( PbtString(Input^)^)
+      {$ELSE}
+         UTF8Decode(AnsiToUtf8(PbtString(Input^)^))
+      {$ENDIF}
+    );
+end;
+
 class procedure TSE2StringHelper.StringToUTF8(Input, Output: Pointer);
 begin
+  {$IFDEF DELPHI2009UP}
+  PbtUTF8String(Output^)^ := UTF8Encode(PbtString(Input^)^);
+  {$ELSE}
   PbtUTF8String(Output^)^ := AnsiToUtf8(PbtString(Input^)^);
+  {$ENDIF}
 end;
 
 class procedure TSE2StringHelper.StringToWide(Input, Output: Pointer);
 begin
   PbtWideString(Output^)^ :=
     {$IFDEF DELPHI2009UP}
-       UTF8ToWideString( AnsiToUtf8( PbtString(Input^)^));
+       PChar( PbtString(Input^)^)
     {$ELSE}
-       UTF8Decode(AnsiToUtf8(PbtString(Input^)^));
+       UTF8Decode(AnsiToUtf8(PbtString(Input^)^))
     {$ENDIF}
+end;
+
+class procedure TSE2StringHelper.UTF8ToAnsiString(Input, Ouptut: Pointer);
+begin
+  PbtAnsiString(Ouptut^)^ := AnsiString(Utf8ToAnsi(PbtUTF8String(Input^)^));
 end;
 
 class procedure TSE2StringHelper.UTF8ToChar(Input, Output: Pointer);
 begin
+  {$IFDEF DELPHI2009UP}
+  PbtPChar(Output^)^ := PChar(System.UTF8ToString( PbtUTF8String(Input^)^) );
+  {$ELSE}
   PbtPChar(Output^)^ := PChar(Utf8ToAnsi(PbtUTF8String(Input^)^));
+  {$ENDIF}
+end;
+
+class procedure TSE2StringHelper.UTF8ToPAnsiChar(Input, Output: Pointer);
+begin
+  PbtPAnsiChar(Output^)^ := PAnsiChar(AnsiString(Utf8ToAnsi(PbtUTF8String(Input^)^)));
+end;
+
+class procedure TSE2StringHelper.UTF8ToPWideChar(Input, Output: Pointer);
+begin
+  {$IFDEF DELPHI2009UP}
+  PbtPWideChar(Output^)^ := PWideChar(System.UTF8ToString(PbtUTF8String(Input^)^));
+  {$ELSE}
+  PbtPWideChar(Output^)^ := PWideChar(UTF8Decode(PbtUTF8String(Input^)^));
+  {$ENDIF}
 end;
 
 class procedure TSE2StringHelper.UTF8ToString(Input, Output: Pointer);
 begin
+  {$IFDEF DELPHI2009UP}
+  PbtString(Output^)^ := System.UTF8ToString(PbtUTF8String(Input^)^);
+  {$ELSE}
   PbtString(Output^)^ := Utf8ToAnsi(PbtUTF8String(Input^)^);
+  {$ENDIF}
 end;
 
 class procedure TSE2StringHelper.UTF8ToWide(Input, Output: Pointer);
@@ -1264,14 +1787,37 @@ begin
     {$ENDIF}
 end;
 
+class procedure TSE2StringHelper.WideToAnsiString(Input, Ouptut: Pointer);
+begin
+  PbtAnsiString(Ouptut^)^ := AnsiString(Utf8ToAnsi(UTF8Encode(PbtWideString(Input^)^)));
+end;
+
 class procedure TSE2StringHelper.WideToChar(Input, Output: Pointer);
 begin
+  {$IFDEF DELPHI2009UP}
+  PbtPChar(Output^)^ := PChar(PbtWideString(Input^)^);
+  {$ELSE}
   PbtPChar(Output^)^ := PChar(Utf8ToAnsi(UTF8Encode(PbtWideString(Input^)^)));
+  {$ENDIF}
+end;
+
+class procedure TSE2StringHelper.WideToPAnsiChar(Input, Output: Pointer);
+begin
+  PbtPAnsiChar(Output^)^ := PAnsiChar(AnsiString(Utf8ToAnsi(UTF8Encode(PbtWideString(Input^)^))));
+end;
+
+class procedure TSE2StringHelper.WideToPWideChar(Input, Output: Pointer);
+begin
+  PbtPWideChar(Output^)^ := PWideChar(PbtWideString(Input^)^);
 end;
 
 class procedure TSE2StringHelper.WideToString(Input, Output: Pointer);
 begin
+  {$IFDEF DELPHI2009UP}
+  PbtString(Output^)^ := string(PbtWideString(Input^)^);
+  {$ELSE}
   PbtString(Output^)^ := Utf8ToAnsi(UTF8Encode(PbtWideString(Input^)^));
+  {$ENDIF}
 end;
 
 class procedure TSE2StringHelper.WideToUTF8(Input, Output: Pointer);
