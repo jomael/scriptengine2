@@ -27,6 +27,9 @@ type
   TbtUTF8String   = UTF8String;
   TbtPChar        = PChar;
   TbtWideString   = WideString;
+  TbtAnsiString   = AnsiString;
+  TbtPAnsiChar    = PAnsiChar;
+  TbtPWideChar    = PWideChar;
 
   PbtU8           = ^TbtU8;
   PbtS8           = ^TbtS8;
@@ -43,6 +46,9 @@ type
   PbtUTF8String   = ^TBtUTF8String;
   PbtPChar        = ^TbtPChar;
   PbtWideString   = ^TbtWideString;
+  PbtAnsiString   = ^TbtAnsiString;
+  PbtPAnsiChar    = ^TbtPAnsiChar;
+  PbtPWideChar    = ^TbtPWideChar;
 
 const                          
   btU8                     = 1;
@@ -60,7 +66,10 @@ const
   btWideString             = 12;
   btPChar                  = 13;
   btPointer                = 14;
-  btObject                 = 15;
+  btObject                 = 15; 
+  btAnsiString             = 16;
+  btPAnsiChar              = 17;
+  btPWideChar              = 18;
 
 
   btReturnAddress          = 40;

@@ -126,6 +126,9 @@ begin
   DoAddType('UTF8String', btUTF8String, SizeOf(Pointer), visPublic, nil, 'Represents a list of utf-8 encoded chars');
   DoAddType('WideString', btWideString, SizeOf(Pointer), visPublic, nil, 'Represents a list of utf-16 encoded chars');
   DoAddType('PChar', btPChar, SizeOf(Pointer), visPublic, nil, 'Represents a pointer to a list of chars');
+  DoAddType('AnsiString', btAnsiString, SizeOf(Pointer), visPublic, nil, 'Represents a list of ansi chars');
+  DoAddType('PAnsiChar', btPAnsiChar, SizeOf(Pointer), visPublic, nil, 'Represents a pointer to a list of ansi chars');
+  DoAddType('PWideChar', btPWideChar, SizeOf(Pointer), visPublic, nil, 'Represents a pointer to a list of utf-16 encoded chars');
 
   DoAddType('Single', btSingle, SizeOf(Single), visPublic, nil, 'Represents a single precision floating point value');
   DoAddType(C_SE2Double, btDouble, SizeOf(Double), visPublic, nil, 'Represents a double precision floating point value');

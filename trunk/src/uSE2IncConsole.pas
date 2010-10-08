@@ -87,6 +87,9 @@ const
      '    class procedure WriteLine(const s: UTF8String); external; overload;'+#13#10+
      '    class procedure WriteLine(const s: WideString); external; overload;'+#13#10+
      '    class procedure WriteLine(const s: PChar); external; overload;'+#13#10+
+     '    class procedure WriteLine(const s: AnsiString); external; overload;'+#13#10+
+     '    class procedure WriteLine(const s: PAnsiChar); external; overload;'+#13#10+
+     '    class procedure WriteLine(const s: PWideChar); external; overload;'+#13#10+
      '    class procedure WriteLine(const o: TObject); overload;'+#13#10+
      '    /// Appends the content to the output window and adds a line break'+#13#10+
      '    class procedure WriteLine; external; overload;'+#13#10+
@@ -104,10 +107,13 @@ const
      '    class procedure Write(p: pointer); external; overload;'+#13#10+
      '    class procedure Write(const s: string); external; overload;'+#13#10+
      '    class procedure Write(const s: UTF8String); external; overload;'+#13#10+
-     '    class procedure Write(const s: WideString); external; overload;'+#13#10+  
-     '    class procedure Write(const o: TObject); overload;'+#13#10+
-     '    /// Appends the content to the output window'+#13#10+
+     '    class procedure Write(const s: WideString); external; overload;'+#13#10+
      '    class procedure Write(const s: PChar); external; overload;'+#13#10+
+     '    class procedure Write(const s: AnsiString); external; overload;'+#13#10+
+     '    class procedure Write(const s: PAnsiChar); external; overload;'+#13#10+
+     '    class procedure Write(const s: PWideChar); external; overload;'+#13#10+
+     '    /// Appends the content to the output window'+#13#10+
+     '    class procedure Write(const o: TObject); overload;'+#13#10+
 
      '    /// Returns true if the user is pressing any key at the moment, otherwise false'+#13#10+
      '    class function  KeyPressed: boolean; external;'+#13#10+
@@ -226,6 +232,9 @@ type
     class procedure WriteLineU(const s: UTF8String);
     class procedure WriteLineW(const s: WideString);
     class procedure WriteLineC(const s: PChar);
+    class procedure WriteLineAS(const s: AnsiString);
+    class procedure WriteLineAC(const s: PAnsiChar);
+    class procedure WriteLineWC(const s: PWideChar);
     class procedure WriteLine;
 
     class procedure WriteU8(i: byte);
@@ -240,9 +249,12 @@ type
     class procedure WriteB(b: boolean);
     class procedure WriteP(p: pointer);
     class procedure WriteS(const s: string);
-    class procedure WriteU(const s: UTF8String); 
-    class procedure WriteW(const s: WideString); 
+    class procedure WriteU(const s: UTF8String);
+    class procedure WriteW(const s: WideString);
     class procedure WriteC(const s: PChar);
+    class procedure WriteAS(const s: AnsiString);
+    class procedure WriteAC(const s: PAnsiChar);
+    class procedure WriteWC(const s: PWideChar);
 
     class function  GetForegroundColor: TColor;
     class function  GetBackgroundColor: TColor;
@@ -307,7 +319,11 @@ begin
     Target.Method['Console.WriteLine[12]', C_UnitName] := @TConsole.WriteLineU;
     Target.Method['Console.WriteLine[13]', C_UnitName] := @TConsole.WriteLineW;
     Target.Method['Console.WriteLine[14]', C_UnitName] := @TConsole.WriteLineC;
-    Target.Method['Console.WriteLine[16]', C_UnitName] := @TConsole.WriteLine;
+    Target.Method['Console.WriteLine[15]', C_UnitName] := @TConsole.WriteLineAS;
+    Target.Method['Console.WriteLine[16]', C_UnitName] := @TConsole.WriteLineAC;
+    Target.Method['Console.WriteLine[17]', C_UnitName] := @TConsole.WriteLineWC;
+    // 18 is TObject and is not external !!
+    Target.Method['Console.WriteLine[19]', C_UnitName] := @TConsole.WriteLine;
 
     Target.Method['Console.Write[0]', C_UnitName] := @TConsole.WriteU8;
     Target.Method['Console.Write[1]', C_UnitName] := @TConsole.WriteS8;
@@ -324,6 +340,10 @@ begin
     Target.Method['Console.Write[12]', C_UnitName] := @TConsole.WriteU;
     Target.Method['Console.Write[13]', C_UnitName] := @TConsole.WriteW;
     Target.Method['Console.Write[14]', C_UnitName] := @TConsole.WriteC;
+    Target.Method['Console.Write[15]', C_UnitName] := @TConsole.WriteAS;
+    Target.Method['Console.Write[16]', C_UnitName] := @TConsole.WriteAC;
+    Target.Method['Console.Write[17]', C_UnitName] := @TConsole.WriteWC;
+    // 18 is TObject and is not external !!
 
     Target.Method['Console.KeyPressed[0]', C_UnitName] := @TConsole.KeyPressed;
     Target.Method['Console.ReadLine[0]', C_UnitName] := @TConsole.ReadLine;
@@ -509,12 +529,16 @@ end;
 
 class procedure TConsole.WriteW(const s: WideString);
 begin
-  TConsole.WriteS(Utf8ToAnsi(UTF8Encode(s)));
+  TConsole.WriteS(s);
 end;
 
 class procedure TConsole.WriteU(const s: UTF8String);
 begin
+  {$IFDEF DELPHI2009UP}
+  TConsole.WriteS(UTF8ToString(s));
+  {$ELSE}
   TConsole.WriteS(Utf8ToAnsi(s));
+  {$ENDIF}
 end;
 
 class procedure TConsole.WriteS(const s: string);
@@ -531,7 +555,11 @@ end;
 
 class procedure TConsole.WriteLineU(const s: UTF8String);
 begin
+  {$IFDEF DELPHI2009UP}
+  TConsole.WriteLineS(UTF8ToString(s));
+  {$ELSE}
   TConsole.WriteLineS(Utf8ToAnsi(s));
+  {$ENDIF}
 end;
 
 class procedure TConsole.WriteLineC(const s: PChar);
@@ -541,8 +569,8 @@ end;
 
 class procedure TConsole.WriteLineW(const s: WideString);
 begin
-  TConsole.WriteLineS(Utf8ToAnsi(UTF8Encode(s)));
-end;         
+  TConsole.WriteLineS(s);
+end;
 
 class procedure TConsole.WriteLineP(p: pointer);
 begin
@@ -631,6 +659,40 @@ class procedure TConsole.SetLine(i: integer; s: string);
 begin
   if @TSE2Console.SetLine <> nil then
      TSE2Console.SetLine(i, s);
+end;
+
+class procedure TConsole.WriteAC(const s: PAnsiChar);
+begin            
+  {$IFDEF DELPHI2009UP}
+  TConsole.WriteS(string(s));
+  {$ELSE}
+  TConsole.WriteS(string(s));
+  {$ENDIF}
+end;
+
+class procedure TConsole.WriteAS(const s: AnsiString);
+begin
+  TConsole.WriteS(string(s));
+end;
+
+class procedure TConsole.WriteLineAC(const s: PAnsiChar);
+begin
+  TConsole.WriteLineS(string(s));
+end;
+
+class procedure TConsole.WriteLineAS(const s: AnsiString);
+begin
+  TConsole.WriteLineS(string(s));
+end;
+
+class procedure TConsole.WriteLineWC(const s: PWideChar);
+begin
+  TConsole.WriteLineS(WideString(s));
+end;
+
+class procedure TConsole.WriteWC(const s: PWideChar);
+begin
+  TConsole.WriteS(WideString(s));
 end;
 
 initialization

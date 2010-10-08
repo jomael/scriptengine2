@@ -759,7 +759,7 @@ begin
       end;
   soDAT_LOADRES :
       begin
-        if not (FStack.Top.AType in [btString, btUTF8String, btWideString, btPChar]) then
+        if not (FStack.Top.AType in [btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar]) then
         begin
           FStackHelper.FreeVarContent(FStack.Top);
           FStack.Top.AType := btString;
@@ -1476,10 +1476,21 @@ var MetaEntry  : TSE2MetaEntry;
         begin
           newEntry := FStack.PushNew(aParamType);
           case aParamType of
+          (* OLD CODE: v0.5.3.3
           btString     : PbtString(newEntry.tString^)^     := string(PPointer(Data)^);
           btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
-          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
+          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^)); *)
+
+          
+          btString     : PbtString(newEntry.tString^)^     := TbtString(PPointer(Data)^);
+          btWideString : PbtWideString(newEntry.tString^)^ := TbtWideString(PPointer(Data)^);
+          btUTF8String : PbtUTF8String(newEntry.tString^)^ := TbtUTF8STring(PPointer(Data)^);
+          btPChar      : PbtPChar(newEntry.tString^)^      := TbtPChar(PPointer(Data)^);
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(PPointer(Data)^);
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(PPointer(Data)^);
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(PPointer(Data)^);
+
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -1487,10 +1498,19 @@ var MetaEntry  : TSE2MetaEntry;
         begin
           newEntry := FStack.PushNew(aParamType);
           case aParamType of
+          (* OLD CODE: v0.5.3.3
           btString     : PbtString(newEntry.tString^)^     := string(PPointer(Data)^);
           btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
-          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
+          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));  *)
+          
+          btString     : PbtString(newEntry.tString^)^     := TbtString(PPointer(Data)^);
+          btWideString : PbtWideString(newEntry.tString^)^ := TbtWideString(PPointer(Data)^);
+          btUTF8String : PbtUTF8String(newEntry.tString^)^ := TbtUTF8STring(PPointer(Data)^);
+          btPChar      : PbtPChar(newEntry.tString^)^      := TbtPChar(PPointer(Data)^);
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(PPointer(Data)^);
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(PPointer(Data)^);
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(PPointer(Data)^);
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -1498,10 +1518,21 @@ var MetaEntry  : TSE2MetaEntry;
         begin
           newEntry := FStack.PushNew(aParamType);
           case aParamType of
+          (* OLD CODE: v0.5.3.3
           btString     : PbtString(newEntry.tString^)^     := string(PPointer(Data)^);
           btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
-          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
+          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));   *)
+
+          
+          btString     : PbtString(newEntry.tString^)^     := TbtString(PPointer(Data)^);
+          btWideString : PbtWideString(newEntry.tString^)^ := TbtWideString(PPointer(Data)^);
+          btUTF8String : PbtUTF8String(newEntry.tString^)^ := TbtUTF8STring(PPointer(Data)^);
+          btPChar      : PbtPChar(newEntry.tString^)^      := TbtPChar(PPointer(Data)^);
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(PPointer(Data)^);
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(PPointer(Data)^);
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(PPointer(Data)^);
+
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -1509,10 +1540,21 @@ var MetaEntry  : TSE2MetaEntry;
         begin
           newEntry := FStack.PushNew(aParamType);
           case aParamType of
+          (* OLD CODE: v0.5.3.3
           btString     : PbtString(newEntry.tString^)^     := string(PPointer(Data)^);
           btWideString : PbtWideString(newEntry.tString^)^ := {$IFDEF DELPHI2009UP}UTF8ToWideString{$ELSE}UTF8Decode{$ENDIF}(AnsiToUtf8(string(PPointer(Data)^)));
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := AnsiToUtf8(string(PPointer(Data)^));
-          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));
+          btPChar      : PbtPChar(newEntry.tString^)^      := PChar(string(PPointer(Data)^));       *)
+
+          
+          btString     : PbtString(newEntry.tString^)^     := TbtString(PPointer(Data)^);
+          btWideString : PbtWideString(newEntry.tString^)^ := TbtWideString(PPointer(Data)^);
+          btUTF8String : PbtUTF8String(newEntry.tString^)^ := TbtUTF8STring(PPointer(Data)^);
+          btPChar      : PbtPChar(newEntry.tString^)^      := TbtPChar(PPointer(Data)^);
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(PPointer(Data)^);
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(PPointer(Data)^);
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(PPointer(Data)^);
+
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -1520,10 +1562,45 @@ var MetaEntry  : TSE2MetaEntry;
         begin
           newEntry := FStack.PushNew(aParamType);
           case aParamType of
+          (* OLD CODE: v0.5.3.3
           btString     : PbtString(newEntry.tString^)^     := Utf8ToAnsi(UTF8Encode(WideString(PPointer(Data)^)));
           btWideString : PbtWideString(newEntry.tString^)^ := WideString(PPointer(Data)^);
           btUTF8String : PbtUTF8String(newEntry.tString^)^ := UTF8Encode(WideString(PPointer(Data)^));
           btPChar      : PbtPChar(newEntry.tString^)^      := PChar(Utf8ToAnsi(UTF8Encode(WideString(PPointer(Data)^))));
+          *)
+
+          btString     :
+              begin
+                PbtString(newEntry.tString^)^ :=
+                  {$IFDEF DELPHI2009UP}
+                    string(WideString(PPointer(Data)^));
+                  {$ELSE}
+                    Utf8ToAnsi(UTF8Encode(WideString(PPointer(Data)^)));
+                  {$ENDIF}
+              end;
+          btWideString : PbtWideString(newEntry.tString^)^ := WideString(PPointer(Data)^);
+          btUTF8String :
+              begin
+                PbtUTF8String(newEntry.tString^)^ :=
+                  {$IFDEF DELPHI2009UP}
+                    UTF8Encode(WideString(PPointer(Data)^));
+                  {$ELSE}
+                    UTF8Encode(WideString(PPointer(Data)^));
+                  {$ENDIF}
+              end;
+          btPChar      :
+              begin
+                PbtPChar(newEntry.tString^)^      :=
+                  {$IFDEF DELPHI2009UP}
+                    PChar(WideString(PPointer(Data)^));
+                  {$ELSE}
+                    PChar(Utf8ToAnsi(UTF8Encode(WideString(PPointer(Data)^))));
+                  {$ENDIF}
+              end;
+          btAnsiString : PbtAnsiString(newEntry.tString^)^ := TbtAnsiString(WideString(PPointer(Data)^));
+          btPAnsiChar  : PbtPAnsiChar(newEntry.tString^)^  := TbtPAnsiChar(AnsiString(WideString(PPointer(Data)^)));
+          btPWideChar  : PbtPWideChar(newEntry.tString^)^  := TbtPWideChar(WideString(PPointer(Data)^));
+
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
           end;
         end;
@@ -1638,13 +1715,11 @@ var MetaEntry  : TSE2MetaEntry;
             SetVariableContent(aParamType, vtInt64, Parameter.VPointer);
         btSingle, btDouble :
             SetVariableContent(aParamType, btExtended, Parameter.VPointer);
-        btString :
-            SetVariableContent(aParamType, vtAnsiString, Parameter.VPointer);
-        btUTF8String :
+        btString, btUTF8String, btAnsiString :
             SetVariableContent(aParamType, vtAnsiString, Parameter.VPointer);
         btWideString :
             SetVariableContent(aParamType, vtWideString, Parameter.VPointer);
-        btPChar :
+        btPChar, btPAnsiChar, btPWideChar :
             SetVariableContent(aParamType, vtAnsiString, Parameter.VPointer);
         btPointer, btRecord, btArray, btObject :
             SetVariableContent(aParamType, vtPointer, Parameter.VPointer, i);
@@ -1692,6 +1767,9 @@ var MetaEntry  : TSE2MetaEntry;
         btUTF8String   : PbtUTF8String(Parameter.VPointer)^ := PbtUTF8String(Data^.tString^)^;
         btWideString   : PbtWideString(Parameter.VPointer)^ := PbtWideString(Data^.tString^)^;
         btPChar        : PbtPChar(Parameter.VPointer)^      := PbtPChar(Data^.tString^)^;
+        btAnsiString   : PbtAnsiString(Parameter.VPointer)^ := PbtAnsiString(Data^.tString^)^; 
+        btPAnsiChar    : PbtPAnsiChar(Parameter.VPointer)^      := PbtPAnsiChar(Data^.tString^)^;
+        btPWideChar    : PbtPWideChar(Parameter.VPointer)^      := PbtPWideChar(Data^.tString^)^;
         btPointer,
         btArray        : PPointer(Parameter.VPointer)^    := Pointer(Data^.tPointer^);
         btRecord       :
@@ -1733,6 +1811,9 @@ var MetaEntry  : TSE2MetaEntry;
       btUTF8String : result := PbtUTF8String(FStack.Top^.tString^)^;
       btWideString : result := PbtWideString(FStack.Top^.tString^)^;
       btPChar      : result := string(PbtPChar(FStack.Top^.tString^)^);
+      btAnsiString : result := PbtAnsiString(FStack.Top^.tString^)^;  
+      btPAnsiChar  : result := AnsiString(PbtPAnsiChar(FStack.Top^.tString^)^);
+      btPWideChar  : result := WideString(PbtPWideChar(FStack.Top^.tString^)^);
       btArray,
       btPointer,
       btObject     : result := cardinal(FStack.Top^.tPointer^);

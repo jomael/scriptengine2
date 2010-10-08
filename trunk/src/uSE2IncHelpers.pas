@@ -58,7 +58,51 @@ const
           '    /// Get the corresponding ascii-table index of the first character' + #13#10 + 
           '    function ToASCIIIndex: word;' + #13#10 + 
           '    property Chars[index: integer]: string read GetChar;' + #13#10 + 
-          '  end;' + #13#10 + 
+          '  end;' + #13#10 +
+
+          '  TAnsiStringHelper = helper for AnsiString' + #13#10 + 
+          '  protected' + #13#10 +
+          '    function GetChar(index: integer): AnsiString;' + #13#10 + 
+          '  public' + #13#10 + 
+          '    function Copy(Start, Count: integer): AnsiString; overload; // deprecated ''use .SubString instead'';' + #13#10 + 
+          '    /// Copy a substring out of the string' + #13#10 + 
+          '    function Copy(Start: integer): AnsiString; overload; // deprecated ''use .SubString instead'';' + #13#10 + 
+          '    /// Insert the string "value" at "Position"' + #13#10 + 
+          '    function Insert(Position: integer; value: AnsiString): AnsiString;' + #13#10 + 
+          '    function IndexOf(value: AnsiString): integer; overload;' + #13#10 + 
+          '    /// Get the first occurance of "value"' + #13#10 + 
+          '    function IndexOf(value: AnsiString; SearchStart: integer): integer; overload;' + #13#10 + 
+          '    /// Get the length of the string' + #13#10 + 
+          '    function Length: integer;' + #13#10 + 
+          '    function Replace(OldValue, NewValue: AnsiString): AnsiString; overload;' + #13#10 + 
+          '    /// Replace a token with a new token' + #13#10 + 
+          '    function Replace(OldValue, NewValue: AnsiString; Flags: TReplaceFlags): AnsiString; overload;' + #13#10 + 
+          '    /// Convert every character to the corresponding upper case character if available' + #13#10 + 
+          '    function ToUpper: AnsiString;' + #13#10 + 
+          '    /// Convert every character to the corresponding lower case character if available' + #13#10 + 
+          '    function ToLower: AnsiString;' + #13#10 + 
+          '    function SubString(StartIndex: integer): AnsiString; overload;' + #13#10 + 
+          '    /// Copy a substring out of the string' + #13#10 + 
+          '    function SubString(StartIndex, Length: integer): AnsiString; overload;' + #13#10 + 
+          '    /// Remove every control and white space character at the beginning and at the end of the string' + #13#10 + 
+          '    function Trim: AnsiString;' + #13#10 + 
+          '    /// Remove every control and white space character at the beginning of the string' + #13#10 + 
+          '    function TrimLeft: AnsiString;' + #13#10 + 
+          '    /// Remove every control and white space character at the end of the string' + #13#10 + 
+          '    function TrimRight: AnsiString;' + #13#10 + 
+          '    function EndsWith(const value: AnsiString): boolean; overload;' + #13#10 + 
+          '    /// Returns true, if the last characters are equal to "value"' + #13#10 + 
+          '    function EndsWith(const value: AnsiString; CaseSensitive: boolean): boolean; overload;' + #13#10 + 
+          '    function StartsWith(const value: AnsiString): boolean; overload;' + #13#10 + 
+          '    /// Returns true, if the first characters are equal to "value"' + #13#10 + 
+          '    function StartsWith(const value: AnsiString; CaseSensitive: boolean): boolean; overload;' + #13#10 + 
+          '    /// Returns the last occurance of "value" inside the string' + #13#10 + 
+          '    function LastIndexOf(const value: AnsiString): integer;' + #13#10 + 
+          '    /// Get the corresponding ascii-table index of the first character' + #13#10 + 
+          '    function ToASCIIIndex: word;' + #13#10 + 
+          '    property Chars[index: integer]: AnsiString read GetChar;' + #13#10 + 
+          '  end;' + #13#10 +
+
           '  TWideStringHelper = helper for WideString' + #13#10 + 
           '  protected' + #13#10 + 
           '    function GetChar(index: integer): WideString;' + #13#10 + 
@@ -424,7 +468,7 @@ const
 
 
 
-          'function TStringHelper.Insert(Position: integer; value: string): string;' + #13#10 + 
+          'function TStringHelper.Insert(Position: integer; value: string): string;' + #13#10 +
           'begin' + #13#10 + 
           '  Strings.Insert(value, Self, Position);' + #13#10 + 
           '  result := Self;' + #13#10 + 
@@ -530,7 +574,118 @@ const
           'function TStringHelper.ToASCIIIndex: word;' + #13#10 + 
           'begin' + #13#10 + 
           '  result := Strings.ToASCIIIndex(Self);' + #13#10 + 
+          'end;' + #13#10 +
+
+
+          'function TAnsiStringHelper.Insert(Position: integer; value: AnsiString): AnsiString;' + #13#10 + 
+          'begin' + #13#10 +
+          '  AnsiStrings.Insert(value, Self, Position);' + #13#10 + 
+          '  result := Self;' + #13#10 + 
           'end;' + #13#10 + 
+          'function TAnsiStringHelper.GetChar(index: integer): AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Copy(Self, index, 1);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.ToUpper: AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.UpperCase(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.ToLower: AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.LowerCase(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.Length: integer;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Length(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.Replace(OldValue, NewValue: AnsiString): AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Replace(Self, OldValue, NewValue, [rfReplaceAll, rfIgnoreCase]);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.Replace(OldValue, NewValue: AnsiString; Flags: TReplaceFlags): AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Replace(Self, OldValue, NewValue, Flags);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.Copy(Start, Count: integer): AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Copy(Self, Start, Count);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.Copy(Start: integer): AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Copy(Self, Start, $7FFFFFFF);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.SubString(StartIndex: integer): AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Copy(Self, StartIndex, $7FFFFFFF);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.SubString(StartIndex, Length: integer): AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Copy(Self, StartIndex, Length);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.IndexOf(value: AnsiString): integer;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Pos(value, Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.IndexOf(value: AnsiString; SearchStart: integer): integer;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.PosEx(value, Self, SearchStart);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.TrimLeft: AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.TrimLeft(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.TrimRight: AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.TrimRight(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.Trim: AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.Trim(Self);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.EndsWith(const value: AnsiString): boolean;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.CompareStr(Self.SubString(Self.Length - value.Length + 1, value.Length), value) = 0;' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.EndsWith(const value: AnsiString; CaseSensitive: boolean): boolean;' + #13#10 + 
+          'var s: AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  s := Self.SubString(Self.Length - value.Length + 1, value.Length);' + #13#10 + 
+          '  if CaseSensitive then' + #13#10 + 
+          '     result := AnsiStrings.CompareStr(s, value) = 0' + #13#10 + 
+          '  else' + #13#10 + 
+          '     result := AnsiStrings.SameText(s, value);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.StartsWith(const value: AnsiString): boolean;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.SameText(Self.SubString(1, value.Length), value);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.StartsWith(const value: AnsiString; CaseSensitive: boolean): boolean;' + #13#10 + 
+          'var s: AnsiString;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  s := Self.SubString(1, value.Length);' + #13#10 + 
+          '  if CaseSensitive then' + #13#10 + 
+          '     result := AnsiStrings.CompareStr(s, value) = 0' + #13#10 + 
+          '  else' + #13#10 + 
+          '     result := AnsiStrings.SameText(s, value);' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.LastIndexOf(const value: AnsiString): integer;' + #13#10 + 
+          'var iSearchStart, iPos: integer;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result       := 0;' + #13#10 + 
+          '  iSearchStart := 0;' + #13#10 + 
+          '  repeat' + #13#10 + 
+          '    iPos := AnsiStrings.PosEx(value, Self, iSearchStart);' + #13#10 + 
+          '    if iPos > 0 then' + #13#10 + 
+          '       result := iPos;' + #13#10 + 
+          '    iSearchStart := iPos + 1;' + #13#10 + 
+          '  until iPos = 0;' + #13#10 + 
+          'end;' + #13#10 + 
+          'function TAnsiStringHelper.ToASCIIIndex: word;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := AnsiStrings.ToASCIIIndex(Self);' + #13#10 + 
+          'end;' + #13#10 +
+
+
           'function TWideStringHelper.Insert(Position: integer; value: WideString): WideString;' + #13#10 + 
           'begin' + #13#10 + 
           '  WideStrings.Insert(value, Self, Position);' + #13#10 + 

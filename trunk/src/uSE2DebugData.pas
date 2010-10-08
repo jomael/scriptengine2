@@ -276,6 +276,9 @@ begin
   btString,
   btWideString,
   btUTF8String,
+  btAnsiString,
+  btPAnsiChar,
+  btPWideChar,
   btPChar :
       begin
         if Pointer(Data^.tPointer^) = nil then
@@ -289,6 +292,9 @@ begin
            btUTF8String  : s := Utf8ToAnsi(PbtUTF8String(Data^.tPointer^)^);
            btPChar       : s := PbtPChar(Data^.tPointer^)^;
            btWideString  : s := Utf8ToAnsi( UTF8Encode( PbtWideString(Data^.tPointer^)^ ) );
+           btAnsiString  : s := string( AnsiString( PbtAnsiString(Data^.tPointer^)^ ));
+           btPAnsiChar   : s := string( AnsiString(PbtPAnsiChar(Data^.tPointer^)^) );
+           btPWideChar   : s := string( TbtWideString(PbtPWideChar(Data^.tPointer^)^) );
            end;
 
            if MaxStrLen > -1 then
@@ -338,14 +344,17 @@ begin
   btU32                   : result := 'U32';
   btS32                   : result := 'S32';
   btS64                   : result := 'S64';
-  btSingle                : result := 'float';
-  btDouble                : result := 'double';
-  btString                : result := 'string';
-  btPointer               : result := 'pointer';
-  btPChar                 : result := 'pchar';
+  btSingle                : result := 'Float';
+  btDouble                : result := 'Double';
+  btString                : result := 'String';
+  btPointer               : result := 'Pointer';
+  btPChar                 : result := 'PChar';
   btObject                : result := 'object';
   btUTF8String            : result := 'UTF8String';
   btWideString            : result := 'WideString';
+  btAnsiString            : result := 'AnsiString';
+  btPAnsiChar             : result := 'PAnsiChar';
+  btPWideChar             : result := 'PWideChar';
   btRecord                : result := 'record';
   btProcPtr               : result := 'ProcPtr';
   else                      result := '{unkown}';

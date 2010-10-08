@@ -113,7 +113,8 @@ type
     function  MethodCall(State: TSE2ParseState; Method: TSE2Method; CallMethod: TSE2Method;
                          UseBrackets: boolean = False; LastParamSetter: TSE2SetterEvent = nil;
                          AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil;
-                         NoMagicMemory: boolean = False): TSE2Type;
+                         NoMagicMemory: boolean = False;
+                         AlternativeMethod: TSE2Method = nil): TSE2Type;
     function  Expression(State: TSE2ParseState; Method: TSE2Method; TargetType: TSE2Type): TSE2Type;
     function  FindMatchingMethod(State: TSE2ParseState; Method: TSE2Method; MethodList, ParamExpression: TSE2BaseTypeList; IgnoreFirst: boolean): TSE2Method;
 
@@ -1179,10 +1180,13 @@ begin
               TSE2Class(State.CurrentOwner).Variables := TSE2Class(State.CurrentOwner).Variables + 1;
 
               case TSE2Type(NewVar.AType.InheritRoot).AType of
-              btString     : TSE2Class(State.CurrentOwner).RTTI.Add(btString, NewVar.CodePos, SizeOf(Pointer));
-              btUTF8String : TSE2Class(State.CurrentOwner).RTTI.Add(btUTF8String, NewVar.CodePos, SizeOf(Pointer));
-              btWideString : TSE2Class(State.CurrentOwner).RTTI.Add(btWideString, NewVar.CodePos, SizeOf(Pointer));
-              btPChar      : TSE2Class(State.CurrentOwner).RTTI.Add(btPChar, NewVar.CodePos, SizeOf(Pointer));
+              btString,
+              btUTF8String,
+              btWideString,
+              btPChar,
+              btAnsiString,
+              btPAnsiChar,
+              btPWideChar  : TSE2Class(State.CurrentOwner).RTTI.Add(TSE2Type(NewVar.AType.InheritRoot).AType, NewVar.CodePos, SizeOf(Pointer));
               btArray      : ;
               btRecord     : TSE2Class(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(TSE2Record(NewVar.AType.InheritRoot)));
               end;
@@ -1207,10 +1211,13 @@ begin
 
                 TSE2Record(State.CurrentOwner).RecordSize := TSE2Record(State.CurrentOwner).RecordSize + TSE2Type(NewVar.AType.InheritRoot).DataSize;
                 case TSE2Type(NewVar.AType.InheritRoot).AType of
-                btString     : TSE2Record(State.CurrentOwner).RTTI.Add(btString, NewVar.CodePos, SizeOf(Pointer));
-                btUTF8String : TSE2Record(State.CurrentOwner).RTTI.Add(btUTF8String, NewVar.CodePos, SizeOf(Pointer));
-                btWideString : TSE2Record(State.CurrentOwner).RTTI.Add(btWideString, NewVar.CodePos, SizeOf(Pointer));
-                btPChar      : TSE2Record(State.CurrentOwner).RTTI.Add(btPChar, NewVar.CodePos, SizeOf(Pointer));
+                btString,
+                btUTF8String,
+                btWideString,
+                btPChar,
+                btAnsiString,
+                btPAnsiChar,
+                btPWideChar  : TSE2Class(State.CurrentOwner).RTTI.Add(TSE2Type(NewVar.AType.InheritRoot).AType, NewVar.CodePos, SizeOf(Pointer));
                 btArray      : ;
                 btRecord     : TSE2Record(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(NewVar.AType));
                 end;
@@ -1601,21 +1608,23 @@ begin
         IsFirstPartial := True
       else
       begin
-        for i:=0 to FUnitList.Count-1 do
-          for j:=0 to TSE2Unit(FUnitList[i]).TypeList.Count-1 do
-            if TSE2BaseType(TSE2Unit(FUnitList[i]).TypeList.List.List[j]) is TSE2Class then
-              if TSE2Class(TSE2Unit(FUnitList[i]).TypeList.List.List[j]).IsTypeOf(ClassType) then
+        if not ClassType.IsTypeOf(GetExternalObjectType) then
+        begin
+          for i:=0 to FUnitList.Count-1 do
+            for j:=0 to TSE2Unit(FUnitList[i]).TypeList.Count-1 do
+              if TSE2BaseType(TSE2Unit(FUnitList[i]).TypeList.List.List[j]) is TSE2Class then
+                if TSE2Class(TSE2Unit(FUnitList[i]).TypeList.List.List[j]).IsTypeOf(ClassType) then
+                   RaiseError(petError, 'Can not extend partial class because "'+
+                         TSE2Class(TSE2Unit(FUnitList[i]).TypeList.List.List[j]).GetStrongName +
+                         '" has already derived from the class');
+
+          for j:=0 to TSE2Unit(FUnit).TypeList.Count-1 do
+            if TSE2BaseType(TSE2Unit(FUnit).TypeList.List.List[j]) is TSE2Class then
+              if TSE2Class(TSE2Unit(FUnit).TypeList.List.List[j]).IsTypeOf(ClassType) then
                  RaiseError(petError, 'Can not extend partial class because "'+
-                       TSE2Class(TSE2Unit(FUnitList[i]).TypeList.List.List[j]).GetStrongName +
+                       TSE2Class(TSE2Unit(FUnit).TypeList.List.List[j]).GetStrongName +
                        '" has already derived from the class');
-
-        for j:=0 to TSE2Unit(FUnit).TypeList.Count-1 do
-          if TSE2BaseType(TSE2Unit(FUnit).TypeList.List.List[j]) is TSE2Class then
-            if TSE2Class(TSE2Unit(FUnit).TypeList.List.List[j]).IsTypeOf(ClassType) then
-               RaiseError(petError, 'Can not extend partial class because "'+
-                     TSE2Class(TSE2Unit(FUnit).TypeList.List.List[j]).GetStrongName +
-                     '" has already derived from the class');
-
+        end;
       end;
 
     if (Tokenizer.Token.AType = sesHelper) or IsHelper then
@@ -2998,7 +3007,8 @@ end;
 
 function TSE2Parser.MethodCall(State: TSE2ParseState; Method,
   CallMethod: TSE2Method; UseBrackets: boolean = False; LastParamSetter: TSE2SetterEvent = nil;
-  AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil; NoMagicMemory: boolean = False): TSE2Type;
+  AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil;
+  NoMagicMemory: boolean = False; AlternativeMethod: TSE2Method = nil): TSE2Type;
 var i          : integer;
     iStart     : integer;
     iStop      : integer;
@@ -3031,14 +3041,14 @@ var i          : integer;
            IncreaseMethodStackPositions(State, Method, index + 1, Method.OpCodes.Count-1, -1, iStackSize);
         State.IncStack;
       end else
-      if CallMethod.IsExternal and ((CallMethod.ReturnValue <> nil) or CallMethod.IsOverload) then
+      if CallMethod.IsExternal and ((CallMethod.ReturnValue <> nil) or (CallMethod.IsOverload or (AlternativeMethod <> nil) )) then
       begin
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''), Index, Index > -1);
         if Index > -1 then
            IncreaseMethodStackPositions(State, Method, index + 1, Method.OpCodes.Count-1, -1, iStackSize);
         State.IncStack;
       end else
-      if (CallMethod.ReturnValue <> nil) or (CallMethod.IsOverload) then
+      if (CallMethod.ReturnValue <> nil) or (CallMethod.IsOverload or (AlternativeMethod <> nil)) then
       begin
         if CallMethod.IsStatic then
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, False), ''), Index, Index > -1)
@@ -3087,14 +3097,6 @@ begin
   OldTarget := State.TargetType;
   State.TargetType := nil;
 
-  if (CallMethod.AUnitName <> '') and (CallMethod.Name <> '') then
-      if not CallMethod.IsOverload then
-      {$IFDEF SEII_SMART_LINKING}
-      Method.UsedMethods.Add(CallMethod);
-      {$ELSE}
-      CallMethod.Used := True;
-      {$ENDIF}
-
   case CallMethod.MethodType of
   mtProcedure   : result := nil;
   mtFunction    : result := CallMethod.ReturnValue.AType;
@@ -3116,7 +3118,7 @@ begin
 
   ResultCodeIndex := Method.OpCodes.Count;
   // Add the return value as a new stack element
-  if (result <> nil) or (CallMethod.IsOverload) then
+  if (result <> nil) or (CallMethod.IsOverload) or (AlternativeMethod <> nil) then
   begin
     if (result <> nil) then
        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(TSE2Type(result.InheritRoot).AType), ''))
@@ -3356,6 +3358,38 @@ begin
       State.NoStaticPointer := wasStaticPointer;
     end;
 
+    if AlternativeMethod <> nil then
+    begin
+      if Tokenizer.Token.AType <> sesBecomes then
+      begin
+        LastParamSetter := nil;
+
+        if AlternativeMethod.ReturnValue <> nil then
+           result := AlternativeMethod.ReturnValue.AType
+        else
+           result := nil;
+
+
+        if result <> nil then
+        begin
+          if Method.OpCodes[ResultCodeIndex].OpCode.OpCode = soSTACK_INC then
+          begin
+            PSE2OpSTACK_INC(Method.OpCodes.Items[ResultCodeIndex].OpCode).AType := TSE2Type(result.InheritRoot).AType;
+
+            if result is TSE2Record then
+            begin
+              State.RecordsCreated := State.RecordsCreated + 1;
+              Method.OpCodes.Items[ResultCodeIndex + 1].ChangeOpCode(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + result.GenLinkerName);
+              Method.OpCodes.Items[ResultCodeIndex + 2].ChangeOpCode(TSE2OpCodeGen.REC_MARK_DEL, '');
+            end;
+          end;
+        end;
+
+        CallMethod := AlternativeMethod;
+
+      end;
+    end;
+
     wasStaticPointer := State.NoStaticPointer;
     if Assigned(LastParamSetter) then
        LastParamSetter(Self, State, Method, TSE2Parameter(CallMethod.Params[iStop]).AType);
@@ -3478,7 +3512,7 @@ begin
       // Class must be already in stack - so no push
     end;
 
-    if CallMethod.IsOverload then
+    if CallMethod.IsOverload or (AlternativeMethod <> nil) then
     begin
       if (CallMethod.ReturnValue = nil) then
       begin
@@ -3524,24 +3558,9 @@ var pSearchUnit   : TSE2Unit;
     searchString  : string;
 
   function DoMethodCall(CallMethod: TSE2Method; UseBrackets: boolean = False; LastParamSetter: TSE2SetterEvent = nil;
-             AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil): TSE2Type;
-  //var bCanDec : boolean;
+             AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil; AlternativeMethod: TSE2Method = nil): TSE2Type;
   begin
-    (*if (LastItem is TSE2Variable) or (LastItem is TSE2Property) then
-      if TSE2Method(CallMethod).IsStatic then
-        if not TSE2Method(CallMethod).IsExternal then
-        begin
-          bCanDec := True;
-          if (LastItem is TSE2Property) then
-            if (CallMethod = TSE2Property(LastItem).Getter) or
-               (CallMethod = TSE2Property(LastItem).Setter) then
-               bCanDec := False;
-
-          if bCanDec then
-             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-          State.DecStack;
-        end;      *)
-    result := MethodCall(State, Method, CallMethod, UseBrackets, LastParamSetter, AllowDynamic, ParentType);
+    result := MethodCall(State, Method, CallMethod, UseBrackets, LastParamSetter, AllowDynamic, ParentType, False, AlternativeMethod);
     State.NoStaticPointer := False;
   end;
 
@@ -3937,8 +3956,11 @@ begin
             end else
             if TSE2Property(FindItem).Getter is TSE2Method then
             begin
-              DoMethodCall(TSE2Method(TSE2Property(FindItem).Getter), True);
+              result := DoMethodCall(TSE2Method(TSE2Property(FindItem).Getter), True);
               State.NoStaticPointer := False;
+
+              pSearchParent := result;
+              State.AParent := result;
 
               if Tokenizer.Token.AType = sesDot then
               begin
@@ -3951,28 +3973,73 @@ begin
             if Tokenizer.Token.AType = sesOpenBracket then
             begin
               if TSE2Property(FindItem).Setter = nil then
-                 RaiseError(petError, 'Property is read only');
+              begin
+                if TSE2Property(FindItem).Getter is TSE2Method then
+                begin
+                   DoMethodCall(TSE2Method(TSE2Property(FindItem).Getter), True, nil);
+                   State.NoStaticPointer := False;
 
-              if TSE2Property(FindItem).Setter is TSE2Variable then
-              begin
-                if TSE2Variable(TSE2Property(FindItem).Setter).Parent <> nil then
-                  if TSE2Variable(TSE2Property(FindItem).Setter).IsStatic then
-                    if not State.NoStaticPointer then
-                    begin
-                      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-                      State.DecStack;
-                    end;
-                State.NoStaticPointer := False;
-                SetterCallBack(Self, State, Method, TSE2Property(LastItem).AType);
-                PopStackToVar(State, Method, TSE2Variable(TSE2Property(FindItem).Setter));
-                //RaiseError(petError, 'Variable as setter target not supported yet');
-                 //PushVarToStack(State, Method, TSE2Variable(TSE2Property(FindItem).Getter), False);
-                 //State.IncStack;
+                   result := TSE2Method(TSE2Property(FindItem).Getter).ReturnValue.AType;
+                   LastItem := TSE2Method(TSE2Property(FindItem).Getter).ReturnValue;
+
+                   State.LastVariable := nil;
+                   if not State.IsExpression then
+                      State.LastTargetVar := nil;
+                   pSearchParent := TSE2Method(TSE2Property(FindItem).Getter).ReturnValue.AType;
+                   State.AParent := pSearchParent;
+
+                   if Tokenizer.Token.AType in [sesBecomes] then
+                      RaiseError(petError, 'Property is read only')
+                   else
+                      ExpectToken([sesDot]);
+                   ReadNextToken;
+                   Continue;
+                end else
+                   RaiseError(petError, 'Internal error: property access type is not supported in read only property');
+                //RaiseError(petError, 'Property is read only');
               end else
-              if TSE2Property(FindItem).Setter is TSE2Method then
               begin
-                 DoMethodCall(TSE2Method(TSE2Property(FindItem).Setter), True, SetterCallBack);
-                 State.NoStaticPointer := False;
+                { Invalid code: properties with index can not access
+                if TSE2Property(FindItem).Setter is TSE2Variable then
+                begin
+                  if TSE2Variable(TSE2Property(FindItem).Setter).Parent <> nil then
+                    if TSE2Variable(TSE2Property(FindItem).Setter).IsStatic then
+                      if not State.NoStaticPointer then
+                      begin
+                        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+                        State.DecStack;
+                      end;
+                  State.NoStaticPointer := False;
+                  SetterCallBack(Self, State, Method, TSE2Property(LastItem).AType);
+                  PopStackToVar(State, Method, TSE2Variable(TSE2Property(FindItem).Setter));
+                  //RaiseError(petError, 'Variable as setter target not supported yet');
+                   //PushVarToStack(State, Method, TSE2Variable(TSE2Property(FindItem).Getter), False);
+                   //State.IncStack;
+                end else   }
+                if TSE2Property(FindItem).Setter is TSE2Method then
+                begin
+                   result := DoMethodCall(TSE2Method(TSE2Property(FindItem).Setter), True, SetterCallBack, True, nil,
+                                          TSE2Method(TSE2Property(FindItem).Getter));
+                   State.NoStaticPointer := False;
+
+                   if result <> nil then
+                   begin
+
+                     State.LastVariable := nil;
+                     if not State.IsExpression then
+                        State.LastTargetVar := nil;
+                     pSearchParent := TSE2Method(TSE2Property(FindItem).Getter).ReturnValue.AType;
+                     State.AParent := pSearchParent;
+
+                     if Tokenizer.Token.AType = sesDot then
+                     begin
+                       ReadNextToken;
+                       Continue;
+                     end;
+                   end;
+
+                end else
+                   RaiseError(petError, 'Internal error: property access type is not supported');
               end;
             end else
             if TSE2Property(FindItem).Getter = nil then
@@ -5250,15 +5317,23 @@ begin
   btSingle :                     
       CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btDouble];
   btDouble :
-      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btSingle];   
+      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btSingle];
   btString :
-      CanConvert := CurrentType in [btPChar, btUTF8String, btWideString];
+      CanConvert := CurrentType in [btPChar, btUTF8String, btWideString, btAnsiString, btPAnsiChar, btPWideChar];
   btUTF8String :
-      CanConvert := CurrentType in [btString, btPChar, btWideString];
+      CanConvert := CurrentType in [btString, btPChar, btWideString, btAnsiString, btPAnsiChar, btPWideChar];
   btWideString :
-      CanConvert := CurrentType in [btString, btPChar, btUTF8String];
+      CanConvert := CurrentType in [btString, btPChar, btUTF8String, btAnsiString, btPAnsiChar, btPWideChar];
   btPChar :
-      CanConvert := CurrentType in [btString, btUTF8String, btWideString];
+      CanConvert := CurrentType in [btString, btUTF8String, btWideString, btAnsiString, btPAnsiChar, btPWideChar];
+  btAnsiString :
+      CanConvert := CurrentType in [btString, btPChar, btUTF8String, btWideString, btPAnsiChar, btPWideChar];
+  btPAnsiChar :
+      CanConvert := CurrentType in [btString, btPChar, btUTF8String, btWideString, btAnsiString, btPWideChar];
+  btPWideChar :
+      CanConvert := CurrentType in [btString, btPChar, btUTF8String, btWideString, btAnsiString, btPAnsiChar];
+
+
   btProcPtr :
       CanConvert := CurrentType in [btPointer];
   btPointer,
@@ -5311,20 +5386,24 @@ class function TSE2Parser.IsCompatible(TargetType, CurrentType: TSE2Type;
         begin
           result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btPointer, btObject, btSingle, btDouble];
         end;
-    btString, btUTF8String, btWideString, btPChar :
+    btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar :
         begin
-          result := CurrentType.AType in [btString, btUTF8String, btWideString, btPChar];
+          result := CurrentType.AType in [btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar];
         end;
     btRecord :
         begin
           result := (CurrentType = TargetType) or (CurrentType.AType in [btPointer, btObject]);
+        end;
+    btProcPtr :
+        begin
+          result := (CurrentType = TargetType) or (CurrentType.AType in [btPointer]);
         end;
     else
         result := False;
     end;
   end;
 
-  function CompareMethods(Meth1, Meth2: TSE2Method): boolean;
+  function CompareMethods(Meth1, Meth2: TSE2Method; StrictMode: boolean): boolean;
   var i: integer;
       p1, p2: TSE2Parameter;
   begin
@@ -5340,9 +5419,10 @@ class function TSE2Parser.IsCompatible(TargetType, CurrentType: TSE2Type;
        ((Meth1.ReturnValue = nil) and (Meth2.ReturnValue <> nil)) then
        exit;
 
-    if Meth1.ReturnValue <> nil then
-      if Meth1.ReturnValue.AType <> Meth2.ReturnValue.AType then
-        exit;
+    if StrictMode then
+      if Meth1.ReturnValue <> nil then
+        if Meth1.ReturnValue.AType <> Meth2.ReturnValue.AType then
+          exit;
 
     for i:=0 to Meth1.Params.Count-1 do
     begin
@@ -5352,9 +5432,17 @@ class function TSE2Parser.IsCompatible(TargetType, CurrentType: TSE2Type;
       if (p1.ParameterType <> p2.ParameterType) then
          exit;
 
-      if (p1.AType <> p2.AType) then
-        if not ((p1.AType = nil) or (p2.AType = nil)) then
-           exit;
+      if StrictMode then
+      begin
+        if (p1.AType <> p2.AType) then
+          if not ((p1.AType = nil) or (p2.AType = nil)) then
+             exit;
+      end else
+      begin
+        if (p1.AType <> nil) and (p2.AType <> nil) then
+          if (p1.AType.InheritRoot <> p2.AType.InheritRoot) then
+             exit;
+      end;
     end;
 
     result := True;
@@ -5402,9 +5490,9 @@ begin
       begin
         result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btSingle, btDouble];
       end;
-  btString, btUTF8String, btWideString, btPChar :
+  btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar :
       begin
-        result := CurrentType.AType in [btString, btUTF8String, btWideString, btPChar];
+        result := CurrentType.AType in [btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar];
       end;
   btPointer :
       begin
@@ -5439,7 +5527,8 @@ begin
         result := CurrentType.AType in [btPointer, btProcPtr];
         if result and (AInstance <> nil) then
           if AInstance.FParserState.LastMethod <> nil then
-             result := CompareMethods(TSE2MethodVariable(TargetType).Method, AInstance.FParserState.LastMethod)
+             result := CompareMethods(TSE2MethodVariable(TargetType).Method, AInstance.FParserState.LastMethod,
+                       CurrentType.AType = btPointer)
           else
              result := True;
       end;
@@ -5467,7 +5556,7 @@ begin
           result := Operation in [sesPlus, sesMinus, sesStar, sesSlash,
                                   sesSmaller, sesSmallerEqual, sesEqual, sesBiggerEqual, sesBigger, sesUnEqual];
         end;
-    btString, btUTF8String, btWideString, btPChar :
+    btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar :
         begin
           result := Operation in [sesPlus, sesSmaller, sesSmallerEqual, sesEqual, sesBiggerEqual, sesBigger, sesUnEqual];
         end;
@@ -5932,9 +6021,9 @@ type
     btSingle, btDouble :
         result := TSE2Type(Param.AType.InheritRoot).AType in
                      [btSingle, btDouble];
-    btString, btUTF8String, btWideString, btPChar :
+    btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar :
         result := TSE2Type(Param.AType.InheritRoot).AType in
-                     [btString, btUTF8String, btWideString, btPChar];
+                     [btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar];
     btPointer :
         result := TSE2Type(Param.AType.InheritRoot).AType in
                      [btPointer];
@@ -6279,7 +6368,7 @@ begin
               FUnit.ElemList.Add(cnst);
             end;
           end;
-      btString, btWideString, btUTF8String, btPChar :
+      btString, btWideString, btUTF8String, btPChar, btAnsiString, btPAnsiChar, btPWideChar :
           begin
             ExpectToken([sesString]);
             
