@@ -375,7 +375,7 @@ You can set up the options for the ScriptEngine II here.
 {$ENDIF}
 
 // defines for newer, unknown versions (takes delphi 3 as base version)
-{$IFNDEF VER220}
+{$IFDEF VER220}
   {$DEFINE VER140UP}  
   {$DEFINE VER150UP}  
   {$DEFINE VER160UP}
