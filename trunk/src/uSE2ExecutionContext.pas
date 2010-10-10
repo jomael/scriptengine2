@@ -215,7 +215,7 @@ var OpCode        : PSE2OpDefault;
     CompareInt    : integer;
     Pos           : TPosArray;
     Ptr           : TPtrArray;
-    r1, r2, r3, r4: PSE2VarData;
+    r1, r2, r3    : PSE2VarData;
     //VarDat        : array[0..3] of PSE2VarData;
     Meta          : TSE2MetaEntry;
     TryBlock      : TSE2TryBlock;

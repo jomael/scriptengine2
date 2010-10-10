@@ -4,7 +4,13 @@ unit uSE2RunAccess;
 
 interface
 
-uses
+uses        
+  {$IFNDEF FPC}
+    {$IFDEF WINDOWS}
+    Windows,
+    {$ENDIF}
+  {$ENDIF}
+  
   Classes, uSE2RunType, uSE2Consts, uSE2BaseTypes, uSE2OpCode, uSE2PEData;
 
 type

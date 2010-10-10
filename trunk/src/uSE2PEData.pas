@@ -5,6 +5,12 @@ unit uSE2PEData;
 interface
 
 uses
+  {$IFNDEF FPC}
+    {$IFDEF WINDOWS}
+    Windows,
+    {$ENDIF}
+  {$ENDIF}
+
   Classes, uSE2BaseTypes, uSE2OpCode, uSE2Consts;
 
 type

@@ -1009,6 +1009,7 @@ var NewVaribles: TSE2BaseTypeList;
     i, rt      : integer;
     IsPublic   : boolean;
     IsExternal : boolean;
+    ASearchTmp : TSE2BaseType;
 begin
   State.Method     := Method;
   State.AParent    := nil;
@@ -1038,10 +1039,16 @@ begin
     try
       while (Tokenizer.Token.AType in [sesIdentifier]) do
       begin
-        if FUnit.ElemList.FindItem(Tokenizer.Token.Value, FUnit.AUnitName, State.CurrentOwner, nil, nil, CAllVisibilities) <> nil then
+        ASearchTmp := FUnit.ElemList.FindItem(Tokenizer.Token.Value, FUnit.AUnitName, State.CurrentOwner, nil, nil, CAllVisibilities);
+        if ASearchTmp <> nil then
         begin
-          RaiseError(petError, 'Name already declared "'+Tokenizer.Token.Value+'"');
-          exit;
+          if not ((ASearchTmp.Parent = State.CurrentOwner) and
+                 (State.CurrentOwner <> nil) and
+                 (Method <> nil)) then
+          begin
+            RaiseError(petError, 'Name already declared "'+Tokenizer.Token.Value+'"');
+            exit;
+          end;
         end;
 
         if State.CurrentOwner is TSE2Class then
@@ -1217,7 +1224,7 @@ begin
                 btPChar,
                 btAnsiString,
                 btPAnsiChar,
-                btPWideChar  : TSE2Class(State.CurrentOwner).RTTI.Add(TSE2Type(NewVar.AType.InheritRoot).AType, NewVar.CodePos, SizeOf(Pointer));
+                btPWideChar  : TSE2Record(State.CurrentOwner).RTTI.Add(TSE2Type(NewVar.AType.InheritRoot).AType, NewVar.CodePos, SizeOf(Pointer));
                 btArray      : ;
                 btRecord     : TSE2Record(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(NewVar.AType));
                 end;
@@ -3564,6 +3571,65 @@ var pSearchUnit   : TSE2Unit;
     State.NoStaticPointer := False;
   end;
 
+  procedure DoPushVariable(FindItem: TSE2Variable);
+  begin
+    if FindItem.Parent <> nil then
+      if TSE2Variable(FindItem).IsStatic then
+        if not State.NoStaticPointer then
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+          State.DecStack;
+        end;
+    State.NoStaticPointer := False;
+    State.LastVariable := TSE2Variable(FindItem);
+    if not State.IsExpression then
+       State.LastTargetVar := State.LastVariable;
+    PushVarToStack(State, Method, TSE2Variable(FindItem), UseVarMove);
+    result        := TSE2Variable(FindItem).AType;
+    LastItem      := FindItem;
+    pSearchParent := result;
+
+    if TSE2Variable(FindItem).Parent is TSE2Record then
+    begin
+      if not TSE2Variable(FindItem).IsStatic then
+      begin
+        if State.RootRecord = nil then
+          State.RootRecord := TSE2Record(TSE2Variable(FindItem).Parent);
+      end else
+        State.RootRecord := nil;
+    end;
+
+    if (TSE2Variable(FindItem).AType is TSE2Class) then
+       State.RootRecord := nil;
+
+    if result is TSE2MethodVariable then
+    begin
+      if (not State.IsAtStatement) and (Tokenizer.Token.AType <> sesBecomes) then
+      begin
+        LastItem := result;
+        if Tokenizer.Token.AType in [sesDot] then
+        begin
+
+        end else
+        begin
+          result := DoMethodCall(TSE2MethodVariable(result).Method, False, nil, True, nil);
+          if result <> nil then
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-1, False), ''));
+            State.DecStack;
+          end else
+          if not TSE2MethodVariable(LastItem).Method.HasSelfParam then
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+            State.DecStack;
+          end;
+          pSearchParent := result;
+          LastItem := nil;
+        end;
+      end;
+    end;
+  end;
+
 begin
   State.RootRecord := nil;
   State.LastMethod := nil;
@@ -3608,13 +3674,36 @@ begin
     searchString := Tokenizer.Token.Value;
     FindItem := FindIdentifier(Method, Tokenizer.Token.Value, pSearchParent, SearchUnit, nil, AccessSet);
     if FindItem = nil then
-       RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"')
-    else
     begin
-      // Method deprecated is used in "CallMethod" because of overloads
-      if not (FindItem is TSE2Method) then
-         CheckForDeprecated(FindItem);
+      if (pSearchParent = nil) and (SearchUnit = '') and (Method <> nil) then
+         if (Method.Parent is TSE2Class) or (Method.Parent is TSE2Record) then
+         begin
+           if (not Method.IsStatic) or (Method.MethodType in [mtConstructor, mtDestructor]) then
+           begin
+             if Method.HasSelfParam and (Method.Params.Count > 0) then
+             begin
+               FindItem := FindIdentifier(Method, Tokenizer.Token.Value, TSE2Parameter(Method.Params[0]).AType, SearchUnit, nil, AccessSet);
+               if FindItem <> nil then
+               begin
+                 DoPushVariable(TSE2Parameter(Method.Params[0]));
+               end;
+             end;
+           end else
+           if Method.IsStatic and (Method.Params.Count > 0) and ((Method.Parent is TSE2Record) or (Method.Parent is TSE2Class)) then
+           begin
+             FindItem := FindIdentifier(Method, Tokenizer.Token.Value, TSE2Parameter(Method.Params[0]).AType, SearchUnit, nil, AccessSet);
+             if FindItem <> nil then
+                State.NoStaticPointer := True;
+           end;
+         end;
+                   
+      if FindItem = nil then
+         RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
     end;
+                                       
+    // Method deprecated is used in "CallMethod" because of overloads
+    if not (FindItem is TSE2Method) then
+       CheckForDeprecated(FindItem);
 
     if not (FindItem is TSE2Unit) then
     begin
@@ -3634,61 +3723,11 @@ begin
     ReadNextToken;
     if FindItem is TSE2Variable then
     begin
-      if FindItem.Parent <> nil then
-        if TSE2Variable(FindItem).IsStatic then
-          if not State.NoStaticPointer then
-          begin
-            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-            State.DecStack;
-          end;
-      State.NoStaticPointer := False;
-      State.LastVariable := TSE2Variable(FindItem);
-      if not State.IsExpression then
-         State.LastTargetVar := State.LastVariable;
-      PushVarToStack(State, Method, TSE2Variable(FindItem), UseVarMove);
-      result        := TSE2Variable(FindItem).AType;
-      LastItem      := FindItem;
-      pSearchParent := result;
-
-      if TSE2Variable(FindItem).Parent is TSE2Record then
-      begin
-        if not TSE2Variable(FindItem).IsStatic then
-        begin
-          if State.RootRecord = nil then
-            State.RootRecord := TSE2Record(TSE2Variable(FindItem).Parent);
-        end else
-          State.RootRecord := nil;
-      end;
-
-      if (TSE2Variable(FindItem).AType is TSE2Class) then
-         State.RootRecord := nil;
-
-      if result is TSE2MethodVariable then
-      begin
-        if (not State.IsAtStatement) and (Tokenizer.Token.AType <> sesBecomes) then
-        begin
-          LastItem := result;
-          if Tokenizer.Token.AType in [sesDot] then
-          begin
-
-          end else
-          begin
-            result := DoMethodCall(TSE2MethodVariable(result).Method, False, nil, True, nil);
-            if result <> nil then
-            begin
-              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-1, False), ''));
-              State.DecStack;
-            end else
-            if not TSE2MethodVariable(LastItem).Method.HasSelfParam then
-            begin
-              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-              State.DecStack;
-            end;
-            pSearchParent := result;
-            LastItem := nil;
-          end;
-        end;
-      end;
+      if (FindItem.Parent = pSearchParent) or (State.NoStaticPointer and (pSearchParent = nil)) then
+        if State.NoStaticPointer then
+           if not TSE2Variable(FindItem).IsStatic then
+              RaiseError(petError, 'Variable is not accessable without an instance');
+      DoPushVariable(TSE2Variable(FindItem));
     end else
     if FindItem is TSE2Method then
     begin
@@ -6421,6 +6460,7 @@ var aProperty : TSE2Property;
     i, start  : integer;
     Item      : TSE2BaseType;
     oldParent : TSE2BaseType;
+    genParam  : TSE2Parameter;
 begin
   if State.CurrentOwner = nil then
      RaiseError(petError, 'Internal error: property not in class');
@@ -6520,178 +6560,292 @@ begin
     if StringIdentical(Tokenizer.Token.Value, 'read') then
     begin
       ReadNextToken;
-      ExpectToken([sesIdentifier]);
-      aSource := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, '',
-                                TSE2BaseTypeFilter.Create([TSE2Variable, TSE2Method]));
-
-      if aSource = nil then
-         RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
-
-      CheckForDeprecated(aSource);
-
-      if aSource is TSE2Method then
+      if Tokenizer.Token.AType in [sesAnd, sesSemiColon] then
       begin
-        if TSE2Method(aSource).IsStatic <> aProperty.IsStatic then
+        if State.CurrentOwner is TSE2Record then
+           RaiseError(petError, 'Auto generated properties are not supported inside records')
+        else
+        if State.CurrentOwner is TSE2Class then
         begin
-          if aProperty.IsStatic then
-             RaiseError(petError, 'static properties can not access non-static elements')
-          else
-             RaiseError(petError, 'non-static properties can not access static elements');
+          if not (TSE2Class(State.CurrentOwner).IsTypeOf(GetExternalObjectType)) then
+          begin
+            RaiseError(petError, 'Auto generated properties must be used in external classes');
+          end;
+
+          if TSE2Class(State.CurrentOwner).IsHelper then
+             RaiseError(petError, 'Auto generated properties can not be used for helper classes');
+        end
+        else
+           RaiseError(petError, 'Auto generated properties are not supported for the current context');
+                                                             
+        aSource := TSE2Method.Create;
+        DeclareType(State, aSource, '|Get' + aProperty.Name);
+        aSource.Parent := State.CurrentOwner;
+        TSE2Method(aSource).IsStatic := aProperty.IsStatic;
+        TSE2Method(aSource).IsExternal := True;
+        TSE2Method(aSource).MethodType := mtFunction;
+        TSE2Method(aSource).ReturnValue := TSE2Variable.Create;
+        TSE2Method(aSource).ReturnValue.AType := aProperty.AType;
+
+        genParam := TSE2Parameter.Create;
+        DeclareType(State, genParam, 'Self');
+        genParam.AType := State.CurrentOwner;
+        genParam.IsStatic := False;
+        if TSE2Method(aSource).IsStatic  then
+           genParam.Name := '!Self';
+
+        TSE2Method(aSource).Params.Add(genParam);
+
+        for i:=0 to aProperty.Params.Count-1 do
+        begin
+          genParam := TSE2Parameter.Create;
+          DeclareType(State, genParam, aProperty.Params[i].Name);
+          genParam.AType := TSE2Variable(aProperty.Params[i]).AType;
+          TSE2Method(aSource).Params.Add(genParam);
         end;
 
-        if TSE2Method(aSource).IsOverload then
-           RaiseError(petError, 'Method can not be declared as overload');
+        FUnit.ElemList.Add(aSource);
+        aProperty.Getter := aSource;
 
-        if TSE2Method(aSource).ReturnValue = nil then
-           RaiseError(petError, 'Method does not return any value');
-
-        if TSE2Method(aSource).ReturnValue.AType <> aProperty.AType then
-           RaiseError(petError, 'Incompatible return value');
-
-        if TSE2Method(aSource).HasSelfParam then
+        if Tokenizer.Token.AType = sesAnd then
         begin
-          start := 1;
-          if TSE2Method(aSource).Params.Count <> aParams.Count + 1 then
-             RaiseError(petError, 'Incompatible method: method parameter count is not compatible');
+           ReadNextToken;
+           ExpectToken([sesIdentifier]);
+        end;
+        {
+          - GENERATE read method for external classes
+        }
+
+      end else
+      begin
+        ExpectToken([sesIdentifier]);
+        aSource := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, '',
+                                  TSE2BaseTypeFilter.Create([TSE2Variable, TSE2Method]));
+
+        if aSource = nil then
+           RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
+
+        CheckForDeprecated(aSource);
+
+        if aSource is TSE2Method then
+        begin
+          if TSE2Method(aSource).IsStatic <> aProperty.IsStatic then
+          begin
+            if aProperty.IsStatic then
+               RaiseError(petError, 'static properties can not access non-static elements')
+            else
+               RaiseError(petError, 'non-static properties can not access static elements');
+          end;
+
+          if TSE2Method(aSource).IsOverload then
+             RaiseError(petError, 'Method can not be declared as overload');
+
+          if TSE2Method(aSource).ReturnValue = nil then
+             RaiseError(petError, 'Method does not return any value');
+
+          if TSE2Method(aSource).ReturnValue.AType <> aProperty.AType then
+             RaiseError(petError, 'Incompatible return value');
+
+          if TSE2Method(aSource).HasSelfParam then
+          begin
+            start := 1;
+            if TSE2Method(aSource).Params.Count <> aParams.Count + 1 then
+               RaiseError(petError, 'Incompatible method: method parameter count is not compatible');
+          end else
+          begin
+            start := 0;
+            if TSE2Method(aSource).Params.Count <> aParams.Count then
+               RaiseError(petError, 'Incompatible method: method parameter count is not compatible');
+          end;
+
+          for i:=start to aParams.Count-1 do
+          begin
+            if TSE2Parameter(TSE2Method(aSource).Params[i]).AType <> TSE2Type(aParams[i]) then
+               RaiseError(petError, 'Parameter declaration of the getter function not compatible');
+            if TSE2Parameter(TSE2Method(aSource).Params[i]).ParameterType in [ptConst, ptVar] then
+               RaiseError(petError, 'Parameter modifier not allowed');
+          end;
+
+          aProperty.Getter := aSource;
         end else
+        if aSource is TSE2Variable then
         begin
-          start := 0;
-          if TSE2Method(aSource).Params.Count <> aParams.Count then
-             RaiseError(petError, 'Incompatible method: method parameter count is not compatible');
-        end;
+          if aProperty.Parent = nil then
+             RaiseError(petError, 'Internal error: property parent is nil');
 
-        for i:=start to aParams.Count-1 do
-        begin
-          if TSE2Parameter(TSE2Method(aSource).Params[i]).AType <> TSE2Type(aParams[i]) then
-             RaiseError(petError, 'Parameter declaration of the getter function not compatible');
-          if TSE2Parameter(TSE2Method(aSource).Params[i]).ParameterType in [ptConst, ptVar] then
-             RaiseError(petError, 'Parameter modifier not allowed');
-        end;
+          if (not aProperty.Parent.IsTypeOf(TSE2Variable(aSource).Parent)) and
+             (TSE2Variable(aSource).Parent <> aProperty.Parent)  then
+             RaiseError(petError, 'Property variable must have the same owner');
 
-        aProperty.Getter := aSource;
-      end else
-      if aSource is TSE2Variable then
-      begin
-        if aProperty.Parent = nil then
-           RaiseError(petError, 'Internal error: property parent is nil');
-           
-        if (not aProperty.Parent.IsTypeOf(TSE2Variable(aSource).Parent)) and
-           (TSE2Variable(aSource).Parent <> aProperty.Parent)  then
-           RaiseError(petError, 'Property variable must have the same owner');
+          if TSE2Variable(aSource).IsStatic <> aProperty.IsStatic then
+          begin
+            if aProperty.IsStatic then
+               RaiseError(petError, 'static properties can not access non-static elements')
+            else
+               RaiseError(petError, 'non-static properties can not access static elements');
+          end;
 
-        if TSE2Variable(aSource).IsStatic <> aProperty.IsStatic then
-        begin
-          if aProperty.IsStatic then
-             RaiseError(petError, 'static properties can not access non-static elements')
-          else
-             RaiseError(petError, 'non-static properties can not access static elements');
-        end;
+          if aParams.Count > 0 then
+             RaiseError(petError, 'Indexed properites can not link to a variable');
 
-        if aParams.Count > 0 then
-           RaiseError(petError, 'Indexed properites can not link to a variable');
+          if TSE2Variable(aSource).AType <> aProperty.AType then
+             RaiseError(petError, 'Variable and property type must be the same');
 
-        if TSE2Variable(aSource).AType <> aProperty.AType then
-           RaiseError(petError, 'Variable and property type must be the same');
+          aProperty.Getter := aSource;
+          TSE2Variable(aSource).Used := True;
+          //RaiseError(petError, 'Variables are not supported yet');
+        end else
+          RaiseError(petError, 'Internal error: Unknown source');
 
-        aProperty.Getter := aSource;
-        TSE2Variable(aSource).Used := True;
-        //RaiseError(petError, 'Variables are not supported yet');
-      end else
-        RaiseError(petError, 'Internal error: Unknown source');
 
-      
-      ReadNextToken;
+        ReadNextToken;
+      end;
     end;
     if StringIdentical(Tokenizer.Token.Value, 'write') then
     begin
       ReadNextToken;
-      ExpectToken([sesIdentifier]);
-      aSource := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, '',
-                                TSE2BaseTypeFilter.Create([TSE2Variable, TSE2Method]));
 
-      if aSource = nil then
-         RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
-
-      CheckForDeprecated(aSource);
-
-      if aSource is TSE2Method then
+      if Tokenizer.Token.AType in [sesSemiColon] then
       begin
-        if TSE2Method(aSource).IsStatic <> aProperty.IsStatic then
+        if State.CurrentOwner is TSE2Record then
+           RaiseError(petError, 'Auto generated properties are not supported inside records')
+        else
+        if State.CurrentOwner is TSE2Class then
         begin
-          if aProperty.IsStatic then
-             RaiseError(petError, 'static properties can not access non-static elements')
-          else
-             RaiseError(petError, 'non-static properties can not access static elements');
+          if not (TSE2Class(State.CurrentOwner).IsTypeOf(GetExternalObjectType)) then
+          begin
+            RaiseError(petError, 'Auto generated properties must be used in external classes');
+          end;
+
+          if TSE2Class(State.CurrentOwner).IsHelper then
+             RaiseError(petError, 'Auto generated properties can not be used for helper classes');
+        end
+        else
+           RaiseError(petError, 'Auto generated properties are not supported for the current context');
+                                                             
+        aSource := TSE2Method.Create;
+        DeclareType(State, aSource, '|Set' + aProperty.Name);
+        aSource.Parent := State.CurrentOwner;
+        TSE2Method(aSource).IsStatic := aProperty.IsStatic;
+        TSE2Method(aSource).IsExternal := True;
+        TSE2Method(aSource).MethodType := mtProcedure;
+
+        genParam := TSE2Parameter.Create;
+        DeclareType(State, genParam, 'Self');
+        genParam.AType := State.CurrentOwner;
+        genParam.IsStatic := False;
+        if TSE2Method(aSource).IsStatic  then
+           genParam.Name := '!Self';
+
+        TSE2Method(aSource).Params.Add(genParam);
+
+        for i:=0 to aProperty.Params.Count-1 do
+        begin
+          genParam := TSE2Parameter.Create;
+          DeclareType(State, genParam, aProperty.Params[i].Name);
+          genParam.AType := TSE2Variable(aProperty.Params[i]).AType;
+          TSE2Method(aSource).Params.Add(genParam);
         end;
 
-        if TSE2Method(aSource).ReturnValue <> nil then
-           RaiseError(petError, 'Incompatible method');
+        genParam := TSE2Parameter.Create;
+        DeclareType(State, genParam, 'newValue');
+        genParam.AType := aProperty.AType;
+        genParam.IsStatic := False;    
+        TSE2Method(aSource).Params.Add(genParam);
 
-        if TSE2Method(aSource).HasSelfParam then
-        begin
-          start := 1;
-          if TSE2Method(aSource).Params.Count <> aParams.Count + 2 then
-             RaiseError(petError, 'Incompatible method: method parameter count is not compatible');
-          if TSE2Parameter(TSE2Method(aSource).Params[TSE2Method(aSource).Params.Count-1]).ParameterType = ptVar then
-             RaiseError(petError, 'Incompatible method: parameter not compatible');
-          if TSE2Parameter(TSE2Method(aSource).Params[TSE2Method(aSource).Params.Count-1]).AType <> aProperty.AType then
-             RaiseError(petError, 'Incompatible method: parameter not compatible');
-        end else
-        begin
-          start := 0;
-          if TSE2Method(aSource).Params.Count <> aParams.Count + 1 then
-             RaiseError(petError, 'Incompatible method: method parameter count is not compatible'); 
-          if TSE2Parameter(TSE2Method(aSource).Params[TSE2Method(aSource).Params.Count-1]).ParameterType = ptVar then
-             RaiseError(petError, 'Incompatible method: parameter not compatible');
-          if TSE2Parameter(TSE2Method(aSource).Params[TSE2Method(aSource).Params.Count-1]).AType <> aProperty.AType then
-             RaiseError(petError, 'Incompatible method: parameter not compatible');
-        end;
-
-        for i:=start to aParams.Count-1 do
-        begin
-          if TSE2Parameter(TSE2Method(aSource).Params[i]).AType <> TSE2Type(aParams[i]) then
-             RaiseError(petError, 'Parameter declaration of the getter function not compatible');
-          if TSE2Parameter(TSE2Method(aSource).Params[i]).ParameterType in [ptConst, ptVar] then
-             RaiseError(petError, 'Parameter modifier not allowed');
-        end;
-
-        (*
-
-
-        *)
-
+        FUnit.ElemList.Add(aSource);
         aProperty.Setter := aSource;
+
       end else
-      if aSource is TSE2Variable then
       begin
-        if aProperty.Parent = nil then
-           RaiseError(petError, 'Internal error: property parent is nil');
+        ExpectToken([sesIdentifier]);
+        aSource := FindIdentifier(nil, Tokenizer.Token.Value, State.CurrentOwner, '',
+                                  TSE2BaseTypeFilter.Create([TSE2Variable, TSE2Method]));
 
-        if (not aProperty.Parent.IsTypeOf(TSE2Variable(aSource).Parent)) and
-           (TSE2Variable(aSource).Parent <> aProperty.Parent) then
-           RaiseError(petError, 'Property variable must have the same owner');
+        if aSource = nil then
+           RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
 
-        if TSE2Variable(aSource).IsStatic <> aProperty.IsStatic then
+        CheckForDeprecated(aSource);
+
+        if aSource is TSE2Method then
         begin
-          if aProperty.IsStatic then
-             RaiseError(petError, 'static properties can not access non-static elements')
-          else
-             RaiseError(petError, 'non-static properties can not access static elements');
-        end;
+          if TSE2Method(aSource).IsStatic <> aProperty.IsStatic then
+          begin
+            if aProperty.IsStatic then
+               RaiseError(petError, 'static properties can not access non-static elements')
+            else
+               RaiseError(petError, 'non-static properties can not access static elements');
+          end;
 
-        if aParams.Count > 0 then
-           RaiseError(petError, 'Indexed properties can not link to a variable');
+          if TSE2Method(aSource).ReturnValue <> nil then
+             RaiseError(petError, 'Incompatible method');
 
-        if TSE2Variable(aSource).AType <> aProperty.AType then
-           RaiseError(petError, 'Variable and property type must be the same');
+          if TSE2Method(aSource).HasSelfParam then
+          begin
+            start := 1;
+            if TSE2Method(aSource).Params.Count <> aParams.Count + 2 then
+               RaiseError(petError, 'Incompatible method: method parameter count is not compatible');
+            if TSE2Parameter(TSE2Method(aSource).Params[TSE2Method(aSource).Params.Count-1]).ParameterType = ptVar then
+               RaiseError(petError, 'Incompatible method: parameter not compatible');
+            if TSE2Parameter(TSE2Method(aSource).Params[TSE2Method(aSource).Params.Count-1]).AType <> aProperty.AType then
+               RaiseError(petError, 'Incompatible method: parameter not compatible');
+          end else
+          begin
+            start := 0;
+            if TSE2Method(aSource).Params.Count <> aParams.Count + 1 then
+               RaiseError(petError, 'Incompatible method: method parameter count is not compatible');
+            if TSE2Parameter(TSE2Method(aSource).Params[TSE2Method(aSource).Params.Count-1]).ParameterType = ptVar then
+               RaiseError(petError, 'Incompatible method: parameter not compatible');
+            if TSE2Parameter(TSE2Method(aSource).Params[TSE2Method(aSource).Params.Count-1]).AType <> aProperty.AType then
+               RaiseError(petError, 'Incompatible method: parameter not compatible');
+          end;
 
-        aProperty.Setter := aSource;  
-        TSE2Variable(aSource).Used := True;
-      end else
-        RaiseError(petError, 'Internal error: Unknown source');
+          for i:=start to aParams.Count-1 do
+          begin
+            if TSE2Parameter(TSE2Method(aSource).Params[i]).AType <> TSE2Type(aParams[i]) then
+               RaiseError(petError, 'Parameter declaration of the getter function not compatible');
+            if TSE2Parameter(TSE2Method(aSource).Params[i]).ParameterType in [ptConst, ptVar] then
+               RaiseError(petError, 'Parameter modifier not allowed');
+          end;
 
-      
-      ReadNextToken;
+          (*
+
+
+          *)
+
+          aProperty.Setter := aSource;
+        end else
+        if aSource is TSE2Variable then
+        begin
+          if aProperty.Parent = nil then
+             RaiseError(petError, 'Internal error: property parent is nil');
+
+          if (not aProperty.Parent.IsTypeOf(TSE2Variable(aSource).Parent)) and
+             (TSE2Variable(aSource).Parent <> aProperty.Parent) then
+             RaiseError(petError, 'Property variable must have the same owner');
+
+          if TSE2Variable(aSource).IsStatic <> aProperty.IsStatic then
+          begin
+            if aProperty.IsStatic then
+               RaiseError(petError, 'static properties can not access non-static elements')
+            else
+               RaiseError(petError, 'non-static properties can not access static elements');
+          end;
+
+          if aParams.Count > 0 then
+             RaiseError(petError, 'Indexed properties can not link to a variable');
+
+          if TSE2Variable(aSource).AType <> aProperty.AType then
+             RaiseError(petError, 'Variable and property type must be the same');
+
+          aProperty.Setter := aSource;
+          TSE2Variable(aSource).Used := True;
+        end else
+          RaiseError(petError, 'Internal error: Unknown source');
+
+
+        ReadNextToken;
+      end;
     end;
     ExpectToken([sesSemiColon]);
     ReadNextToken;

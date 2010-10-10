@@ -330,6 +330,7 @@ begin
         if ItemIsCompatible(obj, ResultType) then
           DoProcessItem(obj);
     end;
+
   end;
 
   if ParentObj = nil then
@@ -338,11 +339,19 @@ begin
       obj := AUnit.TypeList[i];
       if obj <> nil then
         if obj.IsChildOf(ParentObj) or obj.IsTypeOf(ParentObj) then
-          if obj.Visibility in Visibility then  
+          if obj.Visibility in Visibility then
              //if ItemIsCompatible(obj, ResultType) then
                DoProcessItem(obj);
     end;
 
+  if (Method <> nil) and (ParentObj = nil) then
+  begin
+    if (Method.Parent is TSE2Class) or (Method.Parent is TSE2Record) then
+    begin
+      ParentObj := Method.Parent;
+      StaticOnly := Method.IsStatic;
+    end;
+  end;
 
   repeat
     for i:=0 to AUnit.ElemList.Count-1 do
@@ -424,7 +433,7 @@ end;
 
 procedure TSE2CodeCompletion.DoProcessItem(Item: TSE2BaseType);
 begin
-  if Pos('!', Item.Name) = 0 then
+  if (Pos('!', Item.Name) = 0) and (Pos('|', Item.Name) = 0) then
     if FProcessed.IndexOf(Item) < 0 then
     begin
       FProcessed.Add(Item);
