@@ -277,7 +277,7 @@ begin
      ImportName := AMethod.Parent.Name + '.' + ImportName;
   ImportName := ImportName + '['+TSE2Converter.IntToStr(AMethod.ID)+']';
 
-  NativeMethod := '_' + AMethod.Name;
+  NativeMethod := '_' + StringReplace(StringReplace(AMethod.Name, '!', '', [rfReplaceAll]), '|', 'Generated_', [rfReplaceAll]);
   if AMethod.Parent <> nil then
      NativeMethod := AMethod.Parent.Name + NativeMethod;
 

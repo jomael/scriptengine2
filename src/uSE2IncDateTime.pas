@@ -49,12 +49,10 @@ const
      '    class function CurrentYear: word; external;'+#13#10+
      '    class function Date: TDateTime; external;'+#13#10+
      '    class function DateOf(const Date: TDateTime): TDateTime; external;'+#13#10+
-     '    class function DateTimeToStr(const Date: TDateTime): string; overload; external;'+#13#10+
-     '    class function DateTimeToStr(const Date: TDateTime; LanguageId: integer): string; overload; external;'+#13#10+
-     '    class function DateToStr(const Date: TDateTime): string; overload; external;'+#13#10+
-     '    class function DateToStr(const Date: TDateTime; LanguageId: integer): string; overload; external;'+#13#10+
+     '    class function DateTimeToStr(const Date: TDateTime): string; external;'+#13#10+
+     '    class function DateToStr(const Date: TDateTime): string; external;'+#13#10+
      '    class function DayOf(const Date: TDateTime): word; external;'+#13#10+
-     '    class function DayOfTheMonth(const Date: TDateTime): word; external;'+#13#10+   
+     '    class function DayOfTheMonth(const Date: TDateTime): word; external;'+#13#10+
      '    class function DayOfTheWeek(const Date: TDateTime): word; external;'+#13#10+
      '    class function DayOfTheYear(const Date: TDateTime): word; external;'+#13#10+
      '    class function DayOfWeek(const Date: TDateTime): integer; external;'+#13#10+
@@ -92,8 +90,7 @@ const
      '    class function EndOfTheMonth(const AValue: TDateTime): TDateTime; external;'+#13#10+
      '    class function EndOfTheWeek(const AValue: TDateTime): TDateTime; external;'+#13#10+
      '    class function EndOfTheYear(const AValue: TDateTime): TDateTime; external;'+#13#10+
-     '    class function FormatDateTime(const Format: string; DateTime: TDateTime): string; overload; external;'+#13#10+
-     '    class function FormatDateTime(const Format: string; DateTime: TDateTime; LanguageId: integer): string; overload; external;'+#13#10+
+     '    class function FormatDateTime(const Format: string; DateTime: TDateTime): string; external;'+#13#10+
      '    class function HourOf(const AValue: TDateTime): Word; external;'+#13#10+
      '    class function HourOfTheDay(const AValue: TDateTime): Word; external;'+#13#10+
      '    class function HourOfTheMonth(const AValue: TDateTime): Word; external;'+#13#10+
@@ -198,8 +195,7 @@ const
      '    class function StrToTimeDef(const S: string; const Default: TDateTime): TDateTime; external;'+#13#10+
      '    class function Time: TDateTime; external;'+#13#10+
      '    class function TimeOf(const AValue: TDateTime): TDateTime; external;'+#13#10+
-     '    class function TimeToStr(Time: TDateTime): string; overload; external;'+#13#10+
-     '    class function TimeToStr(Time: TDateTime; LanguageId: integer): string; overload; external;'+#13#10+
+     '    class function TimeToStr(Time: TDateTime): string; external;'+#13#10+
      '    class function Today: TDateTime; external;'+#13#10+
      '    class function Tomorrow: TDateTime; external;'+#13#10+
      '    class function TryEncodeDate(Year, Month, Day: Word; out Date: TDateTime): Boolean; external;'+#13#10+
@@ -282,9 +278,7 @@ type
     class function Date: TDateTime;
     class function DateOf(const Date: TDateTime): TDateTime;
     class function DateTimeToStr(const Date: TDateTime): string;
-    class function DateTimeToStr2(const Date: TDateTime; LanguageId: integer): string;
     class function DateToStr(const Date: TDateTime): string;
-    class function DateToStr2(const Date: TDateTime; LanguageId: integer): string;
     class function DayOf(const Date: TDateTime): word;
     class function DayOfTheMonth(const Date: TDateTime): word;
     class function DayOfTheWeek(const Date: TDateTime): word;
@@ -325,7 +319,6 @@ type
     class function EndOfTheWeek(const AValue: TDateTime): TDateTime;
     class function EndOfTheYear(const AValue: TDateTime): TDateTime;
     class function FormatDateTime(const Format: string; DateTime: TDateTime): string;   
-    class function FormatDateTime2(const Format: string; DateTime: TDateTime; LanguageId: integer): string;
     class function HourOf(const AValue: TDateTime): Word;
     class function HourOfTheDay(const AValue: TDateTime): Word;
     class function HourOfTheMonth(const AValue: TDateTime): Word;
@@ -431,7 +424,6 @@ type
     class function Time: TDateTime;
     class function TimeOf(const AValue: TDateTime): TDateTime;
     class function TimeToStr(Time: TDateTime): string;
-    class function TimeToStr2(Time: TDateTime; LanguageId: integer): string;
     class function Today: TDateTime;
     class function Tomorrow: TDateTime;
     class function TryEncodeDate(Year, Month, Day: Word; out Date: TDateTime): Boolean;
@@ -487,10 +479,8 @@ begin
     Target.Method['DateTime.CurrentYear[0]', C_UnitName] := @              DateTime.CurrentYear;
     Target.Method['DateTime.Date[0]', C_UnitName] := @                     DateTime.Date;
     Target.Method['DateTime.DateOf[0]', C_UnitName] := @                   DateTime.DateOf;
-    Target.Method['DateTime.DateTimeToStr[0]', C_UnitName] := @            DateTime.DateTimeToStr;   
-    Target.Method['DateTime.DateTimeToStr[1]', C_UnitName] := @            DateTime.DateTimeToStr2;
-    Target.Method['DateTime.DateToStr[0]', C_UnitName] := @                DateTime.DateToStr;      
-    Target.Method['DateTime.DateToStr[1]', C_UnitName] := @                DateTime.DateToStr2;
+    Target.Method['DateTime.DateTimeToStr[0]', C_UnitName] := @            DateTime.DateTimeToStr;
+    Target.Method['DateTime.DateToStr[0]', C_UnitName] := @                DateTime.DateToStr;
     Target.Method['DateTime.DayOf[0]', C_UnitName] := @                    DateTime.DayOf;
     Target.Method['DateTime.DayOfTheMonth[0]', C_UnitName] := @            DateTime.DayOfTheMonth;
     Target.Method['DateTime.DayOfTheWeek[0]', C_UnitName] := @             DateTime.DayOfTheWeek;
@@ -531,7 +521,6 @@ begin
     Target.Method['DateTime.EndOfTheWeek[0]', C_UnitName] := @             DateTime.EndOfTheWeek;
     Target.Method['DateTime.EndOfTheYear[0]', C_UnitName] := @             DateTime.EndOfTheYear;
     Target.Method['DateTime.FormatDateTime[0]', C_UnitName] := @           DateTime.FormatDateTime;
-    Target.Method['DateTime.FormatDateTime[1]', C_UnitName] := @           DateTime.FormatDateTime2;
     Target.Method['DateTime.HourOf[0]', C_UnitName] := @                   DateTime.HourOf;
     Target.Method['DateTime.HourOfTheDay[0]', C_UnitName] := @             DateTime.HourOfTheDay;
     Target.Method['DateTime.HourOfTheMonth[0]', C_UnitName] := @           DateTime.HourOfTheMonth;
@@ -637,7 +626,6 @@ begin
     Target.Method['DateTime.Time[0]', C_UnitName] := @                     DateTime.Time;
     Target.Method['DateTime.TimeOf[0]', C_UnitName] := @                   DateTime.TimeOf;
     Target.Method['DateTime.TimeToStr[0]', C_UnitName] := @                DateTime.TimeToStr;    
-    Target.Method['DateTime.TimeToStr[1]', C_UnitName] := @                DateTime.TimeToStr2;
     Target.Method['DateTime.Today[0]', C_UnitName] := @                    DateTime.Today;
     Target.Method['DateTime.Tomorrow[0]', C_UnitName] := @                 DateTime.Tomorrow;
     Target.Method['DateTime.TryEncodeDate[0]', C_UnitName] := @            DateTime.TryEncodeDate;
@@ -1763,38 +1751,6 @@ begin
     result := DateUtils.EncodeDateTime(wYear, wMonth, wDay, wHour, wMinute, wSecond, wMilliseconds);
 end;
 {$ENDIF}
-
-class function DateTime.DateTimeToStr2(const Date: TDateTime;
-  LanguageId: integer): string;
-var t: TFormatSettings;
-begin
-  GetLocaleFormatSettings(LanguageId, t);
-  result := SysUtils.DateTimeToStr(Date, t);
-end;
-
-class function DateTime.DateToStr2(const Date: TDateTime;
-  LanguageId: integer): string;
-var t: TFormatSettings;
-begin
-  GetLocaleFormatSettings(LanguageId, t);
-  result := SysUtils.DateToStr(Date, t);
-end;
-
-class function DateTime.TimeToStr2(Time: TDateTime;
-  LanguageId: integer): string;
-var t: TFormatSettings;
-begin
-  GetLocaleFormatSettings(LanguageId, t);
-  result := SysUtils.TimeToStr(Date, t);
-end;
-
-class function DateTime.FormatDateTime2(const Format: string;
-  DateTime: TDateTime; LanguageId: integer): string;
-var t: TFormatSettings;
-begin
-  GetLocaleFormatSettings(LanguageId, t);
-  result := SysUtils.FormatDateTime(Format, DateTime, t);
-end;
 
 initialization
   RegisterUnit;

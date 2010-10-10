@@ -40,17 +40,24 @@ const
 procedure Unit_GetSource(var Target: string);
 var d: TDateTime;
     s1: string;
+    decimalSep: Char;
 begin
   Target := C_UnitSource;
 
+  {$IFDEF DELPHIXEUP}
+  decimalSep := TFormatSettings.Create.DecimalSeparator;
+  {$ELSE}
+  decimalSep := DecimalSeparator;
+  {$ENDIF}
+
   d := Now();
   s1 := FloatToStrF(d, ffGeneral, 14, 7);
-  s1 := StringReplace(s1, DecimalSeparator, '.', []);
+  s1 := StringReplace(s1, decimalSep, '.', []);
   Target := StringReplace(Target, '{%SCRIPT_DATE%}', s1, [rfReplaceAll]);
 
   d := TSE2ScriptEngineInfo.BuildDate;
   s1 := FloatToStrF(d, ffGeneral, 14, 7);
-  s1 := StringReplace(s1, DecimalSeparator, '.', []);
+  s1 := StringReplace(s1, decimalSep, '.', []);
   Target := StringReplace(Target, '{%COMP_DATE%}', s1, [rfReplaceAll]);
 
   s1 := TSE2ScriptEngineInfo.Version;

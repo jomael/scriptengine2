@@ -7,6 +7,11 @@ interface
 uses
   Dialogs,
 
+{$IFNDEF FPC}
+  {$IFDEF WINDOWS}
+  Windows,
+  {$ENDIF}
+{$ENDIF}
 
   Classes, uSE2Tokenizer, uSE2Reader, uSE2BaseTypes, uSE2Consts, uSE2OpCode,
   uSE2NameWeaver;
@@ -14,6 +19,7 @@ uses
 {$IFDEF SEII_FPC}
   {$HINTS OFF}
 {$ENDIF}
+
 
 type
   TSE2Visibility    = (visPrivate, visProtected, visPublic);

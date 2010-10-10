@@ -54,7 +54,7 @@ const
 
   C_ERR_UnexpectedEndOfFile  = 'Unexpected end of file';
   C_ERR_UnkownFileType       = 'Internal error: unknown file type';
-  C_ERR_ExpectedButFound     = '%s expected, but found %s instead';
+  C_ERR_ExpectedButFound     = '%s expected, but found "%s" instead';
   C_ERR_Unexpected           = 'unexpected token found: %s"';
 
   C_ERR_SystemUnitNotFound   = 'FATAL ERROR: System unit not available';

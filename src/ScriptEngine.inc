@@ -374,7 +374,7 @@ You can set up the options for the ScriptEngine II here.
   {$DEFINE BDS4UP}
 {$ENDIF}
 
-// defines for newer, unknown versions (takes delphi 3 as base version)
+// defines for Delphi XE)
 {$IFDEF VER220}
   {$DEFINE VER140UP}  
   {$DEFINE VER150UP}  
@@ -397,7 +397,7 @@ You can set up the options for the ScriptEngine II here.
   {$DEFINE DELPHI2007UP}  
   {$DEFINE DELPHI2009UP}
   {$DEFINE DELPHI2010UP}  
-  {$DEFINE DELPHIXE0UP}
+  {$DEFINE DELPHIXEUP}
   {$DEFINE BDS}
   {$DEFINE BDS4}
   {$DEFINE BDS3UP}
