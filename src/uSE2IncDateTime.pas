@@ -795,8 +795,8 @@ begin
     Target.Method['Convert.TryStrToTime[0]', C_UnitName] := @             DateTime.TryStrToTime;
     {$ELSE}
 
-    Target.Method['Convert.ToString[0]', C_UnitName] := @Convert_ToString;
-    Target.Method['Convert.ToString[1]', C_UnitName] := @Convert_ToString1;
+    Target.Method['Convert.ToString[34]', C_UnitName] := @Convert_ToString;
+    Target.Method['Convert.ToString[35]', C_UnitName] := @Convert_ToString1;
     Target.Method['Convert.ToDate[0]', C_UnitName] := @Convert_ToDate;
     Target.Method['Convert.ToDate[1]', C_UnitName] := @Convert_ToDate1;
     Target.Method['Convert.ToTime[0]', C_UnitName] := @Convert_ToTime;
