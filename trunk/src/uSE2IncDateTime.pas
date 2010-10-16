@@ -240,6 +240,7 @@ const
 
      '  end;'+#13#10+
 
+     {$IFDEF SEII_USE_OLD_CONVERT}
      '  Convert = partial class'+#13#10+
      '  public'+#13#10+
      '    class function DateTimeToStr(const Date: TDateTime): string; external;'+#13#10+
@@ -257,9 +258,50 @@ const
      '    class function TryStrToDateTime(const S: string; out Value: TDateTime): Boolean; external;'+#13#10+
      '    class function TryStrToTime(const S: string; out Value: TDateTime): Boolean; external;'+#13#10+
      '  end;'+#13#10+
+     {$ELSE}
+
+      '  Convert = partial class' + #13#10 +
+      '  public' + #13#10 +
+      '    class function ToString(value: TDateTime): string; external; overload;' + #13#10 +
+      '    class function ToString(value: TDateTime; IncludeDate, IncludeTime: boolean): string; external; overload;' + #13#10 + 
+      #13#10 + 
+      '    class function ToDate(value: string): TDateTime; external; overload;' + #13#10 + 
+      '    class function ToDate(value: string; default: TDateTime): TDateTime; external; overload;' + #13#10 + 
+      '    class function ToDate(value: TDateTime): TDateTime; overload;' + #13#10 + 
+      '    class function ToTime(value: string): TDateTime; external; overload;' + #13#10 + 
+      '    class function ToTime(value: string; default: TDateTime): TDateTime; external; overload;' + #13#10 + 
+      '    class function ToTime(value: TDateTime): TDateTime; overload;' + #13#10 + 
+      '    class function ToDateTime(value: string): TDateTime; external; overload;' + #13#10 + 
+      '    class function ToDateTime(value: string; default: TDateTime): TDateTime; external; overload;' + #13#10 + 
+      '    class function ToDateTime(Date, Time: TDateTime): TDateTime; overload;' + #13#10 + 
+      #13#10 + 
+      '    class function TryToDate(value: string; out res: TDateTime): boolean; overload; external;' + #13#10 + 
+      '    class function TryToTime(value: string; out res: TDateTime): boolean; overload; external;' + #13#10 + 
+      '    class function TryToDateTime(value: string; out res: TDateTime): boolean; overload; external;' + #13#10 + 
+      '  end;' + #13#10 +
+
+     {$ENDIF}
      
      #13#10+
      'implementation'+#13#10+
+     {$IFNDEF SEII_USE_OLD_CONVERT}
+      #13#10 +
+      'class function Convert.ToDate(value: TDateTime): TDateTime;' + #13#10 + 
+      'begin' + #13#10 +
+      '  result := Math.Trunc(value);' + #13#10 + 
+      'end;' + #13#10 + 
+      #13#10 + 
+      'class function Convert.ToTime(value: TDateTime): TDateTime;' + #13#10 + 
+      'begin' + #13#10 + 
+      '  result := Math.Frac(value);' + #13#10 + 
+      'end;' + #13#10 + 
+      #13#10 + 
+      'class function Convert.ToDateTime(Date, Time: TDateTime): TDateTime;' + #13#10 + 
+      'begin' + #13#10 + 
+      '  result := Convert.ToDate(Date) + Convert.ToTime(Time);' + #13#10 + 
+      'end;' + #13#10 +
+
+     {$ENDIF}
      #13#10+
      'end.';
 
@@ -467,6 +509,72 @@ type
   end;
 
 
+{$IFNDEF SEII_USE_OLD_CONVERT}
+
+function Convert_ToString(__Self: pointer; DateTime: TDateTime): String;
+begin
+  result := DateTimeToStr(DateTime);
+end;
+
+function Convert_ToString1(__Self: pointer; DateTime: TDateTime; IncludeDate, IncludeTime: Boolean): String;
+begin
+  if IncludeDate then
+     result := DateToStr(DateTime);
+  if IncludeTime then
+  begin
+    if IncludeDate then
+       result := result + ' ' + TimeToStr(DateTime)
+    else
+       result := TimeToStr(DateTime);
+  end;
+end;
+
+function Convert_ToDate(__Self: pointer; value: String): TDateTime;
+begin
+  result := StrToDate(value);
+end;
+
+function Convert_ToDate1(__Self: pointer; value: String; default: TDateTime): TDateTime;
+begin
+  result := StrToDateDef(value, default);
+end;
+
+function Convert_ToTime(__Self: pointer; value: String): TDateTime;
+begin
+  result := StrToTime(value)
+end;
+
+function Convert_ToTime1(__Self: pointer; value: String; default: TDateTime): TDateTime;
+begin
+  result := StrToTimeDef(value, default);
+end;
+
+function Convert_ToDateTime(__Self: pointer; value: String): TDateTime;
+begin
+  result := StrToDateTime(value);
+end;
+
+function Convert_ToDateTime1(__Self: pointer; value: String; default: TDateTime): TDateTime;
+begin
+  result := StrToDateTimeDef(value, default);
+end;
+
+function Convert_TryToDate(__Self: pointer; value: String; var res: TDateTime): Boolean;
+begin
+  result := TryStrToDate(value, res);
+end;
+
+function Convert_TryToTime(__Self: pointer; value: String; var res: TDateTime): Boolean;
+begin
+  result := TryStrToTime(value, res);
+end;
+
+function Convert_TryToDateTime(__Self: pointer; value: String; var res: TDateTime): Boolean;
+begin
+  result := TryStrToDateTime(value, res);
+end;
+
+{$ENDIF}
 
 
 procedure Unit_RegisterMethods(const Target: TSE2RunAccess);
@@ -669,7 +777,8 @@ begin
     {$ENDIF}
 
     // Convert
-    
+
+    {$IFDEF SEII_USE_OLD_CONVERT}
     Target.Method['Convert.DateTimeToStr[0]', C_UnitName] := @            DateTime.DateTimeToStr;
     Target.Method['Convert.DateToStr[0]', C_UnitName] := @                DateTime.DateToStr;
     Target.Method['Convert.TimeToStr[0]', C_UnitName] := @                DateTime.TimeToStr;
@@ -684,6 +793,21 @@ begin
     Target.Method['Convert.TryStrToDate[0]', C_UnitName] := @             DateTime.TryStrToDate;
     Target.Method['Convert.TryStrToDateTime[0]', C_UnitName] := @         DateTime.TryStrToDateTime;
     Target.Method['Convert.TryStrToTime[0]', C_UnitName] := @             DateTime.TryStrToTime;
+    {$ELSE}
+
+    Target.Method['Convert.ToString[0]', C_UnitName] := @Convert_ToString;
+    Target.Method['Convert.ToString[1]', C_UnitName] := @Convert_ToString1;
+    Target.Method['Convert.ToDate[0]', C_UnitName] := @Convert_ToDate;
+    Target.Method['Convert.ToDate[1]', C_UnitName] := @Convert_ToDate1;
+    Target.Method['Convert.ToTime[0]', C_UnitName] := @Convert_ToTime;
+    Target.Method['Convert.ToTime[1]', C_UnitName] := @Convert_ToTime1;
+    Target.Method['Convert.ToDateTime[0]', C_UnitName] := @Convert_ToDateTime;
+    Target.Method['Convert.ToDateTime[1]', C_UnitName] := @Convert_ToDateTime1;
+    Target.Method['Convert.TryToDate[0]', C_UnitName] := @Convert_TryToDate;
+    Target.Method['Convert.TryToTime[0]', C_UnitName] := @Convert_TryToTime;
+    Target.Method['Convert.TryToDateTime[0]', C_UnitName] := @Convert_TryToDateTime;
+
+    {$ENDIF}
   end;
 end;
 
@@ -691,7 +815,7 @@ procedure RegisterUnit;
 var p : TSE2MethodUnit;
 begin
   p := TSE2MethodUnit.Create;               
-  p.Priority          := 5;
+  p.Priority          := 12;
   p.DoRegisterMethods := Unit_RegisterMethods;
   p.DoGetUnitSource   := Unit_GetSource;
   p.UnitName          := C_UnitName;

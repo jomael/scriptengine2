@@ -19,7 +19,7 @@ const
                     '=', '<', '<=', '>=', '>', '<>',
                     'is', 'as',
                     // Assignment
-                    ':=', ':', '.', ';', ',',
+                    ':=', ':', '.', '..', ';', ',',
                     // Operators
                     'and', 'or', 'xor', 'not', 'shr', 'shl', 'exit', 'break', 'continue',
                     '@',

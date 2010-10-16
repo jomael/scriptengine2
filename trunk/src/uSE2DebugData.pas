@@ -60,6 +60,10 @@ const
 
                 // Data Assign
                 'soDAT_SetInt', 'soDAT_SetFloat', 'soDAT_SetPtr', 'soDAT_LOADRES', 'soDAT_CLEAR',
+                                           
+                // Special Data Assign
+                'soDAT_PUSHInt32', 'soDAT_PUSHInt64', 'soDAT_PUSHUInt64', 'soDAT_PUSHFLOAT4', 'soDAT_PUSHFLOAT8',
+                'soDAT_PUSHPtr', 'soDAT_PUSHRES',
 
                 // Special Data
                 'soSPEC_INCP', 'soSPEC_CREATE', 'soSPEC_DESTROY', 'soSPEC_UNREF', 'soSPEC_DECP',
@@ -124,9 +128,18 @@ begin
   soDAT_CONVERT          : result := Format('CHANGE [%s %d]', [VarTypeToStr(PSE2OpDAT_CONVERT(OpCode).NewType), PSE2OpDAT_CONVERT(OpCode).Index]);
   soDAT_SetInt           : result := Format('MAKE INT [%d]', [PSE2OpDAT_SetInt(OpCode).Value]);
   soDAT_SetFloat         : result := Format('MAKE FLT [%n]', [PSE2OpDAT_SetFloat(OpCode).Value]);
-  soDAT_SetPtr           : result := Format('MAKE PTR [%x]', [cardinal(PSE2OpDAT_SetPtr(OpCode).Value)]);
+  soDAT_SetPtr           : result := Format('MAKE PTR [%x]', [PtrInt(PSE2OpDAT_SetPtr(OpCode).Value)]);
   soDAT_LOADRES          : result := Format('MAKE STR [%s]', [PE.Strings[PSE2OpDAT_LOADRES(OpCode).Index]]);
   soDAT_CLEAR            : result := 'CLEAR';
+
+
+  soDAT_PUSHInt32        : result := Format('PUSH Int32 [%d]', [PSE2OpDAT_PUSHInt32(OpCode).Value]);   
+  soDAT_PUSHInt64        : result := Format('PUSH Int64 [%d]', [PSE2OpDAT_PUSHInt64(OpCode).Value]);  
+  soDAT_PUSHUInt64       : result := Format('PUSH UInt64 [%u]', [PSE2OpDAT_PUSHUInt64(OpCode).Value]);  
+  soDAT_PUSHFloat4       : result := Format('PUSH single [%n]', [PSE2OpDAT_PUSHFloat4(OpCode).Value]); 
+  soDAT_PUSHFloat8       : result := Format('PUSH double [%n]', [PSE2OpDAT_PUSHFloat8(OpCode).Value]);
+  soDAT_PUSHPtr          : result := Format('PUSH ptr [%x]', [PtrInt(PSE2OpDAT_PUSHPtr(OpCode).Value)]);
+  soDAT_PUSHRES          : result := Format('PUSH str [%s]', [PE.Strings[PSE2OpDAT_PUSHRES(OpCode).Index]]);
 
   soSPEC_INCP            : result := Format('INCP [%x %s]', [PSE2OpSPEC_INCP(OpCode).Offset, VarTypeToStr(PSE2OpSPEC_INCP(OpCode).newType)]);
   soSPEC_CREATE          : result := Format('NEW [%d %s.%s]', [PSE2OpSPEC_CREATE(OpCode).Variables, PE.MetaData[PSE2OpSPEC_CREATE(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpSPEC_CREATE(OpCode).MetaIndex].Name]);
@@ -248,6 +261,8 @@ begin
       result := IntToStr(Data.ts64^ and $FFFFFFFF);
   btS64 :
       result := IntToStr(Data.ts64^);
+  btU64 :
+      result := IntToStr(Data.ts64^);
   btRecord :
       begin
         if Pointer(Data^.tPointer^) = nil then
@@ -344,6 +359,7 @@ begin
   btU32                   : result := 'U32';
   btS32                   : result := 'S32';
   btS64                   : result := 'S64';
+  btU64                   : result := 'U64';
   btSingle                : result := 'Float';
   btDouble                : result := 'Double';
   btString                : result := 'String';

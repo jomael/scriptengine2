@@ -58,6 +58,7 @@ type
     procedure AddU32(value: cardinal);
     procedure AddS32(value: integer);
     procedure AddS64(value: int64);
+    procedure AddU64(value: TbtU64);
     procedure AddSingle(value: single);
     procedure AddDouble(const value: double);
     procedure AddPointer(value: pointer);
@@ -366,7 +367,18 @@ var v1, v2: integer;
 begin
   p1 := @value;
   v1 := PInteger(p1)^;
-  v2 := PInteger(Pointer(Integer(p1) + SizeOf(Pointer)))^;
+  v2 := PInteger(Pointer(PtrInt(p1) + SizeOf(Pointer)))^;
+  FStack.Add(Pointer(v2));
+  FStack.Add(Pointer(v1));
+end;
+
+procedure TSE2MethodCall.AddU64(value: TbtU64);
+var v1, v2: cardinal;
+    p1    : PbtU64;
+begin
+  p1 := @value;
+  v1 := PCardinal(p1)^;
+  v2 := PCardinal(Pointer(PtrInt(p1) + SizeOf(Pointer)))^;
   FStack.Add(Pointer(v2));
   FStack.Add(Pointer(v1));
 end;
@@ -589,7 +601,7 @@ begin
       if TSE2ParamHelper.IsVarParam(ParamDecl) then
       begin
         case TSE2ParamHelper.GetParamType(ParamDecl) of
-        btU8, btS8, btU16, btS16, btU32, btS32, btS64,
+        btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64,
         btSingle, btDouble, btPointer, btObject :
            Self.AddPointer(Pointer(Param.tPointer));
         btRecord :
@@ -612,6 +624,7 @@ begin
         btS16         : Self.AddS16(Param^.ts16^);
         btU32         : Self.AddU32(Param^.tu32^);
         btS32         : Self.AddS32(Param^.ts32^);
+        btU64,
         btS64         : Self.AddS64(Param^.ts64^);
         btSingle      : Self.AddSingle(Param^.tSingle^);
         btDouble      : Self.AddDouble(Param^.tDouble^);
@@ -706,6 +719,7 @@ begin
       btU32                : ReturnVar^.tu32^ := Self.AsU32;
       btS32                : ReturnVar^.ts32^ := Self.AsU32;
       btS64                : ReturnVar^.ts64^ := Self.AsS64;
+      btU64                : ReturnVar^.ts64^ := Self.AsS64;
       btSingle             : Self.AsSingle(ReturnVar^.tSingle);
       btDouble             : Self.AsDouble(ReturnVar^.tDouble);
       btPointer, btObject  : Pointer(ReturnVar^.tPointer^) := Self.AsPointer;

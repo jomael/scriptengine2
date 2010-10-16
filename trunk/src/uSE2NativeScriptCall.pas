@@ -110,7 +110,8 @@ var CallInfo     : PSE2NativeCallEntry;
        exit;
     case ParamType of
     btDouble,
-    btS64 :
+    btS64,
+    btU64  :
         result := 2;
     end;
   end;
@@ -299,6 +300,7 @@ var CallInfo     : PSE2NativeCallEntry;
           btU32     : newEntry.tu32^     := PInteger(Data)^;
           btS32     : newEntry.ts32^     := PInteger(Data)^;
           btS64     : newEntry.ts64^     := PInteger(Data)^;
+          btU64     : newEntry.ts64^     := PInteger(Data)^;
           btSingle  : newEntry.tSingle^  := PInteger(Data)^;
           btDouble  : newEntry.tDouble^  := PInteger(Data)^;
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
@@ -315,6 +317,7 @@ var CallInfo     : PSE2NativeCallEntry;
           btU32     : newEntry.tu32^     := PInt64(Data)^;
           btS32     : newEntry.ts32^     := PInt64(Data)^;
           btS64     : newEntry.ts64^     := PInt64(Data)^;
+          btU64     : newEntry.ts64^     := PInt64(Data)^;
           btSingle  : newEntry.tSingle^  := PInt64(Data)^;
           btDouble  : newEntry.tDouble^  := PInt64(Data)^;
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
@@ -553,7 +556,7 @@ var CallInfo     : PSE2NativeCallEntry;
         case aParamType of
         btU8, btS8, btU16, btS16, btU32, btS32 :
             SetVariableContent(aParamType, vtInteger, Parameter);
-        btS64 :
+        btS64, btU64 :
             SetVariableContent(aParamType, vtInt64, Parameter);
         btSingle :
             SetVariableContent(aParamType, vtExtended, Parameter);
@@ -579,7 +582,7 @@ var CallInfo     : PSE2NativeCallEntry;
         case aParamType of
         btU8, btS8, btU16, btS16, btU32, btS32 :
             SetVariableContent(aParamType, vtInteger, PPointer(Parameter)^);
-        btS64 :
+        btS64, btU64 :
             SetVariableContent(aParamType, vtInt64, PPointer(Parameter)^);
         btSingle, btDouble :
             SetVariableContent(aParamType, vtExtended, PPointer(Parameter)^);
@@ -629,6 +632,7 @@ var CallInfo     : PSE2NativeCallEntry;
         btU32          : PbtU32(PPointer(Parameter)^)^    := Data^.tU32^;
         btS32          : PbtS32(PPointer(Parameter)^)^    := Data^.tS32^;
         btS64          : PbtS64(PPointer(Parameter)^)^    := Data^.tS64^;
+        btU64          : PbtS64(PPointer(Parameter)^)^    := Data^.tS64^;
         btSingle       : PbtSingle(PPointer(Parameter)^)^ := Data^.tSingle^;
         btDouble       : PbtDouble(PPointer(Parameter)^)^ := Data^.tDouble^;
         btString       : PbtString(PPointer(Parameter)^)^ := PbtString(Data^.tString^)^;

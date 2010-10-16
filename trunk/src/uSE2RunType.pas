@@ -22,6 +22,7 @@ type
       btS32            : (ts32        : ^TbtS32);
       btReturnAddress,
       btS64            : (ts64        : ^TbtS64);
+      btU64            : (tu64        : ^TbtU64);
       btSingle         : (tSingle     : ^TbtSingle);
       btDouble         : (tDouble     : ^TbtDouble);
       btString,
@@ -311,6 +312,7 @@ begin
     btS32            : v := SizeOf(TbtS32);
     btReturnAddress,
     btS64            : v := SizeOf(TbtS64);
+    btU64            : v := SizeOf(TbtU64);
     btSingle         : v := SizeOf(TbtSingle);
     btDouble         : v := SizeOf(TbtDouble);
     btString,
@@ -360,6 +362,7 @@ begin
         btS32          : TbtS32(newData^)         := TbtU8(Data.tPointer^);
         btU32          : TbtU32(newData^)         := TbtU8(Data.tPointer^);
         btS64          : TbtS64(newData^)         := TbtU8(Data.tPointer^);
+        btU64          : TbtU64(newData^)         := TbtU8(Data.tPointer^);
         btSingle       : TbtSingle(newData^)      := TbtU8(Data.tPointer^);
         btDouble       : TbtDouble(newData^)      := TbtU8(Data.tPointer^);
         btPointer,
@@ -375,6 +378,7 @@ begin
         btS32          : TbtS32(newData^)         := TbtS8(Data.tPointer^);
         btU32          : TbtU32(newData^)         := TbtS8(Data.tPointer^);
         btS64          : TbtS64(newData^)         := TbtS8(Data.tPointer^);
+        btU64          : TbtU64(newData^)         := TbtS8(Data.tPointer^);
         btSingle       : TbtSingle(newData^)      := TbtS8(Data.tPointer^);
         btDouble       : TbtDouble(newData^)      := TbtS8(Data.tPointer^);
         btPointer,
@@ -390,6 +394,7 @@ begin
         btS32          : TbtS32(newData^)         := TbtU16(Data.tPointer^);
         btU32          : TbtU32(newData^)         := TbtU16(Data.tPointer^);
         btS64          : TbtS64(newData^)         := TbtU16(Data.tPointer^);
+        btU64          : TbtU64(newData^)         := TbtU16(Data.tPointer^);
         btSingle       : TbtSingle(newData^)      := TbtU16(Data.tPointer^);
         btDouble       : TbtDouble(newData^)      := TbtU16(Data.tPointer^);
         btPointer,
@@ -405,6 +410,7 @@ begin
         btS32          : TbtS32(newData^)         := TbtS16(Data.tPointer^);
         btU32          : TbtU32(newData^)         := TbtS16(Data.tPointer^);
         btS64          : TbtS64(newData^)         := TbtS16(Data.tPointer^);
+        btU64          : TbtU64(newData^)         := TbtU16(Data.tPointer^);
         btSingle       : TbtSingle(newData^)      := TbtS16(Data.tPointer^);
         btDouble       : TbtDouble(newData^)      := TbtS16(Data.tPointer^);
         btPointer,
@@ -419,7 +425,8 @@ begin
         btU16          : TbtU16(newData^)         := TbtU32(Data.tPointer^);
         btS16          : TbtS16(newData^)         := TbtU32(Data.tPointer^);
         btS32          : FreeData := True;
-        btS64          : TbtS64(newData^)         := TbtU32(Data.tPointer^);
+        btS64          : TbtS64(newData^)         := TbtU32(Data.tPointer^);  
+        btU64          : TbtU64(newData^)         := TbtU32(Data.tPointer^);
         btSingle       : TbtSingle(newData^)      := TbtU32(Data.tPointer^);
         btDouble       : TbtDouble(newData^)      := TbtU32(Data.tPointer^);
         btPointer,
@@ -434,7 +441,8 @@ begin
         btU16          : TbtU16(newData^)         := TbtS32(Data.tPointer^);
         btS16          : TbtS16(newData^)         := TbtS32(Data.tPointer^);
         btU32          : FreeData := True;
-        btS64          : TbtS64(newData^)         := TbtS32(Data.tPointer^);
+        btS64          : TbtS64(newData^)         := TbtS32(Data.tPointer^);  
+        btU64          : TbtU64(newData^)         := TbtS32(Data.tPointer^);
         btSingle       : TbtSingle(newData^)      := TbtS32(Data.tPointer^);
         btDouble       : TbtDouble(newData^)      := TbtS32(Data.tPointer^);
         btPointer,
@@ -450,10 +458,27 @@ begin
         btS16          : TbtS16(newData^)         := TbtS64(Data.tPointer^);
         btU32          : TbtU32(newData^)         := TbtS64(Data.tPointer^);
         btS32          : TbtS32(newData^)         := TbtS64(Data.tPointer^);
+        btU64          : TbtU64(newData^)         := TbtS64(Data.tPointer^);
         btSingle       : TbtSingle(newData^)      := TbtS64(Data.tPointer^);
         btDouble       : TbtDouble(newData^)      := TbtS64(Data.tPointer^);
         btPointer,
         btObject       : TbtPointer(newData^)     := TbtS64(Data.tPointer^);
+        end;
+      end;  
+  btU64 :
+      begin
+        case newType of
+        btU8           : TbtU8(newData^)          := TbtU64(Data.tPointer^);
+        btS8           : TbtS8(newData^)          := TbtU64(Data.tPointer^);
+        btU16          : TbtU16(newData^)         := TbtU64(Data.tPointer^);
+        btS16          : TbtS16(newData^)         := TbtU64(Data.tPointer^);
+        btU32          : TbtU32(newData^)         := TbtU64(Data.tPointer^);
+        btS32          : TbtS32(newData^)         := TbtU64(Data.tPointer^);
+        btS64          : TbtS64(newData^)         := TbtU64(Data.tPointer^);
+        btSingle       : TbtSingle(newData^)      := TbtU64(Data.tPointer^);
+        btDouble       : TbtDouble(newData^)      := TbtU64(Data.tPointer^);
+        btPointer,
+        btObject       : TbtPointer(newData^)     := TbtU64(Data.tPointer^);
         end;
       end;
   btSingle :
@@ -477,7 +502,8 @@ begin
         btS16          : TbtS16(newData^)         := cardinal(Data.tPointer^);
         btU32          : TbtU32(newData^)         := cardinal(Data.tPointer^);
         btS32          : TbtS32(newData^)         := cardinal(Data.tPointer^);
-        btS64          : TbtS64(newData^)         := cardinal(Data.tPointer^);
+        btS64          : TbtS64(newData^)         := cardinal(Data.tPointer^);  
+        btU64          : TbtU64(newData^)         := cardinal(Data.tPointer^);
         btSingle       : TbtSingle(newData^)      := cardinal(Data.tPointer^);
         btDouble       : TbtDouble(newData^)      := cardinal(Data.tPointer^);
         btPointer,
@@ -1172,7 +1198,8 @@ begin
   btU32      : result := Data^.tu32^       = PCardinal(Value)^;
   btS32      : result := Data^.ts32^       = PInteger(Value)^;
   btReturnAddress,
-  btS64      : result := Data^.ts64^       = PInt64(Value)^;
+  btS64      : result := Data^.ts64^       = PInt64(Value)^;    
+  btU64      : result := Data^.ts64^       = PUInt64(Value)^;
   btSingle   : result := Data^.tSingle^    = PSingle(Value)^;
   btDouble   : result := Data^.tDouble^    = PDouble(Value)^;
 
@@ -1199,7 +1226,8 @@ begin
   btS16             : Data^.ts16^  := value;
   btU32             : Data^.tu32^  := value;
   btS32             : Data^.ts32^  := value;
-  btS64             : Data^.ts64^  := value;
+  btS64             : Data^.ts64^  := value;  
+  btU64             : Data^.ts64^  := value;
   end;
 end;
 
@@ -1235,7 +1263,7 @@ procedure TSE2VarHelper.WriteContent(Data: PSE2VarData; Target: Pointer;
 begin
   case Data.AType of
   btU8, btS8, btU16, btS16,
-  btU32, btS32, btS64,
+  btU32, btS32, btS64, btU64,
   btSingle, btDouble,
   btString, btWideString, btUTF8String, btPChar, btPAnsiChar, btPWideChar, btAnsiString,
   btPointer, btObject :

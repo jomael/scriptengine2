@@ -135,9 +135,31 @@ const
         '    function Substract(aTime: TDateTime): TTimeSpan;' + #13#10 + 
         '    function Add(aTime: TTimeSpan): TDateTime;' + #13#10 +
         '    function TimeBetween(aTime: TDateTime): TTimeSpan;' + #13#10 +
-        '  end;' + #13#10 + 
+        '  end;' + #13#10 +
+        #13#10 +
+        '  Convert = partial class' + #13#10 + 
+        '  public' + #13#10 + 
+        '    class function ToTimeSpan(value: string): TTimeSpan; overload;' + #13#10 + 
+        '    class function ToTimeSpan(value: TDateTime): TTimeSpan; overload;' + #13#10 + 
+        '    class function ToString(value: TTimeSpan): string; overload;' + #13#10 + 
+        '  end;' + #13#10 +
         #13#10 + 
         'implementation' + #13#10 +
+        #13#10 +
+        'class function Convert.ToTimeSpan(value: string): TTimeSpan;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := TTimeSpan.FromString(value);' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'class function Convert.ToTimeSpan(value: TDateTime): TTimeSpan;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result.Value := value;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'class function Convert.ToString(value: TTimeSpan): string;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := value.ToString;' + #13#10 + 
+        'end;' + #13#10 + 
         #13#10 +
         'function TDateTimeTimeSpanHelper.Substract(aTime: TDateTime): TTimeSpan;' + #13#10 +
         'begin' + #13#10 +
@@ -331,13 +353,13 @@ const
         '  if (value.IndexOf(''.'') > 0) and' + #13#10 + 
         '     (value.IndexOf(''.'') < iPos) then' + #13#10 + 
         '  begin' + #13#10 + 
-        '    d := Convert.StrToIntDef(value.SubString(1, value.IndexOf(''.'') - 1), 0);' + #13#10 +
+        '    d := Convert.ToInt32(value.SubString(1, value.IndexOf(''.'') - 1), 0);' + #13#10 +
         '    value := value.SubString(value.IndexOf(''.'') + 1, value.Length);' + #13#10 + 
         '    iPos  := value.IndexOf('':'');' + #13#10 + 
         '  end else' + #13#10 + 
         '    d := 0;' + #13#10 + 
         #13#10 + 
-        '  h := Convert.StrToIntDef(value.SubString(1, iPos - 1), 0);' + #13#10 +
+        '  h := Convert.ToInt32(value.SubString(1, iPos - 1), 0);' + #13#10 +
         '  value := value.SubString(iPos + 1, value.Length);' + #13#10 +
         #13#10 +
         '  // 2nd value' + #13#10 +
@@ -345,20 +367,20 @@ const
         '  if iPos = 0 then' + #13#10 + 
         '     exit;' + #13#10 +
         #13#10 + 
-        '  m := Convert.StrToIntDef(value.SubString(1, iPos - 1), 0);' + #13#10 +
+        '  m := Convert.ToInt32(value.SubString(1, iPos - 1), 0);' + #13#10 +
         '  value := value.SubString(iPos + 1, value.Length);' + #13#10 +
         #13#10 +
         '  // 3rd value' + #13#10 +
         '  iPos  := value.IndexOf(''.'');' + #13#10 + 
         '  if iPos > 0 then' + #13#10 + 
         '  begin' + #13#10 + 
-        '    s := Convert.StrToIntDef(value.SubString(1, iPos - 1), 0);' + #13#10 + 
+        '    s := Convert.ToInt32(value.SubString(1, iPos - 1), 0);' + #13#10 + 
         '    value := value.SubString(iPos + 1, value.Length);' + #13#10 +
         #13#10 + 
-        '    ms := Convert.StrToIntDef(value, 0);' + #13#10 + 
+        '    ms := Convert.ToInt32(value, 0);' + #13#10 + 
         '  end else' + #13#10 +
         '  begin'+#13#10+
-        '    s  := Convert.StrToIntDef(value, 0);'+#13#10+
+        '    s  := Convert.ToInt32(value, 0);'+#13#10+
         '    ms := 0;' + #13#10 +
         '  end;'+#13#10+
         #13#10 + 

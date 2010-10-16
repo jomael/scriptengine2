@@ -138,7 +138,7 @@ const
           '    /// Convert the pointer to a string' + #13#10 + 
           '    function ToString(Prefix: string): string; overload;' + #13#10 + 
           '  end;' + #13#10 + 
-          '  TDoubleHelper = helper for double' + #13#10 + 
+          '  TDoubleHelper = helper for double' + #13#10 +
           '  public' + #13#10 + 
           '    /// Returns true, if the value is not a number' + #13#10 + 
           '    function IsNan: boolean;' + #13#10 + 
@@ -154,7 +154,7 @@ const
           '    function Floor: integer;' + #13#10 + 
           '    function ToString: string; overload;' + #13#10 + 
           '    /// Convert the value to a string' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;' + #13#10 + 
+          '    function ToString(Digits: byte): string; overload;' + #13#10 +
           '    /// Negate the value' + #13#10 + 
           '    function Negate: double;' + #13#10 + 
           '    /// Returns the absolte value' + #13#10 + 
@@ -164,7 +164,7 @@ const
           '    /// Returns min if the value is smaller min, returns max if the value is greater max, otherwise returns the value' + #13#10 + 
           '    function ClampToRange(min, max: double): double;' + #13#10 + 
           '  end;' + #13#10 + 
-          '  TSingleHelper = helper for single' + #13#10 + 
+          '  TSingleHelper = helper for single' + #13#10 +
           '  public' + #13#10 + 
           '    /// Returns true, if the value is not a number' + #13#10 + 
           '    function IsNan: boolean;' + #13#10 + 
@@ -178,9 +178,9 @@ const
           '    function Trunc: int64;' + #13#10 + 
           '    /// Round to the next lower value' + #13#10 + 
           '    function Floor: integer;' + #13#10 + 
-          '    function ToString: string; overload;' + #13#10 + 
+          '    function ToString: string; overload;' + #13#10 +
           '    /// Convert the value to a string' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;' + #13#10 + 
+          '    function ToString(Digits: byte): string; overload;' + #13#10 + 
           '    /// Returns the negative value' + #13#10 + 
           '    function Negate: single;' + #13#10 + 
           '    /// Returns the absolute value' + #13#10 + 
@@ -199,8 +199,8 @@ const
           '  TByteHelper = helper for byte' + #13#10 + 
           '  public' + #13#10 + 
           '    function ToString: string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer; PrefixStr: string): string; overload;' + #13#10 + 
+          '    function ToString(Digits: byte): string; overload;' + #13#10 +
+          '    function ToString(Digits: byte; PrefixStr: string): string; overload;' + #13#10 + 
           '    /// Returns true, if the value is >= min and <= max' + #13#10 + 
           '    function IsInRange(min, max: byte): boolean;' + #13#10 + 
           '    /// Returns min if the value is smaller min, returns max if the value is greater max, otherwise returns the value' + #13#10 + 
@@ -210,8 +210,8 @@ const
           '  TShortIntHelper = helper for shortint' + #13#10 + 
           '  public' + #13#10 + 
           '    function ToString: string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer; PrefixStr: string): string; overload;' + #13#10 + 
+          '    function ToString(Digits: byte): string; overload;' + #13#10 +
+          '    function ToString(Digits: byte; PrefixStr: string): string; overload;' + #13#10 + 
           '    function Negate: shortint;' + #13#10 + 
           '    function Abs: shortint;' + #13#10 + 
           '    /// Returns true, if the value is >= min and <= max' + #13#10 + 
@@ -223,8 +223,8 @@ const
           '  TWordHelper = helper for word' + #13#10 + 
           '  public' + #13#10 + 
           '    function ToString: string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer; PrefixStr: string): string; overload;' + #13#10 + 
+          '    function ToString(Digits: byte): string; overload;' + #13#10 +
+          '    function ToString(Digits: byte; PrefixStr: string): string; overload;' + #13#10 + 
           '    /// Returns true, if the value is >= min and <= max' + #13#10 + 
           '    function IsInRange(min, max: word): boolean;' + #13#10 + 
           '    /// Returns min if the value is smaller min, returns max if the value is greater max, otherwise returns the value' + #13#10 + 
@@ -234,8 +234,8 @@ const
           '  TSmallIntHelper = helper for smallint' + #13#10 + 
           '  public' + #13#10 + 
           '    function ToString: string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer; PrefixStr: string): string; overload;' + #13#10 + 
+          '    function ToString(Digits: byte): string; overload;' + #13#10 +
+          '    function ToString(Digits: byte; PrefixStr: string): string; overload;' + #13#10 + 
           '    function Negate: smallint;' + #13#10 + 
           '    function Abs: smallint;' + #13#10 + 
           '    /// Returns true, if the value is >= min and <= max' + #13#10 + 
@@ -247,8 +247,8 @@ const
           '  TIntegerHelper = helper for integer' + #13#10 + 
           '  public' + #13#10 + 
           '    function ToString: string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer; PrefixStr: string): string; overload;' + #13#10 + 
+          '    function ToString(Digits: byte): string; overload;' + #13#10 +
+          '    function ToString(Digits: byte; PrefixStr: string): string; overload;' + #13#10 + 
           '    function Negate: integer;' + #13#10 + 
           '    function Abs: integer;' + #13#10 + 
           '    /// Returns true, if the value is >= min and <= max' + #13#10 + 
@@ -260,8 +260,8 @@ const
           '  TCardinalHelper = helper for cardinal' + #13#10 + 
           '  public' + #13#10 + 
           '    function ToString: string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer; PrefixStr: string): string; overload;' + #13#10 + 
+          '    function ToString(Digits: byte): string; overload;' + #13#10 +
+          '    function ToString(Digits: byte; PrefixStr: string): string; overload;' + #13#10 + 
           '    /// Returns true, if the value is >= min and <= max' + #13#10 + 
           '    function IsInRange(min, max: cardinal): boolean;' + #13#10 + 
           '    /// Returns min if the value is smaller min, returns max if the value is greater max, otherwise returns the value' + #13#10 + 
@@ -271,15 +271,28 @@ const
           '  TInt64Helper = helper for int64' + #13#10 + 
           '  public' + #13#10 + 
           '    function ToString: string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer): string; overload;' + #13#10 + 
-          '    function ToString(Digits: integer; PrefixStr: string): string; overload;' + #13#10 + 
+          '    function ToString(Digits: byte): string; overload;' + #13#10 +
+          '    function ToString(Digits: byte; PrefixStr: string): string; overload;' + #13#10 + 
           '    function Negate: int64;' + #13#10 + 
           '    function Abs: int64;' + #13#10 + 
           '    /// Returns true, if the value is >= min and <= max' + #13#10 + 
           '    function IsInRange(min, max: int64): boolean;' + #13#10 + 
           '    /// Returns min if the value is smaller min, returns max if the value is greater max, otherwise returns the value' + #13#10 + 
           '    function ClampToRange(min, max: int64): int64;' + #13#10 + 
-          '  end;' + #13#10 + 
+          '  end;' + #13#10 +
+          #13#10 +
+          '  TUInt64Helper = helper for UInt64' + #13#10 + 
+          '  public' + #13#10 +
+          '    function ToString: string; overload;' + #13#10 +
+          '    function ToString(Digits: byte): string; overload;' + #13#10 +
+          '    /// Convert the value to a string' + #13#10 +
+          '    function ToString(Digits: byte; Prefix: string): string; overload;' + #13#10 +
+          #13#10 +
+          '    /// Returns true, if the value is >= min and <= max' + #13#10 +
+          '    function IsInRange(min, max: UInt64): Boolean;' + #13#10 +
+          '    /// Returns min if the value is smaller min, returns max if the value is greater max, otherwise returns the value' + #13#10 +
+          '    function ClampToRange(min, max: UInt64): UInt64;' + #13#10 +
+          '  end;' + #13#10 +
           #13#10 + 
           '  TBooleanHelper = helper for boolean' + #13#10 + 
           '  public' + #13#10 + 
@@ -623,7 +636,7 @@ const
           'function TAnsiStringHelper.EndsWith(const value: AnsiString): boolean;' + #13#10 + 
           'begin' + #13#10 + 
           '  result := AnsiStrings.CompareStr(Self.SubString(Self.Length - value.Length + 1, value.Length), value) = 0;' + #13#10 + 
-          'end;' + #13#10 + 
+          'end;' + #13#10 +
           'function TAnsiStringHelper.EndsWith(const value: AnsiString; CaseSensitive: boolean): boolean;' + #13#10 + 
           'var s: AnsiString;' + #13#10 + 
           'begin' + #13#10 + 
@@ -747,7 +760,7 @@ const
           'begin' + #13#10 + 
           '  result := Self <> nil;' + #13#10 + 
           'end;' + #13#10 + 
-          'function TDoubleHelper.IsNan: boolean;' + #13#10 + 
+          'function TDoubleHelper.IsNan: boolean;' + #13#10 +
           'begin' + #13#10 + 
           '  result := Math.IsNan(Self);' + #13#10 + 
           'end;' + #13#10 + 
@@ -843,17 +856,17 @@ const
           #13#10 + 
           'function TByteHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TByteHelper.ToString(Digits: integer): string;' + #13#10 + 
-          'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits);' + #13#10 + 
+          'function TByteHelper.ToString(Digits: byte): string;' + #13#10 +
+          'begin' + #13#10 +
+          '  result := Convert.ToString(Self, Digits);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TByteHelper.ToString(Digits: integer; PrefixStr: string): string;' + #13#10 + 
+          'function TByteHelper.ToString(Digits: byte; PrefixStr: string): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits, PrefixStr);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
           'function TByteHelper.IsInRange(min, max: byte): boolean;' + #13#10 + 
@@ -874,17 +887,17 @@ const
           #13#10 + 
           'function TShortIntHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TShortIntHelper.ToString(Digits: integer): string;' + #13#10 + 
+          'function TShortIntHelper.ToString(Digits: byte): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TShortIntHelper.ToString(Digits: integer; PrefixStr: string): string;' + #13#10 + 
+          'function TShortIntHelper.ToString(Digits: byte; PrefixStr: string): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits, PrefixStr);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
           'function TShortIntHelper.Negate: shortint;' + #13#10 + 
@@ -918,17 +931,17 @@ const
           #13#10 + 
           'function TWordHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TWordHelper.ToString(Digits: integer): string;' + #13#10 + 
+          'function TWordHelper.ToString(Digits: byte): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TWordHelper.ToString(Digits: integer; PrefixStr: string): string;' + #13#10 + 
+          'function TWordHelper.ToString(Digits: byte; PrefixStr: string): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits, PrefixStr);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
           'function TWordHelper.IsInRange(min, max: word): boolean;' + #13#10 + 
@@ -949,17 +962,17 @@ const
           #13#10 + 
           'function TSmallIntHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TSmallIntHelper.ToString(Digits: integer): string;' + #13#10 + 
+          'function TSmallIntHelper.ToString(Digits: byte): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TSmallIntHelper.ToString(Digits: integer; PrefixStr: string): string;' + #13#10 + 
+          'function TSmallIntHelper.ToString(Digits: byte; PrefixStr: string): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits, PrefixStr);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
           'function TSmallIntHelper.Negate: smallint;' + #13#10 + 
@@ -993,17 +1006,17 @@ const
           #13#10 + 
           'function TCardinalHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TCardinalHelper.ToString(Digits: integer): string;' + #13#10 + 
+          'function TCardinalHelper.ToString(Digits: byte): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TCardinalHelper.ToString(Digits: integer; PrefixStr: string): string;' + #13#10 + 
+          'function TCardinalHelper.ToString(Digits: byte; PrefixStr: string): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits, PrefixStr);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
           'function TCardinalHelper.IsInRange(min, max: cardinal): boolean;' + #13#10 + 
@@ -1024,17 +1037,17 @@ const
           #13#10 + 
           'function TIntegerHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TIntegerHelper.ToString(Digits: integer): string;' + #13#10 + 
+          'function TIntegerHelper.ToString(Digits: byte): string;' + #13#10 +
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TIntegerHelper.ToString(Digits: integer; PrefixStr: string): string;' + #13#10 + 
+          'function TIntegerHelper.ToString(Digits: byte; PrefixStr: string): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits, PrefixStr);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
           'function TIntegerHelper.Negate: integer;' + #13#10 + 
@@ -1068,17 +1081,17 @@ const
           #13#10 + 
           'function TInt64helper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self);' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TInt64helper.ToString(Digits: integer): string;' + #13#10 + 
+          'function TInt64helper.ToString(Digits: byte): string;' + #13#10 +
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TInt64helper.ToString(Digits: integer; PrefixStr: string): string;' + #13#10 + 
+          'function TInt64helper.ToString(Digits: byte; PrefixStr: string): string;' + #13#10 +
           'begin' + #13#10 + 
-          '  result := Convert.IntToStr(Self, Digits, PrefixStr);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits, PrefixStr);' + #13#10 +
           'end;' + #13#10 + 
           #13#10 + 
           'function TInt64helper.Negate: int64;' + #13#10 + 
@@ -1108,16 +1121,47 @@ const
           '     result := max' + #13#10 + 
           '  else' + #13#10 + 
           '     result := Self;' + #13#10 + 
+          'end;' + #13#10 +
+          #13#10 +
+          'function TUInt64Helper.ToString: string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
+          #13#10 + 
+          'function TUInt64Helper.ToString(Digits: byte): string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TUInt64Helper.ToString(Digits: byte; Prefix: string): string;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits, Prefix);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TUInt64Helper.IsInRange(min, max: UInt64): boolean;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  result := (Self >= min) and (Self <= max);' + #13#10 + 
+          'end;' + #13#10 + 
+          #13#10 + 
+          'function TUInt64Helper.ClampToRange(min, max: UInt64): UInt64;' + #13#10 + 
+          'begin' + #13#10 + 
+          '  if Self < min then' + #13#10 + 
+          '     result := min' + #13#10 + 
+          '  else' + #13#10 + 
+          '  if Self > max then' + #13#10 + 
+          '     result := max' + #13#10 + 
+          '  else' + #13#10 + 
+          '     result := Self;' + #13#10 + 
+          'end;' + #13#10 +
           #13#10 + 
           'function TBooleanHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.BoolToStr(Self, True);' + #13#10 + 
+          '  result := Convert.ToString(Self, True);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
           'function TSingleHelper.ToString: string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.FloatToStr(Self);' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
           'function TPointerHelper.AddOffset(const Offset: int64): Pointer;' + #13#10 + 
@@ -1134,15 +1178,15 @@ const
           'begin' + #13#10 + 
           '  result := Self.ToString(''$'');' + #13#10 + 
           'end;' + #13#10 + 
-          #13#10 + 
+          #13#10 +
           'function TPointerHelper.ToString(Prefix: string): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Prefix + Convert.IntToHex(int64(Self), 8);' + #13#10 + 
+          '  result := Prefix + Convert.ToHex(int64(Self), 8);' + #13#10 +
           'end;' + #13#10 + 
           #13#10 + 
-          'function TSingleHelper.ToString(Digits: integer): string;' + #13#10 + 
+          'function TSingleHelper.ToString(Digits: byte): string;' + #13#10 +
           'begin' + #13#10 + 
-          '  result := Convert.FloatToStr(Self, ffFixed, 7, Digits);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits);' + #13#10 +
           'end;' + #13#10 + 
           #13#10 + 
           'function TSingleHelper.Negate: single;' + #13#10 + 
@@ -1150,7 +1194,7 @@ const
           '  result := -Self;' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TSingleHelper.Abs: single;' + #13#10 + 
+          'function TSingleHelper.Abs: single;' + #13#10 +
           'begin' + #13#10 + 
           '  if Self > 0 then' + #13#10 + 
           '     result := Self' + #13#10 + 
@@ -1158,14 +1202,14 @@ const
           '     result := -Self;' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TDoubleHelper.ToString: string;' + #13#10 + 
+          'function TDoubleHelper.ToString: string;' + #13#10 +
           'begin' + #13#10 + 
-          '  result := Convert.FloatToStr(Self);' + #13#10 + 
+          '  result := Convert.ToString(Self);' + #13#10 + 
           'end;' + #13#10 + 
           #13#10 + 
-          'function TDoubleHelper.ToString(Digits: integer): string;' + #13#10 + 
+          'function TDoubleHelper.ToString(Digits: byte): string;' + #13#10 + 
           'begin' + #13#10 + 
-          '  result := Convert.FloatToStr(Self, ffFixed, 15, Digits);' + #13#10 + 
+          '  result := Convert.ToString(Self, Digits);' + #13#10 +
           'end;' + #13#10 + 
           #13#10 + 
           'function TDoubleHelper.Negate: double;' + #13#10 + 

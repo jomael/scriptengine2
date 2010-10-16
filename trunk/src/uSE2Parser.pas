@@ -201,17 +201,17 @@ type
     property OnUnitRequest     : TSE2UnitRequest      read FUnitRequest       write FUnitRequest;
     property OnError           : TSE2ErrorEvent       read FErrorEvent        write FErrorEvent;
   end;
-         {
+                {
 var
-  DEBUG_TimeMeasure : int64;
-                              }
+  DEBUG_TimeMeasure : int64;      }
+
 implementation
 
 uses SysUtils, Math, Dialogs, DateUtils
-     {
+               {
      , Windows  }
      ;
-                 {
+               {
 var
   TTimeMeasure_BeginTime    : array[0..1024] of int64;
   TTimeMeasure_CurrentIndex : integer = 0;
@@ -235,8 +235,8 @@ begin
   TTimeMeasure_CurrentIndex := TTimeMeasure_CurrentIndex - 1;
   QueryPerformanceCounter(t);
   DEBUG_TimeMeasure := DEBUG_TimeMeasure + (t - TTimeMeasure_BeginTime[TTimeMeasure_CurrentIndex]);
-end;                   }
-
+end;
+                     }
 { TSE2ParseState }
 
 constructor TSE2ParseState.Create(Parent: TSE2Parser);
@@ -282,7 +282,7 @@ begin
 
 
   if FExpectedName <> '' then
-    if not SameText(FExpectedName, fName) then
+    if not StringIdentical(FExpectedName, fName) then
       RaiseError(petError, 'Expected "'+FExpectedName+'" as unit name but found "' + Tokenizer.Token.Value + '" instead');
 
   result := fName;
@@ -734,7 +734,7 @@ end;
 
 procedure TSE2Parser.ReadNextToken;
 var parentValue : TSE2BaseType;
-begin
+begin           
   Assert(Self <> nil);
   Assert(Tokenizer <> nil);
 
@@ -1595,7 +1595,7 @@ begin
   if ClassType = nil then
   begin
     ClassType := TSE2Class.Create;
-    DeclareType(State, ClassType, ClassName); 
+    DeclareType(State, ClassType, ClassName);
     if State.IsInInterface then
        ClassType.Visibility := visPublic
     else
@@ -1668,8 +1668,26 @@ begin
     begin
       if IsPartial then
         if ClassType.InheritFrom <> nil then
-          RaiseError(petError, 'partial part of the class must not have a class parent');
+          if ClassType.IsUnit(FUnit.Name) then
+             RaiseError(petError, 'partial part of the class must not have a class parent');
 
+
+
+      if ClassType.InheritFrom <> nil then
+        if not ClassType.IsUnit(FUnit.Name) then
+        begin
+          ClassType := TSE2Class.Create;
+          DeclareType(State, ClassType, ClassName);
+          if State.IsInInterface then
+             ClassType.Visibility := visPublic
+          else
+             ClassType.Visibility := visPrivate;
+          ClassType.IsPartial := IsPartial;
+          ClassType.IsSealed  := IsSealed;
+          FUnit.TypeList.Add(ClassType);
+        end;
+
+      IsFirstPartial := True;
       ReadNextToken;
       ExpectToken([sesIdentifier]);
 
@@ -1753,7 +1771,7 @@ begin
           if IsHelper then
              RaiseError(petError, 'Static elements are not allowed in class helpers');
           State.IsStatic := True;
-          ReadNextToken;           
+          ReadNextToken;
           ExpectToken([sesProcedure, sesFunction, sesProperty, sesVar]);
         end;
         case Tokenizer.Token.AType of
@@ -2371,11 +2389,6 @@ begin
       sesDestructor  : Method.MethodType := mtDestructor;
       end;
 
-      case Method.MethodType of
-      mtConstructor : Method.Used := True;
-      mtDestructor  : Method.Used := True;
-      end;
-
       ReadNextToken;
       if State.CurrentOwner = nil then
          State.AParent    := nil;
@@ -2484,7 +2497,7 @@ begin
       State.AParent := nil;
 
       if (Tokenizer.Token.AType = sesOpenRound) or (WasForwarded and (Method.Params.Count > MinParam)) then
-      begin
+      begin            
         ParamCount := MinParam;
         ExpectToken([sesOpenRound]);
         ReadNextToken;
@@ -2818,6 +2831,11 @@ begin
       begin
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLEX(0, 0{MakeCallExOptionMask(Method)}), Method.GenLinkerName));
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+      end;       
+
+      case Method.MethodType of
+      mtConstructor : Method.Used := (not Method.IsExternal) or Method.Used;
+      mtDestructor  : Method.Used := (not Method.IsExternal) or Method.Used;
       end;
 
       {
@@ -2993,6 +3011,7 @@ function TSE2Parser.ExceptionCreation(State: TSE2ParseState;
   Method: TSE2Method): boolean;
 var Ident: TSE2Type;
     Target: TSE2Type;
+    iPos, iLine : integer;
 begin
   ExpectToken([sesRaise]);
   State.IsExpression := True;
@@ -3002,9 +3021,12 @@ begin
   State.TargetType := Target;
   State.AParent    := nil;
 
+  iPos := Tokenizer.Reader.Position;
+  iLine := Tokenizer.Reader.Line;
+
   Ident := Expression(State, Method, Target);
   if not IsCompatible(Target, Ident, sesNone, False, Self) then
-     RaiseError(petError, GenIncompatibleExpression(Ident, Target));
+     RaiseError(petError, GenIncompatibleExpression(Ident, Target), iPos, iLine);
 
   result := IsScriptExceptionType(Ident);
 
@@ -3171,10 +3193,11 @@ begin
   end*);
 
 
-  GetOverloadedMethods(State, CallMethod, MethodList);
+  MethodList := nil;
   try
     if CallMethod.IsOverload then
     begin
+      GetOverloadedMethods(State, CallMethod, MethodList);
       ParamDecl := TSE2BaseTypeList.Create;
       try
         if CallMethod.HasSelfParam then
@@ -3785,7 +3808,7 @@ begin
 
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC( TSE2Type(TSE2Constant(FindItem).AType.InheritRoot).AType), ''));
       case TSE2Type(TSE2Constant(FindItem).AType.InheritRoot).AType of
-      btU8, btS8, btU16, btS16, btU32, btS32, btS64 :
+      btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64 :
           begin
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(TSE2Constant(FindItem).AsInteger), ''));
           end;
@@ -4240,6 +4263,7 @@ function TSE2Parser.Expression(State: TSE2ParseState; Method: TSE2Method;
   TargetType: TSE2Type): TSE2Type;
 var Token   : TSE2TokenType;
     FacType : TSE2Type;
+    iPos, iLine : integer;
 begin
   result := MathExpression(State, Method, TargetType);
   if result = nil then
@@ -4308,12 +4332,15 @@ begin
         end;
     else
         begin
+          iPos := Tokenizer.Reader.Position;
+          iLine := Tokenizer.Reader.Line;
+
           FacType := MathExpression(State, Method, TargetType);
           if FacType = nil then
              RaiseError(petError, 'Expression did not return a value');
 
           if not IsCompatible(result, FacType, Token, False, Self) then
-             RaiseError(petError, GenIncompatibleExpression(FacType, result, Token));
+             RaiseError(petError, GenIncompatibleExpression(FacType, result, Token), iPos, iLine);
 
           result := ConvertIntToSingle(State, Method, result, FacType);
           //result := FacType;
@@ -4521,15 +4548,18 @@ procedure TSE2Parser.IfStatement(State: TSE2ParseState;
 var OpCodePos1,
     OpCodePos2   : integer;
     Expr       : TSE2Type;
+    iPos, iLine : integer;
 begin
   ExpectToken([sesIf]);
   ReadNextToken;
 
   State.IsExpression := True;
   try
+    iPos := Tokenizer.Reader.Position;
+    iLine := Tokenizer.Reader.Line;
     Expr := Expression(State, Method, GetBooleanType);
     if not IsCompatible(GetBooleanType, Expr, sesNone, False, Self) then
-       RaiseError(petError, GenIncompatibleExpression(Expr, GetBooleanType));
+       RaiseError(petError, GenIncompatibleExpression(Expr, GetBooleanType), iPos, iLine);
   except
     on E: ESE2ParserError do
     begin
@@ -4764,6 +4794,8 @@ var oldBreakList    : integer;
     oldIsInLoop     : boolean;
     oldLoopStack    : integer;
     Expr            : TSE2Type;
+
+    iPos, iLine     : integer;
 begin
   ExpectToken([sesRepeat]);
   ReadNextToken;
@@ -4794,9 +4826,12 @@ begin
                               
   State.IsExpression := True;
 
+  iPos := Tokenizer.Reader.Position;
+  iLine := Tokenizer.Reader.Line;
+
   Expr := Expression(State, Method, GetBooleanType);
   if not IsCompatible(GetBooleanType, Expr, sesNone, False, Self) then
-     RaiseError(petError, GenIncompatibleExpression(Expr, GetBooleanType));
+     RaiseError(petError, GenIncompatibleExpression(Expr, GetBooleanType), iPos, iLine);
 
   State.IsExpression := False;
   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(OpCodePos1), ''));
@@ -4827,6 +4862,8 @@ var oldBreakList    : integer;
     oldIsInLoop     : boolean;
     oldLoopStack    : integer;
     Expr            : TSE2Type;
+
+    iPos, iLine     : integer;
 begin
   ExpectToken([sesWhile]);
   ReadNextToken;
@@ -4837,9 +4874,12 @@ begin
   OpCodePos2       := Method.OpCodes.Count;  
   State.IsExpression := True;
 
+  iPos := Tokenizer.Reader.Position;
+  iLine := Tokenizer.Reader.Line;
+
   Expr := Expression(State, Method, GetBooleanType);
   if not IsCompatible(GetBooleanType, Expr, sesNone, False, Self) then
-     RaiseError(petError, GenIncompatibleExpression(Expr, GetBooleanType));
+     RaiseError(petError, GenIncompatibleExpression(Expr, GetBooleanType), iPos, iLine);
 
   State.IsExpression := False;
   ExpectToken([sesDo]);
@@ -5152,6 +5192,7 @@ function TSE2Parser.Term(State: TSE2ParseState; Method: TSE2Method;
   TargetType: TSE2Type): TSE2Type;
 var Token   : TSE2TokenType;
     FacType : TSE2Type;
+    iPos, iLine : integer;
 begin
   result := Operators(State, Method, TargetType);
   if result = nil then
@@ -5161,9 +5202,12 @@ begin
 
     Token   := Tokenizer.Token.AType;
     ReadNextToken;
+
+    iPos := Tokenizer.Reader.Position;
+    iLine := Tokenizer.Reader.Line;
     FacType := Operators(State, Method, TargetType);
     if FacType = nil then
-       RaiseError(petError, 'Expression did not return a value');
+       RaiseError(petError, 'Expression did not return a value', iPos, iLine);
 
 
     if Token = sesSlash then
@@ -5173,7 +5217,7 @@ begin
     end;
 
     if not IsCompatible(FacType, result, Token, False, Self) then
-       RaiseError(petError, GenIncompatibleExpression(Result, FacType, Token));
+       RaiseError(petError, GenIncompatibleExpression(Result, FacType, Token), iPos, iLine);
 
     result := ConvertIntToSingle(State, Method, result, FacType);
     ConvertVariableCode(State, Method, FacType, result);
@@ -5196,6 +5240,7 @@ function TSE2Parser.MathExpression(State: TSE2ParseState;
   Method: TSE2Method; TargetType: TSE2Type): TSE2Type;
 var Token   : TSE2TokenType;
     FacType : TSE2Type;
+    iPos, iLine : integer;
 begin
   if Tokenizer.Token.AType in [sesPlus, sesMinus] then
   begin
@@ -5224,12 +5269,15 @@ begin
                  
     Token := Tokenizer.Token.AType;
     ReadNextToken;
+
+    iPos := Tokenizer.Reader.Position;
+    iLine := Tokenizer.Reader.Line;
     FacType := Term(State, Method, TargetType);
     if FacType = nil then
        RaiseError(petError, 'Expression did not return a value');
 
     if not IsCompatible(FacType, Result, Token, False, Self) then
-       RaiseError(petError, GenIncompatibleExpression(Result, FacType, Token));
+       RaiseError(petError, GenIncompatibleExpression(Result, FacType, Token), iPos, iLine);
 
     result := ConvertIntToSingle(State, Method, result, FacType);
 
@@ -5305,7 +5353,7 @@ function TSE2Parser.ConvertIntToSingle(State: TSE2ParseState;
 
   function TypeIsInteger(aType: TSE2Type): boolean;
   begin
-    result := TypeBaseType(aType) in [btU8, btS8, btU16, btS16, btU32, btS32, btS64];
+    result := TypeBaseType(aType) in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64];
   end;
 
 begin
@@ -5350,13 +5398,13 @@ begin
   CanConvert := False;
   case NewType of
   btU8, btS8, btU16, btS16, btU32, btS32 :
-      CanConvert := CurrentType in [btS64, btPointer, btU8, btS8, btU16, btS16, btU32, btS32];
-  btS64 :
-      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btPointer];
+      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64, btPointer];
+  btS64, btU64 :
+      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64, btPointer];
   btSingle :                     
-      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btDouble];
+      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64, btDouble];
   btDouble :
-      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btSingle];
+      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64, btSingle];
   btString :
       CanConvert := CurrentType in [btPChar, btUTF8String, btWideString, btAnsiString, btPAnsiChar, btPWideChar];
   btUTF8String :
@@ -5377,7 +5425,7 @@ begin
       CanConvert := CurrentType in [btPointer];
   btPointer,
   btObject :
-      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64];
+      CanConvert := CurrentType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64];
   end;
 
   if CanConvert then
@@ -5417,13 +5465,13 @@ class function TSE2Parser.IsCompatible(TargetType, CurrentType: TSE2Type;
   function ImplicitCast: boolean;
   begin
     case TargetType.AType of
-    btU8, btS8, btU16, btS16, btU32, btS32, btS64, btObject, btPointer :
+    btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64, btObject, btPointer :
         begin
-          result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btPointer, btObject, btRecord];
+          result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64, btPointer, btObject, btRecord];
         end;
     btSingle, btDouble :
         begin
-          result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btPointer, btObject, btSingle, btDouble];
+          result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64, btPointer, btObject, btSingle, btDouble];
         end;
     btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar :
         begin
@@ -5521,13 +5569,13 @@ begin
   end;
 
   case TargetType.AType of
-  btU8, btS8, btU16, btS16, btU32, btS32, btS64 :
+  btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64 :
       begin
-        result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64];
+        result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64];
       end;
   btSingle, btDouble :
       begin
-        result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btSingle, btDouble];
+        result := CurrentType.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64, btSingle, btDouble];
       end;
   btString, btUTF8String, btWideString, btPChar, btAnsiString, btPAnsiChar, btPWideChar :
       begin
@@ -5585,7 +5633,7 @@ begin
   if result and (Operation <> sesNone) then
   begin
     case TargetType.AType of
-    btU8, btS8, btU16, btS16, btU32, btS32, btS64 :
+    btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64 :
         begin
           result := Operation in [sesPlus, sesMinus, sesStar, sesDiv, sesShl, sesShr, sesNot, sesAnd, sesOr, sesXor, sesMod,
                                   sesSmaller, sesSmallerEqual, sesEqual, sesBiggerEqual, sesBigger, sesUnEqual];
@@ -5787,7 +5835,7 @@ begin
 
   if (TargetType <> nil) and (result <> nil) then
   begin
-    if (result.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64]) and
+    if (result.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64]) and
        (TargetType.AType in [btSingle, btDouble]) then
     begin
       ConvertVariableCode(State, Method, result, TargetType);
@@ -5933,17 +5981,21 @@ end;
 procedure TSE2Parser.IdentifierSetterEvent(Sender: TObject;
   State: TSE2ParseState; Method: TSE2Method; Target: TSE2Type);
 var Ident: TSE2Type;
+    iPos, iLine : integer;
 begin
   State.IsExpression := True;
   ExpectToken([sesBecomes]);
   ReadNextToken;
+  
+  iPos  := Tokenizer.Reader.Position;
+  iLine := Tokenizer.Reader.Line;
 
   State.TargetType := Target;
   State.AParent    := nil;
 
   Ident := Expression(State, Method, Target);
   if not IsCompatible(Target, Ident, sesNone, False, Self) then
-     RaiseError(petError, GenIncompatibleExpression(Ident, Target));
+     RaiseError(petError, GenIncompatibleExpression(Ident, Target), iPos, iLine);
 
   ConvertVariableCode(State, Method, Ident, Target);
   State.IsExpression := False;
@@ -6033,7 +6085,7 @@ function TSE2Parser.FindMatchingMethod(State: TSE2ParseState; Method: TSE2Method
   ParamExpression: TSE2BaseTypeList; IgnoreFirst: boolean): TSE2Method;
 
 type
-  TSearchFilter = (sfLoose, sfVarParam, sfNumberType, sfInheritRoot, sfExactParam);
+  TSearchFilter = (sfLoose, sfVarParam, sfNumberType, sfStrictNumberType, sfInheritRoot, sfExactParam);
 
   function MethodMatchesParam(MethodParam: TSE2Parameter; Param: TSE2ParamExpression; Filter: TSearchFilter): boolean;
   begin
@@ -6046,7 +6098,7 @@ type
       if Param.Variable = nil then
          result := False
       else
-      if Param.AType <> Param.Variable.AType then
+      if MethodParam.AType <> Param.Variable.AType then
          result := False;
     end;
 
@@ -6054,9 +6106,9 @@ type
        exit;
 
     case TSE2Type(MethodParam.AType.InheritRoot).AType of
-    btU8, btS8, btU16, btS16, btU32, btS32, btS64 :
+    btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64 :
         result := TSE2Type(Param.AType.InheritRoot).AType in
-                     [btU8, btS8, btU16, btS16, btU32, btS32, btS64];
+                     [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64];
     btSingle, btDouble :
         result := TSE2Type(Param.AType.InheritRoot).AType in
                      [btSingle, btDouble];
@@ -6075,6 +6127,11 @@ type
     end;
 
     if (Filter = sfNumberType) or (not result) then
+       exit;
+
+    result := TSE2Type(MethodParam.AType.InheritRoot).AType = TSE2Type(Param.AType.InheritRoot).AType;
+
+    if (Filter = sfStrictNumberType) or (not result) then
        exit;
 
     result := Param.AType.InheritRoot = MethodParam.AType.InheritRoot;
@@ -6132,6 +6189,7 @@ type
 
 var i, p        : integer;
     iParamStart : integer;
+    m           : TSE2Method;
 begin
   result := nil;
   // first of all - delete every method with different number of parameters
@@ -6164,12 +6222,15 @@ begin
 
   for i:=MethodList.Count-1 downto 0 do
   begin
-    for p:=iParamStart to TSE2Method(MethodList[i]).Params.Count-1 do
-      if not (MethodMatchesParam(TSE2Parameter(TSE2Method(MethodList[i]).Params[p]), TSE2ParamExpression(ParamExpression[p]), sfVarParam)) then
+    m := TSE2Method(MethodList[i]);
+    for p:=iParamStart to m.Params.Count-1 do
+    begin
+      if not (MethodMatchesParam(TSE2Parameter(m.Params[p]), TSE2ParamExpression(ParamExpression[p]), sfVarParam)) then
       begin
         MethodList.Delete(i);
         break;
       end;
+    end;
   end;
 
   if MethodList.Count = 0 then
@@ -6185,6 +6246,8 @@ begin
           MethodList.Delete(i);
           break;
         end;
+      if MethodList.Count < 2 then
+         break;
     end;
 
     if MethodList.Count = 0 then
@@ -6195,11 +6258,14 @@ begin
       for i:=MethodList.Count-1 downto 0 do
       begin
         for p:=iParamStart to TSE2Method(MethodList[i]).Params.Count-1 do
-          if not (MethodMatchesParam(TSE2Parameter(TSE2Method(MethodList[i]).Params[p]), TSE2ParamExpression(ParamExpression[p]), sfInheritRoot)) then
+          if not (MethodMatchesParam(TSE2Parameter(TSE2Method(MethodList[i]).Params[p]), TSE2ParamExpression(ParamExpression[p]), sfStrictNumberType)) then
           begin
             MethodList.Delete(i);
             break;
           end;
+
+        if MethodList.Count < 2 then
+           break;
       end;
 
       if MethodList.Count = 0 then
@@ -6210,16 +6276,38 @@ begin
         for i:=MethodList.Count-1 downto 0 do
         begin
           for p:=iParamStart to TSE2Method(MethodList[i]).Params.Count-1 do
-            if not (MethodMatchesParam(TSE2Parameter(TSE2Method(MethodList[i]).Params[p]), TSE2ParamExpression(ParamExpression[p]), sfExactParam)) then
+            if not (MethodMatchesParam(TSE2Parameter(TSE2Method(MethodList[i]).Params[p]), TSE2ParamExpression(ParamExpression[p]), sfInheritRoot)) then
             begin
               MethodList.Delete(i);
               break;
             end;
+
+          if MethodList.Count < 2 then
+             break;
         end;
+
+        if MethodList.Count = 0 then
+           exit;
+
         if MethodList.Count > 1 then
         begin
-           RaiseError(petError, 'More than one method matches to the parameters');
-           exit;
+          for i:=MethodList.Count-1 downto 0 do
+          begin
+            for p:=iParamStart to TSE2Method(MethodList[i]).Params.Count-1 do
+              if not (MethodMatchesParam(TSE2Parameter(TSE2Method(MethodList[i]).Params[p]), TSE2ParamExpression(ParamExpression[p]), sfExactParam)) then
+              begin
+                MethodList.Delete(i);
+                break;
+              end;
+
+            if MethodList.Count < 2 then
+               break;
+          end;
+          if MethodList.Count > 1 then
+          begin
+             RaiseError(petError, 'More than one method matches to the parameters');
+             exit;
+          end;
         end;
       end;
     end;
@@ -6357,7 +6445,7 @@ begin
       //if aType.InheritRoot is TSE2Type then
       //   aType := TSE2Type(aType.InheritRoot);
       case TSE2Type(aType.InheritRoot).AType of
-      btU8, btS8, btU16, btS16, btU32, btS32, btS64 :
+      btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64 :
           begin
             ExpectToken([sesInteger, sesMinus]);
             if Tokenizer.Token.AType = sesMinus then
@@ -6612,6 +6700,12 @@ begin
            ReadNextToken;
            ExpectToken([sesIdentifier]);
         end;
+
+        
+
+        GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLEX(0, 0), TSE2Method(aSource).GenLinkerName));
+        GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+
         {
           - GENERATE read method for external classes
         }
@@ -6755,6 +6849,9 @@ begin
 
         FUnit.ElemList.Add(aSource);
         aProperty.Setter := aSource;
+
+        GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLEX(0, 0), TSE2Method(aSource).GenLinkerName));
+        GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
 
       end else
       begin
@@ -7143,7 +7240,11 @@ begin
        RaiseError(petError, '@ not allowed for property getter type');
     State.LastVariable := TSE2Variable(State.LastProperty.Getter);
   end;
+           
+  if State.LastMethod <> nil then
+  begin
 
+  end else
   if State.LastVariable <> nil then
   begin
     variable := State.LastVariable;
@@ -7184,10 +7285,6 @@ begin
         end;
       end;
     end;
-  end else
-  if State.LastMethod <> nil then
-  begin
-
   end else
     RaiseError(petError, 'Internal error: at-operator not specified for type');
   State.IsAtStatement := False;

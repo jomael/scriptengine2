@@ -108,12 +108,55 @@ type
     property  List                 : PPointerList read FData;
   end;
 
+  TSE2HashedStringList = class
+  private
+    FList          : TList;
+    FCaseSensitive : boolean;
+  protected
+    function  GetIndexAt(index: integer): string;
+    procedure SetIndexAt(index: integer; const value: string);
+    function  GetObjectAt(const index: string): Pointer;
+    procedure SetObjectAt(const index: string; value: Pointer);
+    function  GetObjectAtIndex(index: integer): Pointer;
+    procedure SetObjectAtIndex(index: integer; value: Pointer);
+    function  GetCount: integer;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    procedure Clear;
+
+    procedure Add(const value: string); overload;
+    procedure Add(const value: string; AObject: Pointer); overload;
+    procedure Insert(index: integer; const value: string); overload;
+    procedure Insert(index: integer; const value: string; AObject: Pointer); overload;
+    procedure Exchange(index1, index2: integer);
+    function  Delete(index: integer): boolean; overload;
+    function  Delete(const index: string): boolean; overload;
+    function  IndexOf(const value: string): integer; overload;
+    function  IndexOf(const AObject: Pointer): integer; overload;
+
+    property CaseSensitive              : boolean read FCaseSensitive write FCaseSensitive;
+    property ItemAtIndex[index: integer]: Pointer read GetObjectAtIndex write SetObjectAtIndex;
+    property Items[const index: string] : Pointer read GetObjectAt write SetObjectAt;
+    property IndexAt[index: integer]    : string  read GetIndexAt write SetIndexAt;
+    property Count                      : integer read GetCount;
+  end;
+
 function MakeHash(const s: string; MakeLower: boolean = True): integer;
 function StringIdentical(const s1, s2: string): boolean;
 
 implementation
 
 uses SysUtils, Math;
+
+type
+  PSE2HashedStringItem = ^TSE2HashedStringItem;
+  TSE2HashedStringItem = record
+    Value   : string;
+    Hash    : integer;
+    AObject : Pointer;
+  end;
 
 function StringIdentical(const s1, s2: string): boolean;
 begin
@@ -186,6 +229,8 @@ begin
   Val(s, i, c);
   result := c = 0;
 end;
+
+// goto http://www.delphipraxis.net/133049-uint64-typ-problem-bei-vorgabewerten.html
 
 class function TSE2Converter.IsInteger(s: string): boolean;
 var i: int64;
@@ -461,6 +506,170 @@ begin
   if (FCount = 0) or (index >= FCount) then
     Exit;
   FData[index] := P;
+end;
+
+{ TSE2HashedStringList }
+
+procedure TSE2HashedStringList.Add(const value: string);
+begin
+  Add(value, nil);
+end;
+
+procedure TSE2HashedStringList.Add(const value: string; AObject: Pointer);
+var p: PSE2HashedStringItem;
+begin
+  New(p);
+  p^.Value := value;
+  p^.Hash  := MakeHash(value);
+  p^.AObject := AObject;
+  FList.Add(p);
+end;
+
+procedure TSE2HashedStringList.Clear;
+var i: integer;
+begin
+  for i:=FList.Count-1 downto 0 do
+    Delete(i);
+end;
+
+constructor TSE2HashedStringList.Create;
+begin
+  inherited;
+  FList := TList.Create;
+  FCaseSensitive := False;
+end;
+
+function TSE2HashedStringList.Delete(index: integer): boolean;
+var p: PSE2HashedStringItem;
+begin
+  if (index < 0) or (index >= FList.Count) then
+     result := False
+  else
+  begin
+    p := FList.List[index];
+    FList.Delete(index);
+    result := True;
+
+    p^.Value := '';
+    Dispose(p);
+  end;
+end;
+
+function TSE2HashedStringList.Delete(const index: string): boolean;
+begin
+  result := Delete(IndexOf(index));
+end;
+
+destructor TSE2HashedStringList.Destroy;
+begin
+  Clear;
+  FList.Free;
+  inherited;
+end;
+
+procedure TSE2HashedStringList.Exchange(index1, index2: integer);
+begin
+  FList.Exchange(index1, index2);
+end;
+
+function TSE2HashedStringList.GetCount: integer;
+begin
+  result := FList.Count;
+end;
+
+function TSE2HashedStringList.IndexOf(const value: string): integer;
+var p: PSE2HashedStringItem;
+    h: integer;
+begin
+  h := MakeHash(value);
+  for result:=0 to FList.Count-1 do
+  begin
+    p := FList.List[result];
+    if p^.Hash = h then
+    begin
+      if FCaseSensitive then
+      begin
+        if not AnsiSameStr(value, p^.Value) then
+           continue;
+      end else
+      begin
+        if not AnsiSameText(value, p^.Value) then
+           continue;
+      end;
+      exit;
+    end;
+  end;
+  result := -1;
+end;
+
+procedure TSE2HashedStringList.Insert(index: integer; const value: string);
+begin
+  Insert(index, value, nil);
+end;
+
+function TSE2HashedStringList.GetIndexAt(index: integer): string;
+begin
+  if (index < 0) or (index >= FList.Count) then
+     result := ''
+  else
+     result := PSE2HashedStringItem(FList.List[index])^.Value;
+end;
+
+function TSE2HashedStringList.GetObjectAt(const index: string): Pointer;
+begin
+  result := GetObjectAtIndex(IndexOf(index));
+end;
+
+function TSE2HashedStringList.GetObjectAtIndex(index: integer): Pointer;
+begin
+  if (index < 0) or (index >= FList.Count) then
+     result := nil
+  else
+     result := PSE2HashedStringItem(FList.List[index])^.AObject;
+end;
+
+function TSE2HashedStringList.IndexOf(const AObject: Pointer): integer;
+begin
+  for result:=0 to FList.Count-1 do
+    if PSE2HashedStringItem(FList.List[result])^.AObject = AObject then
+       exit;
+  result := -1;
+end;
+
+procedure TSE2HashedStringList.Insert(index: integer; const value: string;
+  AObject: Pointer);
+var p: PSE2HashedStringItem;
+begin
+  New(p);
+  p^.Value := value;
+  p^.Hash  := MakeHash(value);
+  p^.AObject := AObject;
+  FList.Insert(index, p);
+end;
+
+procedure TSE2HashedStringList.SetIndexAt(index: integer;
+  const value: string);        
+var p: PSE2HashedStringItem;
+begin
+  if (index >= 0) and (index < FList.Count) then
+  begin
+    p := FList.List[index];
+    p^.Value := value;
+    p^.Hash  := MakeHash(value);
+  end;
+end;
+
+procedure TSE2HashedStringList.SetObjectAt(const index: string;
+  value: Pointer);
+begin
+  SetObjectAtIndex(IndexOf(index), value);
+end;
+
+procedure TSE2HashedStringList.SetObjectAtIndex(index: integer;
+  value: Pointer);
+begin
+  if (index >= 0) and (index < FList.Count) then
+     PSE2HashedStringItem(FList.List[index])^.AObject := value;
 end;
 
 end.

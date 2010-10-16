@@ -66,7 +66,8 @@ begin
         btS16       : Param1^.tu8^       := Param1^.tu8^ + Param2^.ts16^;
         btU32       : Param1^.tu8^       := Param1^.tu8^ + Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ + Param2^.ts32^;
-        btS64       : Param1^.tu8^       := Param1^.tu8^ + Param2^.ts64^;
+        btS64       : Param1^.tu8^       := Param1^.tu8^ + Param2^.ts64^;   
+        btU64       : Param1^.tu8^       := Param1^.tu8^ + Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu8^ + Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu8^ + Param2^.tDouble^);
         end;
@@ -80,7 +81,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ + Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ + Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ + Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ + Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ + Param2^.ts64^;  
+        btU64       : Param1^.ts8^       := Param1^.ts8^ + Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts8^ + Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts8^ + Param2^.tDouble^);
         end;
@@ -94,7 +96,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ + Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ + Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ + Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ + Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ + Param2^.ts64^;    
+        btU64       : Param1^.tu16^       := Param1^.tu16^ + Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu16^ + Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu16^ + Param2^.tDouble^);
         end;
@@ -109,6 +112,7 @@ begin
         btU32       : Param1^.ts16^       := Param1^.ts16^ + Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ + Param2^.ts32^;
         btS64       : Param1^.ts16^       := Param1^.ts16^ + Param2^.ts64^;
+        btU64       : Param1^.ts16^       := Param1^.ts16^ + Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts16^ + Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts16^ + Param2^.tDouble^);
         end;
@@ -122,7 +126,8 @@ begin
         btS16       : Param1^.tu32^       := Param1^.tu32^ + Param2^.ts16^;
         btU32       : Param1^.tu32^       := Param1^.tu32^ + Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ + Param2^.ts32^;
-        btS64       : Param1^.tu32^       := Param1^.tu32^ + Param2^.ts64^;
+        btS64       : Param1^.tu32^       := Param1^.tu32^ + Param2^.ts64^; 
+        btU64       : Param1^.tu32^       := Param1^.tu32^ + Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu32^ + Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu32^ + Param2^.tDouble^);
         end;
@@ -136,7 +141,8 @@ begin
         btS16       : Param1^.ts32^       := Param1^.ts32^ + Param2^.ts16^;
         btU32       : Param1^.ts32^       := Param1^.ts32^ + Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ + Param2^.ts32^;
-        btS64       : Param1^.ts32^       := Param1^.ts32^ + Param2^.ts64^;
+        btS64       : Param1^.ts32^       := Param1^.ts32^ + Param2^.ts64^;   
+        btU64       : Param1^.ts32^       := Param1^.ts32^ + Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts32^ + Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts32^ + Param2^.tDouble^);
         end;
@@ -151,8 +157,24 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ + Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ + Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ + Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ + Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts64^ + Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts64^ + Param2^.tDouble^);
+        end;
+      end;
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ + Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ + Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ + Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ + Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ + Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ + Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ + Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ + Param2^.tu64^;
+        btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu64^ + Param2^.tSingle^);
+        btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu64^ + Param2^.tDouble^);
         end;
       end;
   btSingle :
@@ -165,6 +187,7 @@ begin
         btU32       : Param1^.tSingle^       := Param1^.tSingle^ + Param2^.tu32^;
         btS32       : Param1^.tSingle^       := Param1^.tSingle^ + Param2^.ts32^;
         btS64       : Param1^.tSingle^       := Param1^.tSingle^ + Param2^.ts64^;
+        btU64       : Param1^.tSingle^       := Param1^.tSingle^ + Param2^.tu64^;
         btSingle    : Param1^.tSingle^       := Param1^.tSingle^ + Param2^.tSingle^;
         btDouble    : Param1^.tSingle^       := Param1^.tSingle^ + Param2^.tDouble^;
         end;
@@ -178,7 +201,8 @@ begin
         btS16       : Param1^.tDouble^       := Param1^.tDouble^ + Param2^.ts16^;
         btU32       : Param1^.tDouble^       := Param1^.tDouble^ + Param2^.tu32^;
         btS32       : Param1^.tDouble^       := Param1^.tDouble^ + Param2^.ts32^;
-        btS64       : Param1^.tDouble^       := Param1^.tDouble^ + Param2^.ts64^;
+        btS64       : Param1^.tDouble^       := Param1^.tDouble^ + Param2^.ts64^;  
+        btU64       : Param1^.tDouble^       := Param1^.tDouble^ + Param2^.tu64^;
         btSingle    : Param1^.tDouble^       := Param1^.tDouble^ + Param2^.tSingle^;
         btDouble    : Param1^.tDouble^       := Param1^.tDouble^ + Param2^.tDouble^;
         end;
@@ -320,7 +344,8 @@ begin
         btS16       : Param1^.tu8^       := Param1^.tu8^ and Param2^.ts16^;
         btU32       : Param1^.tu8^       := Param1^.tu8^ and Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ and Param2^.ts32^;
-        btS64       : Param1^.tu8^       := Param1^.tu8^ and Param2^.ts64^;
+        btS64       : Param1^.tu8^       := Param1^.tu8^ and Param2^.ts64^; 
+        btU64       : Param1^.tu8^       := Param1^.tu8^ and Param2^.tu64^;
         end;
       end;
   btS8 :
@@ -332,7 +357,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ and Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ and Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ and Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ and Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ and Param2^.ts64^; 
+        btU64       : Param1^.ts8^       := Param1^.ts8^ and Param2^.tu64^;
         end;
       end;
   btU16 :
@@ -344,7 +370,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ and Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ and Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ and Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ and Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ and Param2^.ts64^;  
+        btU64       : Param1^.tu16^       := Param1^.tu16^ and Param2^.tu64^;
         end;
       end;
   btS16 :
@@ -356,7 +383,8 @@ begin
         btS16       : Param1^.ts16^       := Param1^.ts16^ and Param2^.ts16^;
         btU32       : Param1^.ts16^       := Param1^.ts16^ and Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ and Param2^.ts32^;
-        btS64       : Param1^.ts16^       := Param1^.ts16^ and Param2^.ts64^;
+        btS64       : Param1^.ts16^       := Param1^.ts16^ and Param2^.ts64^;  
+        btU64       : Param1^.ts16^       := Param1^.ts16^ and Param2^.tu64^;
         end;
       end;
   btU32 :
@@ -368,7 +396,8 @@ begin
         btS16       : Param1^.tu32^       := Param1^.tu32^ and Param2^.ts16^;
         btU32       : Param1^.tu32^       := Param1^.tu32^ and Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ and Param2^.ts32^;
-        btS64       : Param1^.tu32^       := Param1^.tu32^ and Param2^.ts64^;
+        btS64       : Param1^.tu32^       := Param1^.tu32^ and Param2^.ts64^;  
+        btU64       : Param1^.tu32^       := Param1^.tu32^ and Param2^.tu64^;
         end;
       end;
   btS32 :
@@ -381,6 +410,7 @@ begin
         btU32       : Param1^.ts32^       := Param1^.ts32^ and Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ and Param2^.ts32^;
         btS64       : Param1^.ts32^       := Param1^.ts32^ and Param2^.ts64^;
+        btU64       : Param1^.ts32^       := Param1^.ts32^ and Param2^.tu64^;
         end;
       end;
   btS64 :
@@ -393,6 +423,20 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ and Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ and Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ and Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ and Param2^.tu64^;
+        end;
+      end;
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ and Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ and Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ and Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ and Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ and Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ and Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ and Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ and Param2^.tu64^;
         end;
       end;
   end;
@@ -407,7 +451,8 @@ begin
   btS16         : Data^.ts16^     := not Data^.ts16^;
   btU32         : Data^.tu32^     := not Data^.tu32^;
   btS32         : Data^.ts32^     := not Data^.ts32^;
-  btS64         : Data^.ts64^     := not Data^.ts64^;
+  btS64         : Data^.ts64^     := not Data^.ts64^;  
+  btU64         : Data^.tu64^     := not Data^.tu64^;
   end;
 end;
 
@@ -423,7 +468,8 @@ begin
         btS16       : Param1^.tu8^       := Param1^.tu8^ or Param2^.ts16^;
         btU32       : Param1^.tu8^       := Param1^.tu8^ or Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ or Param2^.ts32^;
-        btS64       : Param1^.tu8^       := Param1^.tu8^ or Param2^.ts64^;
+        btS64       : Param1^.tu8^       := Param1^.tu8^ or Param2^.ts64^;  
+        btU64       : Param1^.tu8^       := Param1^.tu8^ or Param2^.tu64^;
         end;
       end;
   btS8 :
@@ -435,7 +481,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ or Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ or Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ or Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ or Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ or Param2^.ts64^;     
+        btU64       : Param1^.ts8^       := Param1^.ts8^ or Param2^.tu64^;
         end;
       end;
   btU16 :
@@ -447,7 +494,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ or Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ or Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ or Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ or Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ or Param2^.ts64^;   
+        btU64       : Param1^.tu16^       := Param1^.tu16^ or Param2^.tu64^;
         end;
       end;
   btS16 :
@@ -459,7 +507,8 @@ begin
         btS16       : Param1^.ts16^       := Param1^.ts16^ or Param2^.ts16^;
         btU32       : Param1^.ts16^       := Param1^.ts16^ or Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ or Param2^.ts32^;
-        btS64       : Param1^.ts16^       := Param1^.ts16^ or Param2^.ts64^;
+        btS64       : Param1^.ts16^       := Param1^.ts16^ or Param2^.ts64^;    
+        btU64       : Param1^.ts16^       := Param1^.ts16^ or Param2^.tu64^;
         end;
       end;
   btU32 :
@@ -472,6 +521,7 @@ begin
         btU32       : Param1^.tu32^       := Param1^.tu32^ or Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ or Param2^.ts32^;
         btS64       : Param1^.tu32^       := Param1^.tu32^ or Param2^.ts64^;
+        btU64       : Param1^.tu32^       := Param1^.tu32^ or Param2^.tu64^;
         end;
       end;
   btS32 :
@@ -484,6 +534,7 @@ begin
         btU32       : Param1^.ts32^       := Param1^.ts32^ or Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ or Param2^.ts32^;
         btS64       : Param1^.ts32^       := Param1^.ts32^ or Param2^.ts64^;
+        btU64       : Param1^.ts32^       := Param1^.ts32^ or Param2^.tu64^;
         end;
       end;
   btS64 :
@@ -496,6 +547,20 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ or Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ or Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ or Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ or Param2^.tu64^;
+        end;
+      end;       
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ or Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ or Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ or Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ or Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ or Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ or Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ or Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ or Param2^.tu64^;
         end;
       end;
   end;
@@ -513,7 +578,8 @@ begin
         btS16       : Param1^.tu8^       := Param1^.tu8^ shl Param2^.ts16^;
         btU32       : Param1^.tu8^       := Param1^.tu8^ shl Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ shl Param2^.ts32^;
-        btS64       : Param1^.tu8^       := Param1^.tu8^ shl Param2^.ts64^;
+        btS64       : Param1^.tu8^       := Param1^.tu8^ shl Param2^.ts64^;  
+        btU64       : Param1^.tu8^       := Param1^.tu8^ shl Param2^.tu64^;
         end;
       end;
   btS8 :
@@ -525,7 +591,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ shl Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ shl Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ shl Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ shl Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ shl Param2^.ts64^;  
+        btU64       : Param1^.ts8^       := Param1^.ts8^ shl Param2^.tu64^;
         end;
       end;
   btU16 :
@@ -537,7 +604,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ shl Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ shl Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ shl Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ shl Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ shl Param2^.ts64^; 
+        btU64       : Param1^.tu16^       := Param1^.tu16^ shl Param2^.tu64^;
         end;
       end;
   btS16 :
@@ -549,7 +617,8 @@ begin
         btS16       : Param1^.ts16^       := Param1^.ts16^ shl Param2^.ts16^;
         btU32       : Param1^.ts16^       := Param1^.ts16^ shl Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ shl Param2^.ts32^;
-        btS64       : Param1^.ts16^       := Param1^.ts16^ shl Param2^.ts64^;
+        btS64       : Param1^.ts16^       := Param1^.ts16^ shl Param2^.ts64^;  
+        btU64       : Param1^.ts16^       := Param1^.ts16^ shl Param2^.tu64^;
         end;
       end;
   btU32 :
@@ -561,7 +630,8 @@ begin
         btS16       : Param1^.tu32^       := Param1^.tu32^ shl Param2^.ts16^;
         btU32       : Param1^.tu32^       := Param1^.tu32^ shl Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ shl Param2^.ts32^;
-        btS64       : Param1^.tu32^       := Param1^.tu32^ shl Param2^.ts64^;
+        btS64       : Param1^.tu32^       := Param1^.tu32^ shl Param2^.ts64^;    
+        btU64       : Param1^.tu32^       := Param1^.tu32^ shl Param2^.tu64^;
         end;
       end;
   btS32 :
@@ -573,7 +643,8 @@ begin
         btS16       : Param1^.ts32^       := Param1^.ts32^ shl Param2^.ts16^;
         btU32       : Param1^.ts32^       := Param1^.ts32^ shl Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ shl Param2^.ts32^;
-        btS64       : Param1^.ts32^       := Param1^.ts32^ shl Param2^.ts64^;
+        btS64       : Param1^.ts32^       := Param1^.ts32^ shl Param2^.ts64^;  
+        btU64       : Param1^.ts32^       := Param1^.ts32^ shl Param2^.tu64^;
         end;
       end;
   btS64 :
@@ -586,6 +657,20 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ shl Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ shl Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ shl Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ shl Param2^.tu64^;
+        end;
+      end;
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ shl Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ shl Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ shl Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ shl Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ shl Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ shl Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ shl Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ shl Param2^.tu64^;
         end;
       end;
   end;
@@ -603,7 +688,8 @@ begin
         btS16       : Param1^.tu8^       := Param1^.tu8^ shr Param2^.ts16^;
         btU32       : Param1^.tu8^       := Param1^.tu8^ shr Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ shr Param2^.ts32^;
-        btS64       : Param1^.tu8^       := Param1^.tu8^ shr Param2^.ts64^;
+        btS64       : Param1^.tu8^       := Param1^.tu8^ shr Param2^.ts64^;  
+        btU64       : Param1^.tu8^       := Param1^.tu8^ shr Param2^.tu64^;
         end;
       end;
   btS8 :
@@ -615,7 +701,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ shr Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ shr Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ shr Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ shr Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ shr Param2^.ts64^;   
+        btU64       : Param1^.ts8^       := Param1^.ts8^ shr Param2^.tu64^;
         end;
       end;
   btU16 :
@@ -627,7 +714,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ shr Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ shr Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ shr Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ shr Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ shr Param2^.ts64^; 
+        btU64       : Param1^.tu16^       := Param1^.tu16^ shr Param2^.tu64^;
         end;
       end;
   btS16 :
@@ -639,7 +727,8 @@ begin
         btS16       : Param1^.ts16^       := Param1^.ts16^ shr Param2^.ts16^;
         btU32       : Param1^.ts16^       := Param1^.ts16^ shr Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ shr Param2^.ts32^;
-        btS64       : Param1^.ts16^       := Param1^.ts16^ shr Param2^.ts64^;
+        btS64       : Param1^.ts16^       := Param1^.ts16^ shr Param2^.ts64^;  
+        btU64       : Param1^.ts16^       := Param1^.ts16^ shr Param2^.tu64^;
         end;
       end;
   btU32 :
@@ -651,7 +740,8 @@ begin
         btS16       : Param1^.tu32^       := Param1^.tu32^ shr Param2^.ts16^;
         btU32       : Param1^.tu32^       := Param1^.tu32^ shr Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ shr Param2^.ts32^;
-        btS64       : Param1^.tu32^       := Param1^.tu32^ shr Param2^.ts64^;
+        btS64       : Param1^.tu32^       := Param1^.tu32^ shr Param2^.ts64^; 
+        btU64       : Param1^.tu32^       := Param1^.tu32^ shr Param2^.tu64^;
         end;
       end;
   btS32 :
@@ -663,7 +753,8 @@ begin
         btS16       : Param1^.ts32^       := Param1^.ts32^ shr Param2^.ts16^;
         btU32       : Param1^.ts32^       := Param1^.ts32^ shr Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ shr Param2^.ts32^;
-        btS64       : Param1^.ts32^       := Param1^.ts32^ shr Param2^.ts64^;
+        btS64       : Param1^.ts32^       := Param1^.ts32^ shr Param2^.ts64^; 
+        btU64       : Param1^.ts32^       := Param1^.ts32^ shr Param2^.tu64^;
         end;
       end;
   btS64 :
@@ -676,6 +767,20 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ shr Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ shr Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ shr Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ shr Param2^.tu64^;
+        end;
+      end;
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ shr Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ shr Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ shr Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ shr Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ shr Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ shr Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ shr Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ shr Param2^.tu64^;
         end;
       end;
   end;
@@ -693,7 +798,8 @@ begin
         btS16       : Param1^.tu8^       := Param1^.tu8^ xor Param2^.ts16^;
         btU32       : Param1^.tu8^       := Param1^.tu8^ xor Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ xor Param2^.ts32^;
-        btS64       : Param1^.tu8^       := Param1^.tu8^ xor Param2^.ts64^;
+        btS64       : Param1^.tu8^       := Param1^.tu8^ xor Param2^.ts64^;  
+        btU64       : Param1^.tu8^       := Param1^.tu8^ xor Param2^.tu64^;
         end;
       end;
   btS8 :
@@ -705,7 +811,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ xor Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ xor Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ xor Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ xor Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ xor Param2^.ts64^;  
+        btU64       : Param1^.ts8^       := Param1^.ts8^ xor Param2^.tu64^;
         end;
       end;
   btU16 :
@@ -717,7 +824,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ xor Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ xor Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ xor Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ xor Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ xor Param2^.ts64^;  
+        btU64       : Param1^.tu16^       := Param1^.tu16^ xor Param2^.tu64^;
         end;
       end;
   btS16 :
@@ -729,7 +837,8 @@ begin
         btS16       : Param1^.ts16^       := Param1^.ts16^ xor Param2^.ts16^;
         btU32       : Param1^.ts16^       := Param1^.ts16^ xor Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ xor Param2^.ts32^;
-        btS64       : Param1^.ts16^       := Param1^.ts16^ xor Param2^.ts64^;
+        btS64       : Param1^.ts16^       := Param1^.ts16^ xor Param2^.ts64^;  
+        btU64       : Param1^.ts16^       := Param1^.ts16^ xor Param2^.tu64^;
         end;
       end;
   btU32 :
@@ -741,7 +850,8 @@ begin
         btS16       : Param1^.tu32^       := Param1^.tu32^ xor Param2^.ts16^;
         btU32       : Param1^.tu32^       := Param1^.tu32^ xor Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ xor Param2^.ts32^;
-        btS64       : Param1^.tu32^       := Param1^.tu32^ xor Param2^.ts64^;
+        btS64       : Param1^.tu32^       := Param1^.tu32^ xor Param2^.ts64^;  
+        btU64       : Param1^.tu32^       := Param1^.tu32^ xor Param2^.tu64^;
         end;
       end;
   btS32 :
@@ -753,7 +863,8 @@ begin
         btS16       : Param1^.ts32^       := Param1^.ts32^ xor Param2^.ts16^;
         btU32       : Param1^.ts32^       := Param1^.ts32^ xor Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ xor Param2^.ts32^;
-        btS64       : Param1^.ts32^       := Param1^.ts32^ xor Param2^.ts64^;
+        btS64       : Param1^.ts32^       := Param1^.ts32^ xor Param2^.ts64^;  
+        btU64       : Param1^.ts32^       := Param1^.ts32^ xor Param2^.tu64^;
         end;
       end;
   btS64 :
@@ -766,6 +877,20 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ xor Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ xor Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ xor Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ xor Param2^.tu64^;
+        end;
+      end;          
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ xor Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ xor Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ xor Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ xor Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ xor Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ xor Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ xor Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ xor Param2^.tu64^;
         end;
       end;
   end;
@@ -786,7 +911,8 @@ begin
   btS16         : Data^.ts16^     := TbtS16(not boolean(Data^.ts16^));
   btU32         : Data^.tu32^     := TbtU32(not boolean(Data^.tu32^));
   btS32         : Data^.ts32^     := TbtS32(not boolean(Data^.ts32^));
-  btS64         : Data^.ts64^     := TbtS64(not boolean(Data^.ts64^));
+  btS64         : Data^.ts64^     := TbtS64(not boolean(Data^.ts64^));  
+  btU64         : Data^.tu64^     := TbtU64(not boolean(Data^.tu64^));
   end;
 end;
 
@@ -808,7 +934,8 @@ begin
         btS16       : Param1^.tu8^       := Param1^.tu8^ div Param2^.ts16^;
         btU32       : Param1^.tu8^       := Param1^.tu8^ div Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ div Param2^.ts32^;
-        btS64       : Param1^.tu8^       := Param1^.tu8^ div Param2^.ts64^;
+        btS64       : Param1^.tu8^       := Param1^.tu8^ div Param2^.ts64^;   
+        btU64       : Param1^.tu8^       := Param1^.tu8^ div Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu8^ / Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu8^ / Param2^.tDouble^);
         end;
@@ -822,7 +949,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ div Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ div Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ div Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ div Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ div Param2^.ts64^; 
+        btU64       : Param1^.ts8^       := Param1^.ts8^ div Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts8^ / Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts8^ / Param2^.tDouble^);
         end;
@@ -836,7 +964,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ div Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ div Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ div Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ div Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ div Param2^.ts64^;   
+        btU64       : Param1^.tu16^       := Param1^.tu16^ div Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu16^ / Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu16^ / Param2^.tDouble^);
         end;
@@ -850,7 +979,8 @@ begin
         btS16       : Param1^.ts16^       := Param1^.ts16^ div Param2^.ts16^;
         btU32       : Param1^.ts16^       := Param1^.ts16^ div Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ div Param2^.ts32^;
-        btS64       : Param1^.ts16^       := Param1^.ts16^ div Param2^.ts64^;
+        btS64       : Param1^.ts16^       := Param1^.ts16^ div Param2^.ts64^;    
+        btU64       : Param1^.ts16^       := Param1^.ts16^ div Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts16^ / Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts16^ / Param2^.tDouble^);
         end;
@@ -864,7 +994,8 @@ begin
         btS16       : Param1^.tu32^       := Param1^.tu32^ div Param2^.ts16^;
         btU32       : Param1^.tu32^       := Param1^.tu32^ div Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ div Param2^.ts32^;
-        btS64       : Param1^.tu32^       := Param1^.tu32^ div Param2^.ts64^;
+        btS64       : Param1^.tu32^       := Param1^.tu32^ div Param2^.ts64^;   
+        btU64       : Param1^.tu32^       := Param1^.tu32^ div Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu32^ / Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu32^ / Param2^.tDouble^);
         end;
@@ -878,7 +1009,8 @@ begin
         btS16       : Param1^.ts32^       := Param1^.ts32^ div Param2^.ts16^;
         btU32       : Param1^.ts32^       := Param1^.ts32^ div Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ div Param2^.ts32^;
-        btS64       : Param1^.ts32^       := Param1^.ts32^ div Param2^.ts64^;
+        btS64       : Param1^.ts32^       := Param1^.ts32^ div Param2^.ts64^;  
+        btU64       : Param1^.ts32^       := Param1^.ts32^ div Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts32^ / Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts32^ / Param2^.tDouble^);
         end;
@@ -893,8 +1025,24 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ div Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ div Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ div Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ div Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts64^ / Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts64^ / Param2^.tDouble^);
+        end;
+      end;   
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ div Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ div Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ div Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ div Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ div Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ div Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ div Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ div Param2^.tu64^;
+        btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu64^ / Param2^.tSingle^);
+        btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu64^ / Param2^.tDouble^);
         end;
       end;
   btSingle :
@@ -906,7 +1054,8 @@ begin
         btS16       : Param1^.tSingle^       := Param1^.tSingle^ / Param2^.ts16^;
         btU32       : Param1^.tSingle^       := Param1^.tSingle^ / Param2^.tu32^;
         btS32       : Param1^.tSingle^       := Param1^.tSingle^ / Param2^.ts32^;
-        btS64       : Param1^.tSingle^       := Param1^.tSingle^ / Param2^.ts64^;
+        btS64       : Param1^.tSingle^       := Param1^.tSingle^ / Param2^.ts64^;    
+        btU64       : Param1^.tSingle^       := Param1^.tSingle^ / Param2^.tu64^;
         btSingle    : Param1^.tSingle^       := Param1^.tSingle^ / Param2^.tSingle^;
         btDouble    : Param1^.tSingle^       := Param1^.tSingle^ / Param2^.tDouble^;
         end;
@@ -920,7 +1069,8 @@ begin
         btS16       : Param1^.tDouble^       := Param1^.tDouble^ / Param2^.ts16^;
         btU32       : Param1^.tDouble^       := Param1^.tDouble^ / Param2^.tu32^;
         btS32       : Param1^.tDouble^       := Param1^.tDouble^ / Param2^.ts32^;
-        btS64       : Param1^.tDouble^       := Param1^.tDouble^ / Param2^.ts64^;
+        btS64       : Param1^.tDouble^       := Param1^.tDouble^ / Param2^.ts64^;   
+        btU64       : Param1^.tDouble^       := Param1^.tDouble^ / Param2^.tu64^;
         btSingle    : Param1^.tDouble^       := Param1^.tDouble^ / Param2^.tSingle^;
         btDouble    : Param1^.tDouble^       := Param1^.tDouble^ / Param2^.tDouble^;
         end;
@@ -940,7 +1090,8 @@ begin
         btS16       : Param1^.tu8^       := Param1^.tu8^ mod Param2^.ts16^;
         btU32       : Param1^.tu8^       := Param1^.tu8^ mod Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ mod Param2^.ts32^;
-        btS64       : Param1^.tu8^       := Param1^.tu8^ mod Param2^.ts64^;
+        btS64       : Param1^.tu8^       := Param1^.tu8^ mod Param2^.ts64^;  
+        btU64       : Param1^.tu8^       := Param1^.tu8^ mod Param2^.tu64^;
         end;
       end;
   btS8 :
@@ -952,7 +1103,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ mod Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ mod Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ mod Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ mod Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ mod Param2^.ts64^;  
+        btU64       : Param1^.ts8^       := Param1^.ts8^ mod Param2^.tu64^;
         end;
       end;
   btU16 :
@@ -964,7 +1116,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ mod Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ mod Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ mod Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ mod Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ mod Param2^.ts64^; 
+        btU64       : Param1^.tu16^       := Param1^.tu16^ mod Param2^.tu64^;
         end;
       end;
   btS16 :
@@ -976,7 +1129,8 @@ begin
         btS16       : Param1^.ts16^       := Param1^.ts16^ mod Param2^.ts16^;
         btU32       : Param1^.ts16^       := Param1^.ts16^ mod Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ mod Param2^.ts32^;
-        btS64       : Param1^.ts16^       := Param1^.ts16^ mod Param2^.ts64^;
+        btS64       : Param1^.ts16^       := Param1^.ts16^ mod Param2^.ts64^;  
+        btU64       : Param1^.ts16^       := Param1^.ts16^ mod Param2^.tu64^;
         end;
       end;
   btU32 :
@@ -988,7 +1142,8 @@ begin
         btS16       : Param1^.tu32^       := Param1^.tu32^ mod Param2^.ts16^;
         btU32       : Param1^.tu32^       := Param1^.tu32^ mod Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ mod Param2^.ts32^;
-        btS64       : Param1^.tu32^       := Param1^.tu32^ mod Param2^.ts64^;
+        btS64       : Param1^.tu32^       := Param1^.tu32^ mod Param2^.ts64^; 
+        btU64       : Param1^.tu32^       := Param1^.tu32^ mod Param2^.tu64^;
         end;
       end;
   btS32 :
@@ -1001,6 +1156,7 @@ begin
         btU32       : Param1^.ts32^       := Param1^.ts32^ mod Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ mod Param2^.ts32^;
         btS64       : Param1^.ts32^       := Param1^.ts32^ mod Param2^.ts64^;
+        btU64       : Param1^.ts32^       := Param1^.ts32^ mod Param2^.tu64^;
         end;
       end;
   btS64 :
@@ -1013,6 +1169,20 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ mod Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ mod Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ mod Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ mod Param2^.tu64^;
+        end;
+      end;      
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ mod Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ mod Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ mod Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ mod Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ mod Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ mod Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ mod Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ mod Param2^.tu64^;
         end;
       end;
   end;
@@ -1031,6 +1201,7 @@ begin
         btU32       : Param1^.tu8^       := Param1^.tu8^ * Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ * Param2^.ts32^;
         btS64       : Param1^.tu8^       := Param1^.tu8^ * Param2^.ts64^;
+        btU64       : Param1^.tu8^       := Param1^.tu8^ * Param2^.tU64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu8^ * Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu8^ * Param2^.tDouble^);
         end;
@@ -1044,7 +1215,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ * Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ * Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ * Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ * Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ * Param2^.ts64^;  
+        btU64       : Param1^.ts8^       := Param1^.ts8^ * Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts8^ * Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts8^ * Param2^.tDouble^);
         end;
@@ -1058,7 +1230,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ * Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ * Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ * Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ * Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ * Param2^.ts64^;  
+        btU64       : Param1^.tu16^       := Param1^.tu16^ * Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu16^ * Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu16^ * Param2^.tDouble^);
         end;
@@ -1072,7 +1245,8 @@ begin
         btS16       : Param1^.ts16^       := Param1^.ts16^ * Param2^.ts16^;
         btU32       : Param1^.ts16^       := Param1^.ts16^ * Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ * Param2^.ts32^;
-        btS64       : Param1^.ts16^       := Param1^.ts16^ * Param2^.ts64^;
+        btS64       : Param1^.ts16^       := Param1^.ts16^ * Param2^.ts64^;   
+        btU64       : Param1^.ts16^       := Param1^.ts16^ * Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts16^ * Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts16^ * Param2^.tDouble^);
         end;
@@ -1086,7 +1260,8 @@ begin
         btS16       : Param1^.tu32^       := Param1^.tu32^ * Param2^.ts16^;
         btU32       : Param1^.tu32^       := Param1^.tu32^ * Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ * Param2^.ts32^;
-        btS64       : Param1^.tu32^       := Param1^.tu32^ * Param2^.ts64^;
+        btS64       : Param1^.tu32^       := Param1^.tu32^ * Param2^.ts64^; 
+        btU64       : Param1^.tu32^       := Param1^.tu32^ * Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu32^ * Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu32^ * Param2^.tDouble^);
         end;
@@ -1101,6 +1276,7 @@ begin
         btU32       : Param1^.ts32^       := Param1^.ts32^ * Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ * Param2^.ts32^;
         btS64       : Param1^.ts32^       := Param1^.ts32^ * Param2^.ts64^;
+        btU64       : Param1^.ts32^       := Param1^.ts32^ * Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts32^ * Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts32^ * Param2^.tDouble^);
         end;
@@ -1115,8 +1291,24 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ * Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ * Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ * Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ * Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts64^ * Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts64^ * Param2^.tDouble^);
+        end;
+      end;   
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ * Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ * Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ * Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ * Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ * Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ * Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ * Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ * Param2^.tu64^;
+        btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu64^ * Param2^.tSingle^);
+        btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu64^ * Param2^.tDouble^);
         end;
       end;
   btSingle :
@@ -1128,7 +1320,8 @@ begin
         btS16       : Param1^.tSingle^       := Param1^.tSingle^ * Param2^.ts16^;
         btU32       : Param1^.tSingle^       := Param1^.tSingle^ * Param2^.tu32^;
         btS32       : Param1^.tSingle^       := Param1^.tSingle^ * Param2^.ts32^;
-        btS64       : Param1^.tSingle^       := Param1^.tSingle^ * Param2^.ts64^;
+        btS64       : Param1^.tSingle^       := Param1^.tSingle^ * Param2^.ts64^; 
+        btU64       : Param1^.tSingle^       := Param1^.tSingle^ * Param2^.tu64^;
         btSingle    : Param1^.tSingle^       := Param1^.tSingle^ * Param2^.tSingle^;
         btDouble    : Param1^.tSingle^       := Param1^.tSingle^ * Param2^.tDouble^;
         end;
@@ -1142,7 +1335,8 @@ begin
         btS16       : Param1^.tDouble^       := Param1^.tDouble^ * Param2^.ts16^;
         btU32       : Param1^.tDouble^       := Param1^.tDouble^ * Param2^.tu32^;
         btS32       : Param1^.tDouble^       := Param1^.tDouble^ * Param2^.ts32^;
-        btS64       : Param1^.tDouble^       := Param1^.tDouble^ * Param2^.ts64^;
+        btS64       : Param1^.tDouble^       := Param1^.tDouble^ * Param2^.ts64^; 
+        btU64       : Param1^.tDouble^       := Param1^.tDouble^ * Param2^.tu64^;
         btSingle    : Param1^.tDouble^       := Param1^.tDouble^ * Param2^.tSingle^;
         btDouble    : Param1^.tDouble^       := Param1^.tDouble^ * Param2^.tDouble^;
         end;
@@ -1159,7 +1353,8 @@ begin
   btS16         : Data^.ts16^     := -Data^.ts16^;
   btU32         : Data^.tu32^     := -Data^.tu32^;
   btS32         : Data^.ts32^     := -Data^.ts32^;
-  btS64         : Data^.ts64^     := -Data^.ts64^;
+  btS64         : Data^.ts64^     := -Data^.ts64^; 
+  btU64         : Data^.ts64^     := -Data^.tu64^;
   btSingle      : Data^.tSingle^  := -Data^.tSingle^;
   btDouble      : Data^.tDouble^  := -Data^.tDouble^;
   end;
@@ -1178,6 +1373,7 @@ begin
         btU32       : Param1^.tu8^       := Param1^.tu8^ - Param2^.tu32^;
         btS32       : Param1^.tu8^       := Param1^.tu8^ - Param2^.ts32^;
         btS64       : Param1^.tu8^       := Param1^.tu8^ - Param2^.ts64^;
+        btU64       : Param1^.tu8^       := Param1^.tu8^ - Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu8^ - Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu8^ - Param2^.tDouble^);
         end;
@@ -1191,7 +1387,8 @@ begin
         btS16       : Param1^.ts8^       := Param1^.ts8^ - Param2^.ts16^;
         btU32       : Param1^.ts8^       := Param1^.ts8^ - Param2^.tu32^;
         btS32       : Param1^.ts8^       := Param1^.ts8^ - Param2^.ts32^;
-        btS64       : Param1^.ts8^       := Param1^.ts8^ - Param2^.ts64^;
+        btS64       : Param1^.ts8^       := Param1^.ts8^ - Param2^.ts64^; 
+        btU64       : Param1^.ts8^       := Param1^.ts8^ - Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts8^ - Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts8^ - Param2^.tDouble^);
         end;
@@ -1205,7 +1402,8 @@ begin
         btS16       : Param1^.tu16^       := Param1^.tu16^ - Param2^.ts16^;
         btU32       : Param1^.tu16^       := Param1^.tu16^ - Param2^.tu32^;
         btS32       : Param1^.tu16^       := Param1^.tu16^ - Param2^.ts32^;
-        btS64       : Param1^.tu16^       := Param1^.tu16^ - Param2^.ts64^;
+        btS64       : Param1^.tu16^       := Param1^.tu16^ - Param2^.ts64^;   
+        btU64       : Param1^.tu16^       := Param1^.tu16^ - Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu16^ - Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu16^ - Param2^.tDouble^);
         end;
@@ -1219,7 +1417,8 @@ begin
         btS16       : Param1^.ts16^       := Param1^.ts16^ - Param2^.ts16^;
         btU32       : Param1^.ts16^       := Param1^.ts16^ - Param2^.tu32^;
         btS32       : Param1^.ts16^       := Param1^.ts16^ - Param2^.ts32^;
-        btS64       : Param1^.ts16^       := Param1^.ts16^ - Param2^.ts64^;
+        btS64       : Param1^.ts16^       := Param1^.ts16^ - Param2^.ts64^;  
+        btU64       : Param1^.ts16^       := Param1^.ts16^ - Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts16^ - Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts16^ - Param2^.tDouble^);
         end;
@@ -1233,7 +1432,8 @@ begin
         btS16       : Param1^.tu32^       := Param1^.tu32^ - Param2^.ts16^;
         btU32       : Param1^.tu32^       := Param1^.tu32^ - Param2^.tu32^;
         btS32       : Param1^.tu32^       := Param1^.tu32^ - Param2^.ts32^;
-        btS64       : Param1^.tu32^       := Param1^.tu32^ - Param2^.ts64^;
+        btS64       : Param1^.tu32^       := Param1^.tu32^ - Param2^.ts64^; 
+        btU64       : Param1^.tu32^       := Param1^.tu32^ - Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu32^ - Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu32^ - Param2^.tDouble^);
         end;
@@ -1247,7 +1447,8 @@ begin
         btS16       : Param1^.ts32^       := Param1^.ts32^ - Param2^.ts16^;
         btU32       : Param1^.ts32^       := Param1^.ts32^ - Param2^.tu32^;
         btS32       : Param1^.ts32^       := Param1^.ts32^ - Param2^.ts32^;
-        btS64       : Param1^.ts32^       := Param1^.ts32^ - Param2^.ts64^;
+        btS64       : Param1^.ts32^       := Param1^.ts32^ - Param2^.ts64^;   
+        btU64       : Param1^.ts32^       := Param1^.ts32^ - Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts32^ - Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts32^ - Param2^.tDouble^);
         end;
@@ -1262,8 +1463,24 @@ begin
         btU32       : Param1^.ts64^       := Param1^.ts64^ - Param2^.tu32^;
         btS32       : Param1^.ts64^       := Param1^.ts64^ - Param2^.ts32^;
         btS64       : Param1^.ts64^       := Param1^.ts64^ - Param2^.ts64^;
+        btU64       : Param1^.ts64^       := Param1^.ts64^ - Param2^.tu64^;
         btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.ts64^ - Param2^.tSingle^);
         btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.ts64^ - Param2^.tDouble^);
+        end;
+      end;   
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : Param1^.tu64^       := Param1^.tu64^ - Param2^.tu8^;
+        btS8        : Param1^.tu64^       := Param1^.tu64^ - Param2^.ts8^;
+        btU16       : Param1^.tu64^       := Param1^.tu64^ - Param2^.tu16^;
+        btS16       : Param1^.tu64^       := Param1^.tu64^ - Param2^.ts16^;
+        btU32       : Param1^.tu64^       := Param1^.tu64^ - Param2^.tu32^;
+        btS32       : Param1^.tu64^       := Param1^.tu64^ - Param2^.ts32^;
+        btS64       : Param1^.tu64^       := Param1^.tu64^ - Param2^.ts64^;
+        btU64       : Param1^.tu64^       := Param1^.tu64^ - Param2^.tu64^;
+        btSingle    : FVarHelp.SetContentAsSingle(Param1, Param1^.tu64^ - Param2^.tSingle^);
+        btDouble    : FVarHelp.SetContentAsDouble(Param1, Param1^.tu64^ - Param2^.tDouble^);
         end;
       end;
   btSingle :
@@ -1275,7 +1492,8 @@ begin
         btS16       : Param1^.tSingle^       := Param1^.tSingle^ - Param2^.ts16^;
         btU32       : Param1^.tSingle^       := Param1^.tSingle^ - Param2^.tu32^;
         btS32       : Param1^.tSingle^       := Param1^.tSingle^ - Param2^.ts32^;
-        btS64       : Param1^.tSingle^       := Param1^.tSingle^ - Param2^.ts64^;
+        btS64       : Param1^.tSingle^       := Param1^.tSingle^ - Param2^.ts64^;  
+        btU64       : Param1^.tSingle^       := Param1^.tSingle^ - Param2^.tu64^;
         btSingle    : Param1^.tSingle^       := Param1^.tSingle^ - Param2^.tSingle^;
         btDouble    : Param1^.tSingle^       := Param1^.tSingle^ - Param2^.tDouble^;
         end;
@@ -1289,7 +1507,8 @@ begin
         btS16       : Param1^.tDouble^       := Param1^.tDouble^ - Param2^.ts16^;
         btU32       : Param1^.tDouble^       := Param1^.tDouble^ - Param2^.tu32^;
         btS32       : Param1^.tDouble^       := Param1^.tDouble^ - Param2^.ts32^;
-        btS64       : Param1^.tDouble^       := Param1^.tDouble^ - Param2^.ts64^;
+        btS64       : Param1^.tDouble^       := Param1^.tDouble^ - Param2^.ts64^; 
+        btU64       : Param1^.tDouble^       := Param1^.tDouble^ - Param2^.tu64^;
         btSingle    : Param1^.tDouble^       := Param1^.tDouble^ - Param2^.tSingle^;
         btDouble    : Param1^.tDouble^       := Param1^.tDouble^ - Param2^.tDouble^;
         end;
@@ -1318,7 +1537,8 @@ begin
         btS16       : result := Param1^.tu8^ = Param2^.ts16^;
         btU32       : result := Param1^.tu8^ = Param2^.tu32^;
         btS32       : result := Param1^.tu8^ = Param2^.ts32^;
-        btS64       : result := Param1^.tu8^ = Param2^.ts64^;
+        btS64       : result := Param1^.tu8^ = Param2^.ts64^; 
+        btU64       : result := Param1^.tu8^ = Param2^.tu64^;
         btSingle    : result := Param1^.tu8^ = Param2^.tSingle^;
         btDouble    : result := Param1^.tu8^ = Param2^.tDouble^;
         end;
@@ -1332,7 +1552,8 @@ begin
         btS16       : result := Param1^.ts8^ = Param2^.ts16^;
         btU32       : result := Param1^.ts8^ = Param2^.tu32^;
         btS32       : result := Param1^.ts8^ = Param2^.ts32^;
-        btS64       : result := Param1^.ts8^ = Param2^.ts64^;
+        btS64       : result := Param1^.ts8^ = Param2^.ts64^;  
+        btU64       : result := Param1^.ts8^ = Param2^.tu64^;
         btSingle    : result := Param1^.ts8^ = Param2^.tSingle^;
         btDouble    : result := Param1^.ts8^ = Param2^.tDouble^;
         end;
@@ -1346,7 +1567,8 @@ begin
         btS16       : result := Param1^.tu16^ = Param2^.ts16^;
         btU32       : result := Param1^.tu16^ = Param2^.tu32^;
         btS32       : result := Param1^.tu16^ = Param2^.ts32^;
-        btS64       : result := Param1^.tu16^ = Param2^.ts64^;
+        btS64       : result := Param1^.tu16^ = Param2^.ts64^;  
+        btU64       : result := Param1^.tu16^ = Param2^.tu64^;
         btSingle    : result := Param1^.tu16^ = Param2^.tSingle^;
         btDouble    : result := Param1^.tu16^ = Param2^.tDouble^;
         end;        
@@ -1360,7 +1582,8 @@ begin
         btS16       : result := Param1^.ts16^ = Param2^.ts16^;
         btU32       : result := Param1^.ts16^ = Param2^.tu32^;
         btS32       : result := Param1^.ts16^ = Param2^.ts32^;
-        btS64       : result := Param1^.ts16^ = Param2^.ts64^;
+        btS64       : result := Param1^.ts16^ = Param2^.ts64^;  
+        btU64       : result := Param1^.ts16^ = Param2^.tu64^;
         btSingle    : result := Param1^.ts16^ = Param2^.tSingle^;
         btDouble    : result := Param1^.ts16^ = Param2^.tDouble^;
         end;
@@ -1374,7 +1597,8 @@ begin
         btS16       : result := Param1^.tu32^ = Param2^.ts16^;
         btU32       : result := Param1^.tu32^ = Param2^.tu32^;
         btS32       : result := Param1^.tu32^ = Param2^.ts32^;
-        btS64       : result := Param1^.tu32^ = Param2^.ts64^;
+        btS64       : result := Param1^.tu32^ = Param2^.ts64^; 
+        btU64       : result := Param1^.tu32^ = Param2^.tu64^;
         btSingle    : result := Param1^.tu32^ = Param2^.tSingle^;
         btDouble    : result := Param1^.tu32^ = Param2^.tDouble^;
         end;
@@ -1388,7 +1612,8 @@ begin
         btS16       : result := Param1^.ts32^ = Param2^.ts16^;
         btU32       : result := Param1^.ts32^ = Param2^.tu32^;
         btS32       : result := Param1^.ts32^ = Param2^.ts32^;
-        btS64       : result := Param1^.ts32^ = Param2^.ts64^;
+        btS64       : result := Param1^.ts32^ = Param2^.ts64^; 
+        btU64       : result := Param1^.ts32^ = Param2^.tu64^;
         btSingle    : result := Param1^.ts32^ = Param2^.tSingle^;
         btDouble    : result := Param1^.ts32^ = Param2^.tDouble^;
         end;
@@ -1403,8 +1628,24 @@ begin
         btU32       : result := Param1^.ts64^ = Param2^.tu32^;
         btS32       : result := Param1^.ts64^ = Param2^.ts32^;
         btS64       : result := Param1^.ts64^ = Param2^.ts64^;
+        btU64       : result := Param1^.ts64^ = Param2^.tu64^;
         btSingle    : result := Param1^.ts64^ = Param2^.tSingle^;
         btDouble    : result := Param1^.ts64^ = Param2^.tDouble^;
+        end;
+      end;  
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : result := Param1^.tu64^ = Param2^.tu8^;
+        btS8        : result := Param1^.tu64^ = Param2^.ts8^;
+        btU16       : result := Param1^.tu64^ = Param2^.tu16^;
+        btS16       : result := Param1^.tu64^ = Param2^.ts16^;
+        btU32       : result := Param1^.tu64^ = Param2^.tu32^;
+        btS32       : result := Param1^.tu64^ = Param2^.ts32^;
+        btS64       : result := Param1^.tu64^ = Param2^.ts64^;
+        btU64       : result := Param1^.tu64^ = Param2^.tu64^;
+        btSingle    : result := Param1^.tu64^ = Param2^.tSingle^;
+        btDouble    : result := Param1^.tu64^ = Param2^.tDouble^;
         end;
       end;
   btSingle :
@@ -1416,7 +1657,8 @@ begin
         btS16       : result := Param1^.tSingle^ = Param2^.ts16^;
         btU32       : result := Param1^.tSingle^ = Param2^.tu32^;
         btS32       : result := Param1^.tSingle^ = Param2^.ts32^;
-        btS64       : result := Param1^.tSingle^ = Param2^.ts64^;
+        btS64       : result := Param1^.tSingle^ = Param2^.ts64^; 
+        btU64       : result := Param1^.tSingle^ = Param2^.tu64^;
         btSingle    : result := Param1^.tSingle^ = Param2^.tSingle^;
         btDouble    : result := Param1^.tSingle^ = Param2^.tDouble^;
         end;
@@ -1430,7 +1672,8 @@ begin
         btS16       : result := Param1^.tDouble^ = Param2^.ts16^;
         btU32       : result := Param1^.tDouble^ = Param2^.tu32^;
         btS32       : result := Param1^.tDouble^ = Param2^.ts32^;
-        btS64       : result := Param1^.tDouble^ = Param2^.ts64^;
+        btS64       : result := Param1^.tDouble^ = Param2^.ts64^;   
+        btU64       : result := Param1^.tDouble^ = Param2^.tu64^;
         btSingle    : result := Param1^.tDouble^ = Param2^.tSingle^;
         btDouble    : result := Param1^.tDouble^ = Param2^.tDouble^;
         end;      
@@ -1572,7 +1815,8 @@ begin
         btS16       : result := Param1^.tu8^ < Param2^.ts16^;
         btU32       : result := Param1^.tu8^ < Param2^.tu32^;
         btS32       : result := Param1^.tu8^ < Param2^.ts32^;
-        btS64       : result := Param1^.tu8^ < Param2^.ts64^;
+        btS64       : result := Param1^.tu8^ < Param2^.ts64^;  
+        btU64       : result := Param1^.tu8^ < Param2^.tu64^;
         btSingle    : result := Param1^.tu8^ < Param2^.tSingle^;
         btDouble    : result := Param1^.tu8^ < Param2^.tDouble^;
         end;
@@ -1586,7 +1830,8 @@ begin
         btS16       : result := Param1^.ts8^ < Param2^.ts16^;
         btU32       : result := Param1^.ts8^ < Param2^.tu32^;
         btS32       : result := Param1^.ts8^ < Param2^.ts32^;
-        btS64       : result := Param1^.ts8^ < Param2^.ts64^;
+        btS64       : result := Param1^.ts8^ < Param2^.ts64^;  
+        btU64       : result := Param1^.ts8^ < Param2^.tu64^;
         btSingle    : result := Param1^.ts8^ < Param2^.tSingle^;
         btDouble    : result := Param1^.ts8^ < Param2^.tDouble^;
         end;
@@ -1600,7 +1845,8 @@ begin
         btS16       : result := Param1^.tu16^ < Param2^.ts16^;
         btU32       : result := Param1^.tu16^ < Param2^.tu32^;
         btS32       : result := Param1^.tu16^ < Param2^.ts32^;
-        btS64       : result := Param1^.tu16^ < Param2^.ts64^;
+        btS64       : result := Param1^.tu16^ < Param2^.ts64^;   
+        btU64       : result := Param1^.tu16^ < Param2^.tu64^;
         btSingle    : result := Param1^.tu16^ < Param2^.tSingle^;
         btDouble    : result := Param1^.tu16^ < Param2^.tDouble^;
         end;
@@ -1614,7 +1860,8 @@ begin
         btS16       : result := Param1^.ts16^ < Param2^.ts16^;
         btU32       : result := Param1^.ts16^ < Param2^.tu32^;
         btS32       : result := Param1^.ts16^ < Param2^.ts32^;
-        btS64       : result := Param1^.ts16^ < Param2^.ts64^;
+        btS64       : result := Param1^.ts16^ < Param2^.ts64^;  
+        btU64       : result := Param1^.ts16^ < Param2^.tU64^;
         btSingle    : result := Param1^.ts16^ < Param2^.tSingle^;
         btDouble    : result := Param1^.ts16^ < Param2^.tDouble^;
         end;
@@ -1628,7 +1875,8 @@ begin
         btS16       : result := Param1^.tu32^ < Param2^.ts16^;
         btU32       : result := Param1^.tu32^ < Param2^.tu32^;
         btS32       : result := Param1^.tu32^ < Param2^.ts32^;
-        btS64       : result := Param1^.tu32^ < Param2^.ts64^;
+        btS64       : result := Param1^.tu32^ < Param2^.ts64^; 
+        btU64       : result := Param1^.tu32^ < Param2^.tU64^;
         btSingle    : result := Param1^.tu32^ < Param2^.tSingle^;
         btDouble    : result := Param1^.tu32^ < Param2^.tDouble^;
         end;
@@ -1642,7 +1890,8 @@ begin
         btS16       : result := Param1^.ts32^ < Param2^.ts16^;
         btU32       : result := Param1^.ts32^ < Param2^.tu32^;
         btS32       : result := Param1^.ts32^ < Param2^.ts32^;
-        btS64       : result := Param1^.ts32^ < Param2^.ts64^;
+        btS64       : result := Param1^.ts32^ < Param2^.ts64^; 
+        btU64       : result := Param1^.ts32^ < Param2^.tU64^;
         btSingle    : result := Param1^.ts32^ < Param2^.tSingle^;
         btDouble    : result := Param1^.ts32^ < Param2^.tDouble^;
         end;
@@ -1656,9 +1905,25 @@ begin
         btS16       : result := Param1^.ts64^ < Param2^.ts16^;
         btU32       : result := Param1^.ts64^ < Param2^.tu32^;
         btS32       : result := Param1^.ts64^ < Param2^.ts32^;
-        btS64       : result := Param1^.ts64^ < Param2^.ts64^;
+        btS64       : result := Param1^.ts64^ < Param2^.ts64^;  
+        btU64       : result := Param1^.ts64^ < Param2^.tu64^;
         btSingle    : result := Param1^.ts64^ < Param2^.tSingle^;
         btDouble    : result := Param1^.ts64^ < Param2^.tDouble^;
+        end;
+      end;
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : result := Param1^.tu64^ < Param2^.tu8^;
+        btS8        : result := Param1^.tu64^ < Param2^.ts8^;
+        btU16       : result := Param1^.tu64^ < Param2^.tu16^;
+        btS16       : result := Param1^.tu64^ < Param2^.ts16^;
+        btU32       : result := Param1^.tu64^ < Param2^.tu32^;
+        btS32       : result := Param1^.tu64^ < Param2^.ts32^;
+        btS64       : result := Param1^.tu64^ < Param2^.ts64^;
+        btU64       : result := Param1^.tu64^ < Param2^.tu64^;
+        btSingle    : result := Param1^.tu64^ < Param2^.tSingle^;
+        btDouble    : result := Param1^.tu64^ < Param2^.tDouble^;
         end;
       end;
   btSingle :
@@ -1670,7 +1935,8 @@ begin
         btS16       : result := Param1^.tSingle^ < Param2^.ts16^;
         btU32       : result := Param1^.tSingle^ < Param2^.tu32^;
         btS32       : result := Param1^.tSingle^ < Param2^.ts32^;
-        btS64       : result := Param1^.tSingle^ < Param2^.ts64^;
+        btS64       : result := Param1^.tSingle^ < Param2^.ts64^;  
+        btU64       : result := Param1^.tSingle^ < Param2^.tu64^;
         btSingle    : result := Param1^.tSingle^ < Param2^.tSingle^;
         btDouble    : result := Param1^.tSingle^ < Param2^.tDouble^;
         end;
@@ -1685,6 +1951,7 @@ begin
         btU32       : result := Param1^.tDouble^ < Param2^.tu32^;
         btS32       : result := Param1^.tDouble^ < Param2^.ts32^;
         btS64       : result := Param1^.tDouble^ < Param2^.ts64^;
+        btU64       : result := Param1^.tDouble^ < Param2^.tu64^;
         btSingle    : result := Param1^.tDouble^ < Param2^.tSingle^;
         btDouble    : result := Param1^.tDouble^ < Param2^.tDouble^;
         end;      
@@ -1818,6 +2085,7 @@ begin
         btU32       : result := Param1^.tu8^ <= Param2^.tu32^;
         btS32       : result := Param1^.tu8^ <= Param2^.ts32^;
         btS64       : result := Param1^.tu8^ <= Param2^.ts64^;
+        btU64       : result := Param1^.tu8^ <= Param2^.tu64^;
         btSingle    : result := Param1^.tu8^ <= Param2^.tSingle^;
         btDouble    : result := Param1^.tu8^ <= Param2^.tDouble^;
         end;
@@ -1831,7 +2099,8 @@ begin
         btS16       : result := Param1^.ts8^ <= Param2^.ts16^;
         btU32       : result := Param1^.ts8^ <= Param2^.tu32^;
         btS32       : result := Param1^.ts8^ <= Param2^.ts32^;
-        btS64       : result := Param1^.ts8^ <= Param2^.ts64^;
+        btS64       : result := Param1^.ts8^ <= Param2^.ts64^;  
+        btU64       : result := Param1^.ts8^ <= Param2^.tu64^;
         btSingle    : result := Param1^.ts8^ <= Param2^.tSingle^;
         btDouble    : result := Param1^.ts8^ <= Param2^.tDouble^;
         end;
@@ -1845,7 +2114,8 @@ begin
         btS16       : result := Param1^.tu16^ <= Param2^.ts16^;
         btU32       : result := Param1^.tu16^ <= Param2^.tu32^;
         btS32       : result := Param1^.tu16^ <= Param2^.ts32^;
-        btS64       : result := Param1^.tu16^ <= Param2^.ts64^;
+        btS64       : result := Param1^.tu16^ <= Param2^.ts64^;  
+        btU64       : result := Param1^.tu16^ <= Param2^.tu64^;
         btSingle    : result := Param1^.tu16^ <= Param2^.tSingle^;
         btDouble    : result := Param1^.tu16^ <= Param2^.tDouble^;
         end;
@@ -1859,7 +2129,8 @@ begin
         btS16       : result := Param1^.ts16^ <= Param2^.ts16^;
         btU32       : result := Param1^.ts16^ <= Param2^.tu32^;
         btS32       : result := Param1^.ts16^ <= Param2^.ts32^;
-        btS64       : result := Param1^.ts16^ <= Param2^.ts64^;
+        btS64       : result := Param1^.ts16^ <= Param2^.ts64^;  
+        btU64       : result := Param1^.ts16^ <= Param2^.tu64^;
         btSingle    : result := Param1^.ts16^ <= Param2^.tSingle^;
         btDouble    : result := Param1^.ts16^ <= Param2^.tDouble^;
         end;
@@ -1873,7 +2144,8 @@ begin
         btS16       : result := Param1^.tu32^ <= Param2^.ts16^;
         btU32       : result := Param1^.tu32^ <= Param2^.tu32^;
         btS32       : result := Param1^.tu32^ <= Param2^.ts32^;
-        btS64       : result := Param1^.tu32^ <= Param2^.ts64^;
+        btS64       : result := Param1^.tu32^ <= Param2^.ts64^;  
+        btU64       : result := Param1^.tu32^ <= Param2^.tu64^;
         btSingle    : result := Param1^.tu32^ <= Param2^.tSingle^;
         btDouble    : result := Param1^.tu32^ <= Param2^.tDouble^;
         end;
@@ -1887,7 +2159,8 @@ begin
         btS16       : result := Param1^.ts32^ <= Param2^.ts16^;
         btU32       : result := Param1^.ts32^ <= Param2^.tu32^;
         btS32       : result := Param1^.ts32^ <= Param2^.ts32^;
-        btS64       : result := Param1^.ts32^ <= Param2^.ts64^;
+        btS64       : result := Param1^.ts32^ <= Param2^.ts64^; 
+        btU64       : result := Param1^.ts32^ <= Param2^.tu64^;
         btSingle    : result := Param1^.ts32^ <= Param2^.tSingle^;
         btDouble    : result := Param1^.ts32^ <= Param2^.tDouble^;
         end;
@@ -1902,8 +2175,24 @@ begin
         btU32       : result := Param1^.ts64^ <= Param2^.tu32^;
         btS32       : result := Param1^.ts64^ <= Param2^.ts32^;
         btS64       : result := Param1^.ts64^ <= Param2^.ts64^;
+        btU64       : result := Param1^.ts64^ <= Param2^.tu64^;
         btSingle    : result := Param1^.ts64^ <= Param2^.tSingle^;
         btDouble    : result := Param1^.ts64^ <= Param2^.tDouble^;
+        end;
+      end;  
+  btU64 :
+      begin
+        case Param2.AType of
+        btU8        : result := Param1^.tu64^ <= Param2^.tu8^;
+        btS8        : result := Param1^.tu64^ <= Param2^.ts8^;
+        btU16       : result := Param1^.tu64^ <= Param2^.tu16^;
+        btS16       : result := Param1^.tu64^ <= Param2^.ts16^;
+        btU32       : result := Param1^.tu64^ <= Param2^.tu32^;
+        btS32       : result := Param1^.tu64^ <= Param2^.ts32^;
+        btS64       : result := Param1^.tu64^ <= Param2^.ts64^;
+        btU64       : result := Param1^.tu64^ <= Param2^.tu64^;
+        btSingle    : result := Param1^.tu64^ <= Param2^.tSingle^;
+        btDouble    : result := Param1^.tu64^ <= Param2^.tDouble^;
         end;
       end;
   btSingle :
@@ -1915,7 +2204,8 @@ begin
         btS16       : result := Param1^.tSingle^ <= Param2^.ts16^;
         btU32       : result := Param1^.tSingle^ <= Param2^.tu32^;
         btS32       : result := Param1^.tSingle^ <= Param2^.ts32^;
-        btS64       : result := Param1^.tSingle^ <= Param2^.ts64^;
+        btS64       : result := Param1^.tSingle^ <= Param2^.ts64^;  
+        btU64       : result := Param1^.tSingle^ <= Param2^.tu64^;
         btSingle    : result := Param1^.tSingle^ <= Param2^.tSingle^;
         btDouble    : result := Param1^.tSingle^ <= Param2^.tDouble^;
         end;
@@ -1929,7 +2219,8 @@ begin
         btS16       : result := Param1^.tDouble^ <= Param2^.ts16^;
         btU32       : result := Param1^.tDouble^ <= Param2^.tu32^;
         btS32       : result := Param1^.tDouble^ <= Param2^.ts32^;
-        btS64       : result := Param1^.tDouble^ <= Param2^.ts64^;
+        btS64       : result := Param1^.tDouble^ <= Param2^.ts64^; 
+        btU64       : result := Param1^.tDouble^ <= Param2^.tu64^;
         btSingle    : result := Param1^.tDouble^ <= Param2^.tSingle^;
         btDouble    : result := Param1^.tDouble^ <= Param2^.tDouble^;
         end;      

@@ -235,7 +235,7 @@ uses SysUtils;
 
 const
   TSE2OpCodes_StreamVersion    = 2;
-  TSE2OpCodes_OpCodeVersion    = 1;
+  TSE2OpCodes_OpCodeVersion    = 2;
   TSE2StringList_StreamVersion = 2;
   TSE2MetaEntry_StreamVersion  = 3;
   TSE2MetaList_StreamVersion   = 1;
@@ -338,7 +338,8 @@ begin
           if opVersion <> TSE2OpCodes_OpCodeVersion then
              raise ESE2InvalidDataStream.Create('Unsupported op-code-version. Please recompile the source');
           {$IFDEF SEII_FPC} {$HINTS ON} {$ENDIF}
-        end;
+        end else                             
+           raise ESE2InvalidDataStream.Create('Unsupported op-code-version. Please recompile the source');
 
         {$IFDEF SEII_FPC}
           {$HINTS OFF}
