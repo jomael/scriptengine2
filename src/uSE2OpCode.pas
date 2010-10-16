@@ -12,6 +12,10 @@ type
 
   TSE2TypeIdent   = byte;
 
+  {$IF not declared(UInt64)}
+  UInt64          = Int64;
+  {$IFEND}
+
   TbtU8           = byte;
   TbtS8           = ShortInt;
   TbtU16          = word;
@@ -19,6 +23,7 @@ type
   TbtU32          = Cardinal;
   TbtS32          = Integer;
   TbtS64          = int64;
+  TbtU64          = UInt64;
   TbtSingle       = Single;
   TbtDouble       = double;
   TbtString       = String;
@@ -38,6 +43,7 @@ type
   PbtU32          = ^TbtU32;
   PbtS32          = ^TbtS32;
   PbtS64          = ^TbtS64;
+  PbtU64          = ^TbtU64;
   PbtSingle       = ^TbtSingle;
   PbtDouble       = ^TbtDouble;
   PbtPointer      = ^TbtPointer;
@@ -49,6 +55,8 @@ type
   PbtAnsiString   = ^TbtAnsiString;
   PbtPAnsiChar    = ^TbtPAnsiChar;
   PbtPWideChar    = ^TbtPWideChar;
+
+  PUInt64         = PbtU64;
 
 const                          
   btU8                     = 1;
@@ -70,6 +78,7 @@ const
   btAnsiString             = 16;
   btPAnsiChar              = 17;
   btPWideChar              = 18;
+  btU64                    = 19;
 
 
   btReturnAddress          = 40;
@@ -155,6 +164,10 @@ type
 
                 // Data Assign
                 soDAT_SetInt, soDAT_SetFloat, soDAT_SetPtr, soDAT_LOADRES, soDAT_CLEAR,
+
+                // Special Data Assign
+                soDAT_PUSHInt32, soDAT_PUSHInt64, soDAT_PUSHUInt64, soDAT_PUSHFLOAT4, soDAT_PUSHFLOAT8,
+                soDAT_PUSHPtr, soDAT_PUSHRES,
 
                 // Special Data
                 soSPEC_INCP, soSPEC_CREATE, soSPEC_DESTROY, soSPEC_UNREF, soSPEC_DECP,
@@ -365,6 +378,49 @@ type
 
   PSE2OpDAT_LOADRES = ^TSE2OpDAT_LOADRES;
   TSE2OpDAT_LOADRES = packed record
+    OpCode     : TSE2OpCode;
+    Index      : integer;
+  end;
+
+  PSE2OpDAT_PUSHInt32 = ^TSE2OpDAT_PUSHInt32;
+  TSE2OpDAT_PUSHInt32 = packed record
+    OpCode     : TSE2OpCode;
+    Value      : integer;
+  end;
+
+  PSE2OpDAT_PUSHInt64 = ^TSE2OpDAT_PUSHInt64;
+  TSE2OpDAT_PUSHInt64 = packed record
+    OpCode     : TSE2OpCode;
+    Value      : Int64;
+  end;
+
+  PSE2OpDAT_PUSHUInt64 = ^TSE2OpDAT_PUSHUInt64;
+  TSE2OpDAT_PUSHUInt64 = packed record
+    OpCode     : TSE2OpCode;
+    Value      : TbtU64;
+  end;  
+
+  PSE2OpDAT_PUSHFloat4 = ^TSE2OpDAT_PUSHFloat4;
+  TSE2OpDAT_PUSHFloat4 = packed record
+    OpCode     : TSE2OpCode;
+    Value      : single;
+  end;
+
+  PSE2OpDAT_PUSHFloat8 = ^TSE2OpDAT_PUSHFloat8;
+  TSE2OpDAT_PUSHFloat8 = packed record
+    OpCode     : TSE2OpCode;
+    Value      : double;
+  end;
+
+  PSE2OpDAT_PUSHPtr = ^TSE2OpDAT_PUSHPtr;
+  TSE2OpDAT_PUSHPtr = packed record
+    OpCode     : TSE2OpCode;
+    Value      : Pointer;
+  end;
+
+
+  PSE2OpDAT_PUSHRES = ^TSE2OpDAT_PUSHRES;
+  TSE2OpDAT_PUSHRES = packed record
     OpCode     : TSE2OpCode;
     Index      : integer;
   end;
@@ -1348,6 +1404,7 @@ begin
   soDAT_MOVE_FROM   : if PSE2OpDAT_MOVE_FROM(FOpCode).Static then
                          PSE2OpDAT_MOVE_FROM(FOpCode).Source := index;
   soDAT_LOADRES     : PSE2OpDAT_LOADRES(FOpCode).Index := index;
+  soDAT_PUSHRES     : PSE2OpDAT_PUSHRES(FOpCode).Index := index;
   soSPEC_GetRef     : if PSE2OpSPEC_GetRef(FOpCode).Static then
                          PSE2OpSPEC_GetRef(FOpCode).Offset := index;
   soREC_COPY_TO     : if PSE2OpREC_COPY_TO(FOpCode).Target >= 0 then

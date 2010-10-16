@@ -31,6 +31,9 @@ var
 
 implementation
 
+uses
+  uSE2OpCode;
+
 const
   C_UnitName   = 'System';
   C_UnitSource =
@@ -79,6 +82,7 @@ const
      '    class procedure WriteLine(i: cardinal); external; overload;'+#13#10+
      '    class procedure WriteLine(i: integer); external; overload;'+#13#10+
      '    class procedure WriteLine(i: int64); external; overload;'+#13#10+
+     '    class procedure WriteLine(i: UInt64); external; overload;'+#13#10+
      '    class procedure WriteLine(i: single); external; overload;'+#13#10+
      '    class procedure WriteLine(i: double); external; overload;'+#13#10+
      '    class procedure WriteLine(b: boolean); external; overload;'+#13#10+
@@ -101,6 +105,7 @@ const
      '    class procedure Write(i: cardinal); external; overload;'+#13#10+
      '    class procedure Write(i: integer); external; overload;'+#13#10+
      '    class procedure Write(i: int64); external; overload;'+#13#10+
+     '    class procedure Write(i: UInt64); external; overload;'+#13#10+
      '    class procedure Write(i: single); external; overload;'+#13#10+
      '    class procedure Write(i: double); external; overload;'+#13#10+
      '    class procedure Write(b: boolean); external; overload;'+#13#10+  
@@ -224,6 +229,7 @@ type
     class procedure WriteLineU32(i: cardinal);
     class procedure WriteLineS32(i: integer);
     class procedure WriteLineS64(i: int64);
+    class procedure WriteLineU64(i: TbtU64);
     class procedure WriteLineF(i: single);
     class procedure WriteLineD(i: double);
     class procedure WriteLineB(b: boolean);
@@ -244,6 +250,7 @@ type
     class procedure WriteU32(i: cardinal);
     class procedure WriteS32(i: integer);
     class procedure WriteS64(i: int64);
+    class procedure WriteU64(i: TbtU64);
     class procedure WriteF(i: single);
     class procedure WriteD(i: double);
     class procedure WriteB(b: boolean);
@@ -311,19 +318,20 @@ begin
     Target.Method['Console.WriteLine[4]', C_UnitName] := @TConsole.WriteLineU32;
     Target.Method['Console.WriteLine[5]', C_UnitName] := @TConsole.WriteLineS32;
     Target.Method['Console.WriteLine[6]', C_UnitName] := @TConsole.WriteLineS64;
-    Target.Method['Console.WriteLine[7]', C_UnitName] := @TConsole.WriteLineF;
-    Target.Method['Console.WriteLine[8]', C_UnitName] := @TConsole.WriteLineD;
-    Target.Method['Console.WriteLine[9]', C_UnitName] := @TConsole.WriteLineB;  
-    Target.Method['Console.WriteLine[10]', C_UnitName] := @TConsole.WriteLineP;
-    Target.Method['Console.WriteLine[11]', C_UnitName] := @TConsole.WriteLineS;
-    Target.Method['Console.WriteLine[12]', C_UnitName] := @TConsole.WriteLineU;
-    Target.Method['Console.WriteLine[13]', C_UnitName] := @TConsole.WriteLineW;
-    Target.Method['Console.WriteLine[14]', C_UnitName] := @TConsole.WriteLineC;
-    Target.Method['Console.WriteLine[15]', C_UnitName] := @TConsole.WriteLineAS;
-    Target.Method['Console.WriteLine[16]', C_UnitName] := @TConsole.WriteLineAC;
-    Target.Method['Console.WriteLine[17]', C_UnitName] := @TConsole.WriteLineWC;
-    // 18 is TObject and is not external !!
-    Target.Method['Console.WriteLine[19]', C_UnitName] := @TConsole.WriteLine;
+    Target.Method['Console.WriteLine[7]', C_UnitName] := @TConsole.WriteLineU64;
+    Target.Method['Console.WriteLine[8]', C_UnitName] := @TConsole.WriteLineF;
+    Target.Method['Console.WriteLine[9]', C_UnitName] := @TConsole.WriteLineD;
+    Target.Method['Console.WriteLine[10]', C_UnitName] := @TConsole.WriteLineB;
+    Target.Method['Console.WriteLine[11]', C_UnitName] := @TConsole.WriteLineP;
+    Target.Method['Console.WriteLine[12]', C_UnitName] := @TConsole.WriteLineS;
+    Target.Method['Console.WriteLine[13]', C_UnitName] := @TConsole.WriteLineU;
+    Target.Method['Console.WriteLine[14]', C_UnitName] := @TConsole.WriteLineW;
+    Target.Method['Console.WriteLine[15]', C_UnitName] := @TConsole.WriteLineC;
+    Target.Method['Console.WriteLine[16]', C_UnitName] := @TConsole.WriteLineAS;
+    Target.Method['Console.WriteLine[17]', C_UnitName] := @TConsole.WriteLineAC;
+    Target.Method['Console.WriteLine[18]', C_UnitName] := @TConsole.WriteLineWC;
+    // 19 is TObject and is not external !!
+    Target.Method['Console.WriteLine[20]', C_UnitName] := @TConsole.WriteLine;
 
     Target.Method['Console.Write[0]', C_UnitName] := @TConsole.WriteU8;
     Target.Method['Console.Write[1]', C_UnitName] := @TConsole.WriteS8;
@@ -332,18 +340,19 @@ begin
     Target.Method['Console.Write[4]', C_UnitName] := @TConsole.WriteU32;
     Target.Method['Console.Write[5]', C_UnitName] := @TConsole.WriteS32;
     Target.Method['Console.Write[6]', C_UnitName] := @TConsole.WriteS64;
-    Target.Method['Console.Write[7]', C_UnitName] := @TConsole.WriteF;
-    Target.Method['Console.Write[8]', C_UnitName] := @TConsole.WriteD;
-    Target.Method['Console.Write[9]', C_UnitName] := @TConsole.WriteB;  
-    Target.Method['Console.Write[10]', C_UnitName] := @TConsole.WriteP;
-    Target.Method['Console.Write[11]', C_UnitName] := @TConsole.WriteS;
-    Target.Method['Console.Write[12]', C_UnitName] := @TConsole.WriteU;
-    Target.Method['Console.Write[13]', C_UnitName] := @TConsole.WriteW;
-    Target.Method['Console.Write[14]', C_UnitName] := @TConsole.WriteC;
-    Target.Method['Console.Write[15]', C_UnitName] := @TConsole.WriteAS;
-    Target.Method['Console.Write[16]', C_UnitName] := @TConsole.WriteAC;
-    Target.Method['Console.Write[17]', C_UnitName] := @TConsole.WriteWC;
-    // 18 is TObject and is not external !!
+    Target.Method['Console.Write[7]', C_UnitName] := @TConsole.WriteU64;
+    Target.Method['Console.Write[8]', C_UnitName] := @TConsole.WriteF;
+    Target.Method['Console.Write[9]', C_UnitName] := @TConsole.WriteD;
+    Target.Method['Console.Write[10]', C_UnitName] := @TConsole.WriteB;
+    Target.Method['Console.Write[11]', C_UnitName] := @TConsole.WriteP;
+    Target.Method['Console.Write[12]', C_UnitName] := @TConsole.WriteS;
+    Target.Method['Console.Write[13]', C_UnitName] := @TConsole.WriteU;
+    Target.Method['Console.Write[14]', C_UnitName] := @TConsole.WriteW;
+    Target.Method['Console.Write[15]', C_UnitName] := @TConsole.WriteC;
+    Target.Method['Console.Write[16]', C_UnitName] := @TConsole.WriteAS;
+    Target.Method['Console.Write[17]', C_UnitName] := @TConsole.WriteAC;
+    Target.Method['Console.Write[18]', C_UnitName] := @TConsole.WriteWC;
+    // 19 is TObject and is not external !!
 
     Target.Method['Console.KeyPressed[0]', C_UnitName] := @TConsole.KeyPressed;
     Target.Method['Console.ReadLine[0]', C_UnitName] := @TConsole.ReadLine;
@@ -693,6 +702,16 @@ end;
 class procedure TConsole.WriteWC(const s: PWideChar);
 begin
   TConsole.WriteS(WideString(s));
+end;
+
+class procedure TConsole.WriteLineU64(i: TbtU64);
+begin
+  TConsole.WriteLineS(Format('%u', [i]));
+end;
+
+class procedure TConsole.WriteU64(i: TbtU64);
+begin
+  TConsole.WriteS(Format('%u', [i]));
 end;
 
 initialization

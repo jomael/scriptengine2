@@ -60,39 +60,9 @@ type
     property UnitList : TSE2BaseTypeList read FUnitList write FUnitList;
   end;
 
-var
-  DEBUG_TimeMeasure : int64;
-
 implementation
 
-uses SysUtils
-     , Windows
-     ;
-
-var
-  TTimeMeasure_BeginTime    : array[0..1024] of int64;
-  TTimeMeasure_CurrentIndex : integer = 0;
-
-type
-  TTimeMeasure = class
-  public
-    class procedure Start;
-    class procedure Stop;
-  end;
-
-class procedure TTimeMeasure.Start;
-begin
-  QueryPerformanceCounter(TTimeMeasure_BeginTime[TTimeMeasure_CurrentIndex]);
-  TTimeMeasure_CurrentIndex := TTimeMeasure_CurrentIndex + 1;
-end;
-
-class procedure TTimeMeasure.Stop;
-var t: int64;
-begin
-  TTimeMeasure_CurrentIndex := TTimeMeasure_CurrentIndex - 1;
-  QueryPerformanceCounter(t);
-  DEBUG_TimeMeasure := DEBUG_TimeMeasure + (t - TTimeMeasure_BeginTime[TTimeMeasure_CurrentIndex]);
-end;
+uses SysUtils;
 
 { TSE2Linker }
 
@@ -1126,12 +1096,136 @@ var i, j    : integer;
     AddOffsetPos(-2, i);
   end;
 
+  procedure ExchangePushConstant;
+  begin
+    if (OpCodes[0] = nil) or (OpCodes[1] = nil) then
+       exit;
+
+    if OpCodes[0].OpCode.OpCode <> soSTACK_INC then
+       exit;
+
+    case OpCodes[1].OpCode.OpCode of
+    soDAT_SetInt   :
+      begin
+        if PSE2OpSTACK_INC(OpCodes[0].OpCode).AType = btS64 then
+        begin
+          OpCodes[0].OpCode.OpCode := soDAT_PUSHInt64;
+          PSE2OpDAT_PUSHInt64(OpCodes[0].OpCode).Value := PSE2OpDAT_SetInt(OpCodes[1].OpCode).Value;
+        end else
+        if PSE2OpSTACK_INC(OpCodes[0].OpCode).AType = btU64 then
+        begin
+          OpCodes[0].OpCode.OpCode := soDAT_PUSHUInt64;
+          PSE2OpDAT_PUSHUInt64(OpCodes[0].OpCode).Value := PSE2OpDAT_SetInt(OpCodes[1].OpCode).Value;
+        end else
+        begin
+          OpCodes[0].OpCode.OpCode := soDAT_PUSHInt32;
+          PSE2OpDAT_PUSHInt32(OpCodes[0].OpCode).Value := PSE2OpDAT_SetInt(OpCodes[1].OpCode).Value;
+        end;
+      end;
+    soDAT_SetFloat :
+      begin
+        if PSE2OpSTACK_INC(OpCodes[0].OpCode).AType = btSingle then
+        begin
+          OpCodes[0].OpCode.OpCode := soDAT_PUSHFloat4;
+          PSE2OpDAT_PUSHFloat4(OpCodes[0].OpCode).Value := PSE2OpDAT_SetFloat(OpCodes[1].OpCode).Value;
+        end else
+        begin
+          OpCodes[0].OpCode.OpCode := soDAT_PUSHFloat8;
+          PSE2OpDAT_PUSHFloat8(OpCodes[0].OpCode).Value := PSE2OpDAT_SetFloat(OpCodes[1].OpCode).Value;
+        end;
+      end;
+    soDAT_SetPtr   :
+      begin
+        if PSE2OpSTACK_INC(OpCodes[0].OpCode).AType = btPointer then
+        begin
+          OpCodes[0].OpCode.OpCode := soDAT_PUSHPtr;
+          PSE2OpDAT_PUSHPtr(OpCodes[0].OpCode).Value := PSE2OpDAT_SetPtr(OpCodes[1].OpCode).Value;
+        end else
+          exit;
+      end;
+    soDAT_LOADRES :
+      begin
+        if PSE2OpSTACK_INC(OpCodes[0].OpCode).AType in [btString, btPChar, btAnsiString, btPAnsiChar, btWideString, btPWideChar, btUTF8String] then
+        begin
+          OpCodes[0].OpCode.OpCode := soDAT_PUSHRES;
+          OpCodes[0].CodeIndex := OpCodes[1].CodeIndex;
+          PSE2OpDAT_PUSHRES(OpCodes[0].OpCode).Index := PSE2OpDAT_LoadRes(OpCodes[1].OpCode).Index;
+        end else
+          exit;
+      end;
+    else exit;
+    end;
+    
+    Method.OpCodes.Delete(i + 1);
+    AddOffsetPos(-1, i);
+  end;
+
+  procedure InsertJumpIfZero;
+  begin
+    if (OpCodes[0] = nil) or (OpCodes[1] = nil) or (OpCodes[2] = nil) then
+       exit;
+
+    if not ( OpCodes[0].OpCode.OpCode in
+        [soDAT_PUSHInt32, soDAT_PUSHInt64, soDAT_PUSHUInt64, soDAT_PUSHFloat4,
+         soDAT_PUSHFloat8, soDAT_PUSHPtr]) then
+       exit;
+
+    if OpCodes[1].OpCode.OpCode <> soOP_COMPARE then
+       exit;
+
+    if PSE2OpOP_COMPARE(OpCodes[1].OpCode).CompType <> 1 then
+       exit;
+       
+    if OpCodes[2].OpCode.OpCode <> soFLOW_JIZ then
+       exit;
+
+    case OpCodes[0].OpCode.OpCode of
+    soDAT_PUSHInt32  : if PSE2OpDAT_PUSHInt32(OpCodes[0].OpCode).Value <> 0 then exit;
+    soDAT_PUSHInt64  : if PSE2OpDAT_PUSHInt64(OpCodes[0].OpCode).Value <> 0 then exit;
+    soDAT_PUSHUInt64 : if PSE2OpDAT_PUSHUInt64(OpCodes[0].OpCode).Value <> 0 then exit;
+    soDAT_PUSHFLOAT4 : if PSE2OpDAT_PUSHFloat4(OpCodes[0].OpCode).Value <> 0 then exit;
+    soDAT_PUSHFLOAT8 : if PSE2OpDAT_PUSHFloat8(OpCodes[0].OpCode).Value <> 0 then exit;
+    soDAT_PUSHPtr    : if PSE2OpDAT_PUSHPtr(OpCodes[0].OpCode).Value <> nil then exit;
+    end;
+
+    PSE2OpFLOW_JNZ(OpCodes[0].OpCode).OpCode := soFLOW_JNZ;
+    PSE2OpFLOW_JNZ(OpCodes[0].OpCode).Position := PSE2OpFLOW_JIZ(OpCodes[2].OpCode).Position;
+    OpCodes[0].CodeIndex := OpCodes[2].CodeIndex;
+
+    Method.OpCodes.Delete(i + 1);  
+    Method.OpCodes.Delete(i + 1);
+    AddOffsetPos(-2, i);
+  end;
+
   procedure CombineMultiplePops;
   var index, popCount : integer;
+
+    function AnybodyJumpingToPosition(TargetPos: integer): boolean;
+    var i: integer;
+    begin
+      result := True;
+      for i:=0 to Method.OpCodes.Count-1 do
+        if Method.OpCodes[i].GetJumpPos = TargetPos then
+           exit;
+      result := False;
+    end;
+
+
   begin
+    if OpCodes[0] = nil then
+       exit
+    else
+    if OpCodes[0].OpCode^.OpCode <> soSTACK_DEC then
+       exit;
+
     popCount := 0;
     for index:=0 to 10 do
     begin
+        if AnybodyJumpingToPosition(i + index) then
+        begin
+          break;
+        end;
+
       if OpCodes[index] = nil then
          break
       else
@@ -1209,7 +1303,7 @@ begin
   if Method.IsExternal then
      exit;
 
-  for Mode := 0 to 5 do
+  for Mode := 0 to 8 do
   begin
     i := 0;
     repeat
@@ -1223,8 +1317,10 @@ begin
       3 : InsertFastCompare;
       4 : InsertFastOperation;
       5 : RemoveNOOPs;
-      //6 : CombineMultiplePops;
-      //7 : CombineMultiplePush;
+      6 : ExchangePushConstant;
+      7 : InsertJumpIfZero;
+      8 : CombineMultiplePops;
+      //9 : CombineMultiplePush;
       end;
 
       inc(i);

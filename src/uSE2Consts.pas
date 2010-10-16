@@ -20,7 +20,7 @@ type
                     sesEqual, sesSmaller, sesSmallerEqual, sesBiggerEqual, sesBigger, sesUnEqual,
                     sesIs, sesAs,
                     // Assignment
-                    sesBecomes, sesDoublePoint, sesDot, sesSemiColon, sesColon,
+                    sesBecomes, sesDoublePoint, sesDot, sesDotDot, sesSemiColon, sesColon,
                     // Operators
                     sesAnd, sesOr, sesXor, sesNot, sesShr, sesShl, sesExit, sesBreak, sesContinue,
                     sesAt,
@@ -81,7 +81,7 @@ const
                     '=', '<', '<=', '>=', '>', '<>',
                     'is', 'as',
                     // Assignment
-                    ':=', ':', '.', ';', ',',
+                    ':=', ':', '.', '..', ';', ',',
                     // Operators
                     'and', 'or', 'xor', 'not', 'shr', 'shl', 'exit', 'break', 'continue',
                     '@',
@@ -180,7 +180,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 4; Build: 1);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 5; Build: 0);
 
 
 function SE2SplitFullQualifiedName(const Input: string; var AUnitName, ATypeName: string): boolean;
@@ -411,7 +411,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 10, 10);
+  result := EncodeDate(2010, 10, 15);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }

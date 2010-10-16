@@ -79,9 +79,25 @@ const
         '    /// Create a new version specified by the given parameters'+#13#10+
         '    class function Version(Major, Minor, Build, Revision: integer): TVersion; overload;' + #13#10 + 
         #13#10 + 
-        '  end;' + #13#10 + 
+        '  end;' + #13#10 +
+        #13#10 +
+        '  Convert = partial class' + #13#10 + 
+        '  public' + #13#10 + 
+        '    class function ToString(value: TVersion): string; overload;' + #13#10 + 
+        '    class function ToVersion(value: string): TVersion; overload;' + #13#10 + 
+        '  end;' + #13#10 +
         #13#10 + 
-        'implementation' + #13#10 + 
+        'implementation' + #13#10 +
+        #13#10 +
+        'class function Convert.ToString(value: TVersion): string;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := value.ToString;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'class function Convert.ToVersion(value: string): TVersion;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := TVersion.Version(value);' + #13#10 + 
+        'end;' + #13#10 + 
         #13#10 + 
         'function TVersion.ToString: string;' + #13#10 + 
         'begin' + #13#10 + 
@@ -250,19 +266,19 @@ const
         '  iPos := versionString.IndexOf(''.'');' + #13#10 + 
         '  if iPos = 0 then' + #13#10 + 
         '     raise EConvertError.Create(''Expected at least one dot'');' + #13#10 + 
-        '  if not Convert.TryStrToInt(versionString.SubString(1, iPos - 1), v1) then' + #13#10 + 
+        '  if not Convert.TryToInt32(versionString.SubString(1, iPos - 1), v1) then' + #13#10 + 
         '     raise EConvertError.Create(''Invalid number found'');' + #13#10 + 
         '  versionString := versionString.SubString(iPos + 1);' + #13#10 + 
         #13#10 + 
         '  iPos := versionString.IndexOf(''.'');' + #13#10 + 
         '  if iPos = 0 then' + #13#10 + 
         '  begin' + #13#10 + 
-        '    if not Convert.TryStrToInt(versionString, v2) then' + #13#10 + 
+        '    if not Convert.TryToInt32(versionString, v2) then' + #13#10 + 
         '       raise EConvertError.Create(''Invalid number found'');' + #13#10 + 
         '    result := TVersion.Version(v1, v2);' + #13#10 + 
         '    exit;' + #13#10 + 
         '  end;' + #13#10 + 
-        '  if not Convert.TryStrToInt(versionString.SubString(1, iPos - 1), v2) then' + #13#10 + 
+        '  if not Convert.TryToInt32(versionString.SubString(1, iPos - 1), v2) then' + #13#10 + 
         '     raise EConvertError.Create(''Invalid number found'');' + #13#10 + 
         '  versionString := versionString.SubString(iPos + 1);' + #13#10 + 
         #13#10 + 
@@ -270,16 +286,16 @@ const
         '  iPos := versionString.IndexOf(''.'');' + #13#10 + 
         '  if iPos = 0 then' + #13#10 + 
         '  begin' + #13#10 + 
-        '    if not Convert.TryStrToInt(versionString, v3) then' + #13#10 + 
+        '    if not Convert.TryToInt32(versionString, v3) then' + #13#10 + 
         '       raise EConvertError.Create(''Invalid number found'');' + #13#10 + 
         '    result := TVersion.Version(v1, v2, v3);' + #13#10 + 
         '    exit;' + #13#10 + 
         '  end;' + #13#10 + 
-        '  if not Convert.TryStrToInt(versionString.SubString(1, iPos - 1), v3) then' + #13#10 + 
+        '  if not Convert.TryToInt32(versionString.SubString(1, iPos - 1), v3) then' + #13#10 + 
         '     raise EConvertError.Create(''Invalid number found'');' + #13#10 + 
         #13#10 + 
         #13#10 + 
-        '  if not Convert.TryStrToInt(versionString.SubString(iPos + 1), v4) then' + #13#10 + 
+        '  if not Convert.TryToInt32(versionString.SubString(iPos + 1), v4) then' + #13#10 + 
         '     raise EConvertError.Create(''Invalid number found'');' + #13#10 + 
         #13#10 + 
         '  result := TVersion.Version(v1, v2, v3, v4);' + #13#10 + 

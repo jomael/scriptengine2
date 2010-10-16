@@ -274,27 +274,46 @@ begin
         r1 := FStack.Top;
 
         case r1.AType of
-        btU8, btS8, btU16, btS16, btU32, btS32,
-        btObject, btPointer :
+        btU8, btS8, btU16, btS16, btU32, btS32 :
             if FStackHelper.VarHasValue(r1, @CompareInt) then
                FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
-        btS64 :
+        btS64, btU64 :
             if r1^.ts64^ = 0 then
                FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
+        btObject, btPointer :
+            if PPointer(r1^.tPointer)^ = nil then
+               FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
         btSingle :
-            if r1^.tSingle^ = 0 then   
+            if r1^.tSingle^ = 0 then
                FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
         btDouble :
             if r1^.tDouble^ = 0 then
                FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
         end;
-        FStack.Pop;           
+        FStack.Pop;
       end;
   soFLOW_JNZ :
       begin
         CompareInt := 0;
-        if not FStackHelper.VarHasValue(FStack.Top, @CompareInt) then
-           FCodePos := PSE2OpFLOW_JNZ(OpCode).Position - 1;
+        r1 := FStack.Top;
+
+        case r1.AType of
+        btU8, btS8, btU16, btS16, btU32, btS32 :
+            if not FStackHelper.VarHasValue(r1, @CompareInt) then
+               FCodePos := PSE2OpFLOW_JNZ(OpCode).Position - 1;
+        btS64, btU64 :
+            if r1^.ts64^ <> 0 then
+               FCodePos := PSE2OpFLOW_JNZ(OpCode).Position - 1;
+        btObject, btPointer :
+            if PPointer(r1^.tPointer)^ <> nil then
+               FCodePos := PSE2OpFLOW_JNZ(OpCode).Position - 1;
+        btSingle :
+            if r1^.tSingle^ <> 0 then
+               FCodePos := PSE2OpFLOW_JNZ(OpCode).Position - 1;
+        btDouble :
+            if r1^.tDouble^ <> 0 then
+               FCodePos := PSE2OpFLOW_JNZ(OpCode).Position - 1;
+        end;
         FStack.Pop;
       end;
   soFLOW_CALL :
@@ -711,7 +730,8 @@ begin
           FStack[FStack.Size - 1 + PSE2OpDAT_CONVERT(OpCode).Index] := r3 { VarDat[2] };
         end;
 
-        FStackHelper.ConvertContent(r1 { VarDat[0] }, PSE2OpDAT_CONVERT(OpCode).NewType);
+        if r1.AType <> PSE2OpDAT_CONVERT(OpCode).NewType then
+           FStackHelper.ConvertContent(r1 { VarDat[0] }, PSE2OpDAT_CONVERT(OpCode).NewType);
       end;
   soDAT_CHANGETYPE :
       begin                   
@@ -720,13 +740,48 @@ begin
       end;
   soDAT_SetInt :
       begin
-        if not (FStack.Top.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64]) then
+        if not (FStack.Top.AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64]) then
         begin
           FStackHelper.FreeVarContent(FStack.Top);
           FStack.Top.AType := btS64;
           FStackHelper.CreateVarContent(FStack.Top);
         end;
         FStackHelper.SetIntContent(FStack.Top, PSE2OpDAT_SetInt(OpCode).Value);
+      end;
+  soDAT_PUSHInt32 :
+      begin
+        r1 := FStack.PushNew(btS32);
+        r1^.ts32^ := PSE2OpDAT_PUSHInt32(OpCode).Value;
+      end;  
+  soDAT_PUSHInt64 :
+      begin
+        r1 := FStack.PushNew(btS64);
+        r1^.ts64^ := PSE2OpDAT_PUSHInt64(OpCode).Value;
+      end;
+  soDAT_PUSHUInt64 :
+      begin
+        r1 := FStack.PushNew(btU64);
+        r1^.ts64^ := PSE2OpDAT_PUSHUInt64(OpCode).Value;
+      end;
+  soDAT_PUSHFloat4 :
+      begin
+        r1 := FStack.PushNew(btSingle);
+        r1^.tSingle^ := PSE2OpDAT_PUSHFloat4(OpCode).Value;
+      end;
+  soDAT_PUSHFloat8 :
+      begin
+        r1 := FStack.PushNew(btDouble);
+        r1^.tDouble^ := PSE2OpDAT_PUSHFloat8(OpCode).Value;
+      end;         
+  soDAT_PUSHPtr :
+      begin
+        r1 := FStack.PushNew(btPointer);
+        Pointer(r1^.tPointer^) := PSE2OpDAT_PUSHPtr(OpCode).Value;
+      end;
+  soDAT_PUSHRES :
+      begin           
+        r1 := FStack.PushNew(btString);
+        FStackHelper.SetStringContent(r1, FExecutionData.AppCode.Strings[PSE2OpDAT_PUSHRES(OpCode).Index]);
       end;
   soSAVE_INSTANCE :
       begin
@@ -1409,6 +1464,7 @@ var MetaEntry  : TSE2MetaEntry;
           btU32     : newEntry.tu32^     := PInteger(Data)^;
           btS32     : newEntry.ts32^     := PInteger(Data)^;
           btS64     : newEntry.ts64^     := PInteger(Data)^;
+          btU64     : newEntry.ts64^     := PInteger(Data)^;
           btSingle  : newEntry.tSingle^  := PInteger(Data)^;
           btDouble  : newEntry.tDouble^  := PInteger(Data)^;
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
@@ -1425,6 +1481,7 @@ var MetaEntry  : TSE2MetaEntry;
           btU32     : newEntry.tu32^     := PInt64(Data)^;
           btS32     : newEntry.ts32^     := PInt64(Data)^;
           btS64     : newEntry.ts64^     := PInt64(Data)^;
+          btU64     : newEntry.ts64^     := PInt64(Data)^;
           btSingle  : newEntry.tSingle^  := PInt64(Data)^;
           btDouble  : newEntry.tDouble^  := PInt64(Data)^;
           else raise ESE2CallParameterError.Create(SParamNotCompatible);
@@ -1711,7 +1768,7 @@ var MetaEntry  : TSE2MetaEntry;
         case aParamType of
         btU8, btS8, btU16, btS16, btU32, btS32 :
             SetVariableContent(aParamType, vtInteger, Parameter.VPointer);
-        btS64 :
+        btS64, btU64 :
             SetVariableContent(aParamType, vtInt64, Parameter.VPointer);
         btSingle, btDouble :
             SetVariableContent(aParamType, btExtended, Parameter.VPointer);
@@ -1761,6 +1818,7 @@ var MetaEntry  : TSE2MetaEntry;
         btU32          : PbtU32(Parameter.VPointer)^    := Data^.tU32^;
         btS32          : PbtS32(Parameter.VPointer)^    := Data^.tS32^;
         btS64          : PbtS64(Parameter.VPointer)^    := Data^.tS64^;
+        btU64          : PbtS64(Parameter.VPointer)^    := Data^.tS64^;
         btSingle       : PbtSingle(Parameter.VPointer)^ := Data^.tSingle^;
         btDouble       : PbtDouble(Parameter.VPointer)^ := Data^.tDouble^;
         btString       : PbtString(Parameter.VPointer)^ := PbtString(Data^.tString^)^;
@@ -1805,6 +1863,7 @@ var MetaEntry  : TSE2MetaEntry;
       btU32        : result := FStack.Top^.tU32^;
       btS32        : result := FStack.Top^.tS32^;
       btS64        : result := FStack.Top^.tS64^;
+      btU64        : result := FStack.Top^.tS64^;
       btSingle     : result := FStack.Top^.tSingle^;
       btDouble     : result := FStack.Top^.tDouble^;
       btString     : result := PbtString(FStack.Top^.tString^)^;

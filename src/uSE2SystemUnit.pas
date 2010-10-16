@@ -98,6 +98,7 @@ begin
   DoAddType('Cardinal', btU32, SizeOf(TbtU32), visPublic, nil, 'Represents an unsigned 32 bit integer value');
   DoAddType(C_SE2Int32, btS32, SizeOf(TbtS32), visPublic, nil, 'Represents a signed 32 bit integer value');
   DoAddType(C_SE2Int64, btS64, SizeOf(TbtS64), visPublic, nil, 'Represents a signed 64 bit integer value');
+  DoAddType('UInt64', btU64, SizeOf(TbtU64), visPublic, nil, 'Represents an unsigned 64 bit integer value');
   
   DoAddType('LongWord', 0, 0, visPublic, FindType('Cardinal'));
   DoAddType('Longint', 0, 0, visPublic, FindType(C_SE2Int32));

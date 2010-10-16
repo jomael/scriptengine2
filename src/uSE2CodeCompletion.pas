@@ -23,7 +23,9 @@ type
     FCanExecute       : boolean;
     FShowKeyWords     : boolean;
     FHasParentObj     : boolean;
+    FFilterSameName   : boolean;
     FProcessed        : TList;
+    FAddedItems       : TSE2HashedStringList;
   protected
     procedure CompileCallBack(Sender: TObject; CodePos, ParamIndex: integer; CurrentMethod, ParamMethod: TSE2Method;
                                   Parent: TSE2BaseType; TargetType: TSE2Type; TokenType: TSE2TokenType; StaticOnly: boolean);
@@ -62,6 +64,7 @@ type
     function GetCodeCompletion(const Source: string; CursorPos: integer): boolean; overload;
     function GetCodeCompletion(const Readers: TSE2ReaderList; CursorPos: integer): boolean; overload;
 
+    property FilterSameName   : boolean            read FFilterSameName   write FFilterSameName;
     property Compiler         : TSE2Compiler       read FCompiler;
     property OnAddItem        : TSE2AddItemEvent   read FOnAddItem        write FOnAddItem;
     property OnGetUnitMngr    : TSE2GetUnitMngr    read FOnGetUnitMngr    write FOnGetUnitMngr;
@@ -170,17 +173,28 @@ begin
   FCompiler  := TSE2Compiler.Create;
   FProcessed := TList.Create;
   FShowKeyWords := True;
+
+  FAddedItems := TSE2HashedStringList.Create;
 end;
 
 destructor TSE2CodeCompletion.Destroy;
 begin
   FProcessed.Free;
   FreeAndNil(FCompiler);
+  FAddedItems.Free;
   inherited;
 end;
 
 procedure TSE2CodeCompletion.DoAddItem(const DispText, InsText: string);
 begin
+  if FilterSameName then
+  begin
+    if FAddedItems.IndexOf(InsText) >= 0 then
+       exit;
+
+    FAddedItems.Add(InsText);
+  end;
+
   if Assigned(FOnAddItem) then
      FOnAddItem(Self, DispText, InsText);
 end;     

@@ -67,9 +67,27 @@ const
         '    /// Converts a guid to a string'+#13#10+
         '    /// Format: {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}'+#13#10+
         '    function ToString: string;' + #13#10 + 
-        '  end;' + #13#10 + 
+        '  end;' + #13#10 +
+        #13#10 +
+        '  Convert = partial class' + #13#10 + 
+        '  public' + #13#10 + 
+        '    class function ToString(value: TGuid): string; overload;' + #13#10 + 
+        '    class function ToGuid(value: string): TGuid; overload;' + #13#10 + 
+        '  end;' + #13#10 +
         #13#10 + 
-        'implementation' + #13#10 + 
+        'implementation' + #13#10 +
+        #13#10 +
+        'class function Convert.ToString(value: TGuid): string;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := value.ToString;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'class function Convert.ToGuid(value: string): TGuid;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := TGuid.Guid(value);' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 +
+        ' { TGuid }'+#13#10+
         #13#10 + 
         'class function TGuid.Guid(a : LongWord; b, c: word; d1, d2, d3, d4, d5, d6, d7, d8: byte): TGuid;' + #13#10 + 
         'begin' + #13#10 + 

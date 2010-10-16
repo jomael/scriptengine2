@@ -9,6 +9,9 @@ uses
 
 implementation
 
+uses
+  uSE2OpCode;
+
 const
   C_UnitName   = 'System';
   C_UnitSource =
@@ -24,7 +27,9 @@ const
       #13#10+
       '  Math = sealed partial class(TExternalObject)'+#13#10+
       '  public'+#13#10+
+      '    /// Returns the inverse cosinus (-pi to +pi)'+#13#10+
       '    class function ArcCos(const X: double): double; external;'+#13#10+
+      '    /// Returns the inverse cosinus'+#13#10+
       '    class function ArcCosh(const X: double): double; external;'+#13#10+
       {$IFNDEF SEII_NO_EXT_MATH}
       '    class function ArcCot(const X: double): double; external;'+#13#10+
@@ -34,10 +39,13 @@ const
       '    class function ArcSec(const X: double): double; external;'+#13#10+
       '    class function ArcSecH(const X: double): double; external;'+#13#10+
       {$ENDIF}
+      '    /// Returns the inverse sinus (-pi to +pi)'+#13#10+
       '    class function ArcSin(const X: double): double; external;'+#13#10+
+      '    /// Returns the inverse sinus'+#13#10+
       '    class function ArcSinh(X: double): double; external;'+#13#10+
       '    class function ArcTan2(const Y, X: double): double; external;'+#13#10+
       '    class function ArcTanh(X: double): double; external;'+#13#10+
+      '    /// Returns the smallest integer value, which is greater or equal "X"'+#13#10+
       '    class function Ceil(const X: double): integer; external;'+#13#10+
       '    class function Cosecant(const X: double): double; external;'+#13#10+
       '    class function Cosh(const X: double): double; external;'+#13#10+
@@ -66,7 +74,9 @@ const
       '    class function DoubleDecliningBalance(const Cost, Salvage: double; Life, Period: Integer): double; external;'+#13#10+
       {$ENDIF}
       '    class function EnsureRange(const AValue, AMin, AMax: Int64): Int64; overload; external;'+#13#10+
+      '    class function EnsureRange(const AValue, AMin, AMax: UInt64): UInt64; overload; external;'+#13#10+
       '    class function EnsureRange(const AValue, AMin, AMax: Double): Double; overload; external;'+#13#10+
+      '    /// Round to the next smaller integer value'+#13#10 +
       '    class function Floor(const X: double): Integer; external;'+#13#10+
       '    class procedure Frexp(const X: double; var Mantissa: double; var Exponent: Integer); external;'+#13#10+
       {$IFNDEF SEII_NO_EXT_MATH}
@@ -75,7 +85,8 @@ const
       '    class function GradToDeg(const Grads: double): double; external;'+#13#10+
       '    class function GradToRad(const Grads: double): double; external;'+#13#10+
       '    class function Hypot(const X, Y: double): double; external;'+#13#10+
-      '    class function InRange(const AValue, AMin, AMax: Int64): Boolean; overload; external;'+#13#10+
+      '    class function InRange(const AValue, AMin, AMax: Int64): Boolean; overload; external;'+#13#10+    
+      '    class function InRange(const AValue, AMin, AMax: UInt64): Boolean; overload; external;'+#13#10+
       '    class function InRange(const AValue, AMin, AMax: Double): Boolean; overload; external;'+#13#10+
       '    class function IntPower(const Base: double; const Exponent: Integer): double;  external;'+#13#10+
       '    class function IsInfinite(const AValue: Double): Boolean; external;'+#13#10+
@@ -91,9 +102,11 @@ const
       '    class function Log2(const X: double): double; external;'+#13#10+
       '    class function LogN(const Base, X: double): double; external;'+#13#10+
       '    class function Max(A,B: Int64): Int64; overload; external;'+#13#10+
+      '    class function Max(A,B: UInt64): UInt64; overload; external;'+#13#10+
       '    class function Max(A,B: Single): Single; overload; external;'+#13#10+
       '    class function Max(A,B: Double): Double; overload; external;'+#13#10+
       '    class function Min(A,B: Int64): Int64; overload; external;'+#13#10+
+      '    class function Min(A,B: UInt64): UInt64; overload; external;'+#13#10+
       '    class function Min(A,B: Single): Single; overload; external;'+#13#10+
       '    class function Min(A,B: Double): Double; overload; external;'+#13#10+
       '    class function Power(const Base, Exponent: double): double; external;'+#13#10+
@@ -125,12 +138,14 @@ const
       '    class function Abs(X: int64): int64; overload; external;'+#13#10+
       '    class function Abs(X: single): single; overload; external;'+#13#10+
       '    class function Abs(X: double): double; overload; external;'+#13#10+
+      '    /// Returns the fractional part of a floating point number'+#13#10+
       '    class function Frac(X: double): double; external;'+#13#10+
       '    class function Ln(X: double): double; external;'+#13#10+
       '    class function Round(X: double): Int64; external;'+#13#10+
       '    class function Sqr(X: double): double; overload; external;'+#13#10+
       '    class function Sqr(X: Integer): Integer; overload; external;'+#13#10+
       '    class function Sqrt(X: double): double; external;'+#13#10+
+      '    /// Truncates a floating point number to an integer value'+#13#10+
       '    class function Trunc(X: double): Int64; external;'+#13#10+
       '  end;'+#13#10+
       #13#10+
@@ -208,7 +223,8 @@ type
     class function DoubleDecliningBalance(const Cost, Salvage: double; Life, Period: Integer): double;
     {$ENDIF}
     class function EnsureRange0(const AValue, AMin, AMax: Int64): Int64;
-    class function EnsureRange1(const AValue, AMin, AMax: Double): Double;
+    class function EnsureRange1(const AValue, AMin, AMax: TbtU64): TbtU64;
+    class function EnsureRange2(const AValue, AMin, AMax: Double): Double;
     class function Floor(const X: double): Integer;
     class procedure Frexp(const X: double; var Mantissa: double; var Exponent: Integer);
     {$IFNDEF SEII_NO_EXT_MATH}
@@ -218,7 +234,8 @@ type
     class function GradToRad(const Grads: double): double;
     class function Hypot(const X, Y: double): double;
     class function InRange0(const AValue, AMin, AMax: Int64): Boolean;
-    class function InRange1(const AValue, AMin, AMax: Double): Boolean;
+    class function InRange1(const AValue, AMin, AMax: TbtU64): Boolean;
+    class function InRange2(const AValue, AMin, AMax: Double): Boolean;
     class function IntPower(const Base: double; const Exponent: Integer): double; 
     class function IsInfinite(const AValue: Double): Boolean;
     class function IsNan0(const AValue: Single): Boolean;
@@ -233,11 +250,13 @@ type
     class function Log2(const X: double): double;
     class function LogN(const Base, X: double): double;
     class function Max0(A,B: Int64): Int64;
-    class function Max1(A,B: Single): Single;
-    class function Max2(A,B: Double): Double;
+    class function Max1(A,B: TbtU64): TbtU64;
+    class function Max2(A,B: Single): Single;
+    class function Max3(A,B: Double): Double;
     class function Min0(A,B: Int64): Int64;
-    class function Min1(A,B: Single): Single;
-    class function Min2(A,B: Double): Double;
+    class function Min1(A,B: TbtU64): TbtU64;
+    class function Min2(A,B: Single): Single;
+    class function Min3(A,B: Double): Double;
     class function Power(const Base, Exponent: double): double;
     class function RadToCycle(const Radians: double): double;
     class function RadToDeg(const Radians: double): double;
@@ -366,8 +385,9 @@ begin
     {$IFNDEF SEII_NO_EXT_MATH}
     Target.Method['Math.DoubleDecliningBalance[0]', C_UnitName] := @TMath.DoubleDecliningBalance;
     {$ENDIF}
-    Target.Method['Math.EnsureRange[0]', C_UnitName] := @TMath.EnsureRange0;
+    Target.Method['Math.EnsureRange[0]', C_UnitName] := @TMath.EnsureRange0; 
     Target.Method['Math.EnsureRange[1]', C_UnitName] := @TMath.EnsureRange1;
+    Target.Method['Math.EnsureRange[2]', C_UnitName] := @TMath.EnsureRange2;
     Target.Method['Math.Floor[0]', C_UnitName] := @TMath.Floor;
     Target.Method['Math.Frexp[0]', C_UnitName] := @TMath.Frexp;
     {$IFNDEF SEII_NO_EXT_MATH}
@@ -377,7 +397,8 @@ begin
     Target.Method['Math.GradToRad[0]', C_UnitName] := @TMath.GradToRad;
     Target.Method['Math.Hypot[0]', C_UnitName] := @TMath.Hypot;
     Target.Method['Math.InRange[0]', C_UnitName] := @TMath.InRange0;
-    Target.Method['Math.InRange[1]', C_UnitName] := @TMath.InRange1;
+    Target.Method['Math.InRange[1]', C_UnitName] := @TMath.InRange1;  
+    Target.Method['Math.InRange[2]', C_UnitName] := @TMath.InRange2;
     Target.Method['Math.IntPower[0]', C_UnitName] := @TMath.IntPower;
     Target.Method['Math.IsInfinite[0]', C_UnitName] := @TMath.IsInfinite;
     Target.Method['Math.IsNan[0]', C_UnitName] := @TMath.IsNan0;
@@ -393,10 +414,12 @@ begin
     Target.Method['Math.LogN[0]', C_UnitName] := @TMath.LogN;
     Target.Method['Math.Max[0]', C_UnitName] := @TMath.Max0;
     Target.Method['Math.Max[1]', C_UnitName] := @TMath.Max1;
-    Target.Method['Math.Max[2]', C_UnitName] := @TMath.Max2;
+    Target.Method['Math.Max[2]', C_UnitName] := @TMath.Max2; 
+    Target.Method['Math.Max[3]', C_UnitName] := @TMath.Max3;
     Target.Method['Math.Min[0]', C_UnitName] := @TMath.Min0;
     Target.Method['Math.Min[1]', C_UnitName] := @TMath.Min1;
-    Target.Method['Math.Min[2]', C_UnitName] := @TMath.Min2;
+    Target.Method['Math.Min[2]', C_UnitName] := @TMath.Min2; 
+    Target.Method['Math.Min[3]', C_UnitName] := @TMath.Min3;
     Target.Method['Math.Power[0]', C_UnitName] := @TMath.Power;
     Target.Method['Math.RadToCycle[0]', C_UnitName] := @TMath.RadToCycle;
     Target.Method['Math.RadToDeg[0]', C_UnitName] := @TMath.RadToDeg;
@@ -448,7 +471,7 @@ procedure RegisterUnit;
 var p : TSE2MethodUnit;
 begin
   p := TSE2MethodUnit.Create;
-  p.Priority          := 11;
+  p.Priority          := 4;
   p.DoRegisterMethods := Unit_RegisterMethods;
   p.DoGetUnitSource   := Unit_GetSource;
   p.UnitName          := C_UnitName;
@@ -647,7 +670,16 @@ begin
   result := Math.EnsureRange(AValue, AMin, AMax);
 end;
 
-class function TMath.EnsureRange1(const AValue, AMin,
+class function TMath.EnsureRange1(const AValue, AMin, AMax: TbtU64): TbtU64;
+begin
+  result := AValue;
+  if result < AMin then
+     result := AMin;
+  if result > AMax then
+     result := AMax;
+end;
+
+class function TMath.EnsureRange2(const AValue, AMin,
   AMax: Double): Double;
 begin
   result := Math.EnsureRange(AValue, AMin, AMax);
@@ -704,7 +736,12 @@ begin
   result := Math.InRange(AValue, AMin, AMax);
 end;
 
-class function TMath.InRange1(const AValue, AMin, AMax: Double): Boolean;
+class function TMath.InRange1(const AValue, AMin, AMax: TbtU64): boolean;
+begin
+  result := (AValue >= AMin) and (AValue <= AMax);
+end;
+
+class function TMath.InRange2(const AValue, AMin, AMax: Double): Boolean;
 begin
   result := Math.InRange(AValue, AMin, AMax)
 end;
@@ -785,12 +822,20 @@ begin
   result := Math.Max(A, b);
 end;
 
-class function TMath.Max1(A, B: Single): Single;
+class function TMath.Max1(A, B: TbtU64): TbtU64;
+begin
+  if A > B then
+     result := A
+  else
+     result := B;
+end;
+
+class function TMath.Max2(A, B: Single): Single;
 begin
   result := Math.Max(A, b);
 end;
 
-class function TMath.Max2(A, B: Double): Double;
+class function TMath.Max3(A, B: Double): Double;
 begin
   result := Math.Max(A, b);
 end;
@@ -800,18 +845,26 @@ begin
   result := Math.Min(A, b);
 end;
 
-class function TMath.Min1(A, B: Single): Single;
+class function TMath.Min1(A, B: TbtU64): TbtU64;
+begin
+  if A < B then
+     result := A
+  else
+     result := B;
+end;
+
+class function TMath.Min2(A, B: Single): Single;
 begin
   result := Math.Min(A, b);
 end;
 
-class function TMath.Min2(A, B: Double): Double;
+class function TMath.Min3(A, B: Double): Double;
 begin
   result := Math.Min(A, b);
 end;
 
 class function TMath.Power(const Base, Exponent: double): double;
-begin      
+begin
   result := Math.Power(Base, Exponent);
 end;
 

@@ -221,6 +221,18 @@ begin
             goto StartPos;
           end;
         end;
+        if FReader.Symbol = '.' then
+        begin
+          tempChar := FReader.NextChar(True);
+          if tempChar = '.' then
+          begin
+            FReader.NextChar();
+            Token.Value := '..';
+            Token.AType := sesDotDot;
+            result := True;
+            exit;
+          end;
+        end;
         if CharInSet(FReader.Symbol, ['>', '<']) then
         begin
           tempStr  := FReader.Symbol;
@@ -395,8 +407,11 @@ begin
               begin
                 CacheToToken;
                 if not TSE2Converter.IsInteger(Token.Value) then
+                begin
                    Token.AType := sesUnknown;
-                exit;
+                   exit;
+                end else
+                   break;
               end else
               begin
                 Token.AType := sesFloat;

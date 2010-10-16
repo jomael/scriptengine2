@@ -100,7 +100,9 @@ begin
   FLines := 0;
 
   if FUnitCache <> nil then
+  begin
      FUnitCache.CheckForChanges;
+  end;
 
   if DoCompile(Tokenizer) <> nil then
   begin
