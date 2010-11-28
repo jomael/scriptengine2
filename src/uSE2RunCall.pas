@@ -456,14 +456,14 @@ begin
   if FCallType = callRegister then
   begin
     for i:=0 to FRegister.Count-1 do
-      Parameters[i] := cardinal(FRegister[i]);
+      Parameters[i] := cardinal(FRegister.List[i]);
 
     for i:=0 to FStack.Count-1 do
-      Parameters[i+3] := cardinal(FStack[i]);
+      Parameters[i+3] := cardinal(FStack.List[i]);
   end else
   begin
     for i:=0 to FStack.Count-1 do
-      Parameters[i] := cardinal(FStack[i]);
+      Parameters[i] := cardinal(FStack.List[i]);
   end;
 
   FReturn3 := CallMethod(FCallType, FMethodPos, Parameters, FReturn1, FUseResPoint, i, @FReturn2);
@@ -632,9 +632,9 @@ begin
         btString,
         btWideString,
         btUTF8String,
-        btPChar,
-        btAnsiString,
+        btAnsiString  : Self.AddPointer(PPointer(Param^.tString^)^);
         btPAnsiChar,
+        btPChar,
         btPWideChar   : Self.AddPointer(PPointer(Param^.tString^)^);
         btObject,
         btPointer     : Self.AddPointer(Pointer(Param^.tPointer^));

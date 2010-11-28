@@ -5,12 +5,13 @@ unit uSE2Linker;
 interface
 
 uses
-  Classes, uSE2BaseTypes, uSE2Types, uSE2OpCode, uSE2Consts, uSE2Parser, uSE2PEData;
+  Classes, uSE2BaseTypes, uSE2Types, uSE2OpCode, uSE2Consts, uSE2Parser, uSE2PEData, uSE2Optimizer;
 
 type
   TSE2Linker = class(TSE2Object)
   private
-    FUnitList : TSE2BaseTypeList;
+    FUnitList  : TSE2BaseTypeList;
+    FOptimizer : TSE2Optimizer;
   protected
     procedure SetCodePos(ElemName: string; NewPos: cardinal; DebugPos: integer; TypeMeta: TSE2BaseType = nil);
     procedure SetDebugPos(ElemName: string; DebugPos: cardinal);
@@ -19,6 +20,7 @@ type
     function  MakeMethodParamDecl(Method: TSE2Method): AnsiString;
 
     procedure OptimizeMethod(Method: TSE2Method);
+    procedure OptimizeMethod2(Method: TSE2Method);
     procedure OptimizeMethods(AUnit: TSE2Unit);
 
     procedure LinkString(PE: TSE2PE; value: TSE2LinkString);
@@ -29,6 +31,8 @@ type
     procedure LinkClasses(PE: TSE2PE; AUnit: TSE2Unit);
     procedure LinkRecord(PE: TSE2PE; ARecord: TSE2Record);
     procedure LinkRecords(PE: TSE2PE; AUnit: TSE2Unit);
+    procedure LinkMethodVariable(PE: TSE2PE; Method: TSE2MethodVariable); 
+    procedure LinkMethodVariables(PE: TSE2PE; AUnit: TSE2Unit);
     procedure LinkGlobalVars(PE: TSE2PE);
     procedure LinkUnit(PE: TSE2PE; AUnit: TSE2Unit);
     procedure LinkInitialization(PE: TSE2PE);
@@ -70,10 +74,12 @@ constructor TSE2Linker.Create(const UnitList: TSE2BaseTypeList);
 begin
   inherited Create;
   FUnitList := UnitList;
+  FOptimizer := TSE2Optimizer.Create;
 end;
 
 destructor TSE2Linker.Destroy;
 begin
+  FOptimizer.Free;
   inherited;
 end;
 
@@ -104,6 +110,9 @@ begin
 
   for i:=0 to FUnitList.Count-1 do
     LinkClasses(result, TSE2Unit(FUnitList[i]));
+
+  for i:=0 to FUnitList.Count-1 do
+    LinkMethodVariables(result, TSE2Unit(FUnitList[i]));
 
   //TTimeMeasure.Start;
   for i:=0 to FUnitList.Count-1 do
@@ -166,7 +175,7 @@ begin
   Meta.SourcePos  := AClass.DeclPos;
   Meta.SourceLine := AClass.DeclLine;
   Meta.ParamCount := AClass.ClassSize;
-  Meta.DynMethods.Count := AClass.DynMethods;  
+  Meta.DynMethods.Count := AClass.DynMethods;
   Meta.MetaLinkName := 'META_['+Meta.Name+']['+Meta.AUnitName+']';
 
   if AClass.InheritFrom is TSE2Class then
@@ -354,7 +363,7 @@ var CodePos: integer;
   begin
     n := MakeHash(MetaName);
     for result := 0 to PE.MetaData.Count-1 do
-    begin               
+    begin
       if n = PE.MetaData[result].MetaLinkHash then
         if MetaName = PE.MetaData[result].MetaLinkName then
 
@@ -404,6 +413,10 @@ begin
   Meta.HasSelf     := Method.HasSelfParam;
   Meta.ParamDecl   := MakeMethodParamDecl(Method);
 
+  Meta.LibraryName := Method.ExternalLib;
+  Meta.LibPosition := Method.ExternalName;
+  Meta.LibIndex    := Method.ExternalIndex;
+
   if Method.ReturnValue <> nil then
     if Method.ReturnValue.AType is TSE2Record then
     begin
@@ -415,7 +428,6 @@ begin
       Meta.RTTI.Add(btRecord, i, FindRecordMeta(GetRecordMeta(TSE2Record(TSE2Parameter(Method.Params[i]).AType))));
 
   PE.MetaData.Add(Meta);
-
 
   CodePos := PE.OpCodes.Count;
   Method.CodePos  := CodePos;
@@ -453,22 +465,116 @@ begin
     // add the CodeOffset to every OpCode
     // right variable will be choosen in "AddCodeOffset"
     if OpCode.CodeIndex = '' then
-       AddCodeOffset(OpCode.OpCode, CodePos);
+       AddCodeOffset(OpCode.OpCode, CodePos)
+    else
+    begin
+      if OpCode.OpCode.OpCode = soFLOW_CALLEX then
+         PSE2OpFLOW_CALLEX(OpCode.OpCode).MetaIndex := PE.MetaData.Count - 1;
 
-    if OpCode.OpCode.OpCode = soFLOW_CALLEX then
-       PSE2OpFLOW_CALLEX(OpCode.OpCode).MetaIndex := PE.MetaData.Count - 1;
-
-    case OpCode.OpCode.OpCode of
-    soSPEC_CREATE          : PSE2OpSPEC_CREATE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
-    soMETA_PUSH            : PSE2OpMETA_PUSH(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
-    soMETA_SHARE           : PSE2OpMETA_SHARE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
-    soMETA_CAST            : PSE2OpMETA_CAST(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
-    soREC_MAKE             : PSE2OpREC_MAKE(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
-    soREC_EQUAL            : PSE2OpREC_EQUAL(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
-    soREC_UNEQUAL          : PSE2OpREC_UNEQUAL(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
-    soREC_COPY_TO          : PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex, PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex);
+      case OpCode.OpCode.OpCode of
+      soSPEC_CREATE          : PSE2OpSPEC_CREATE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+      soMETA_PUSH            : PSE2OpMETA_PUSH(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+      soMETA_SHARE           : PSE2OpMETA_SHARE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+      soMETA_CAST            : PSE2OpMETA_CAST(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
+      soREC_MAKE             : PSE2OpREC_MAKE(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
+      soREC_EQUAL            : PSE2OpREC_EQUAL(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
+      soREC_UNEQUAL          : PSE2OpREC_UNEQUAL(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
+      soREC_COPY_TO          : PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex, PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex);
+      end;
     end;
   end;
+end;
+
+procedure TSE2Linker.LinkMethodVariable(PE: TSE2PE;
+  Method: TSE2MethodVariable);
+var i      : integer;
+    Meta   : TSE2MetaEntry;
+
+  function FindClassMeta(const MetaName: string): integer;
+  var //s: string;
+      n: integer;
+  begin
+    n := MakeHash(MetaName);
+    for result := 0 to PE.MetaData.Count-1 do
+    begin
+      if n = PE.MetaData[result].MetaLinkHash then
+        if MetaName = PE.MetaData[result].MetaLinkName then
+      //s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
+      //if n = MakeHash(s) then
+        //if s = MetaName then
+           exit;
+    end;
+    result := -1;
+  end;
+
+  function GetRecordMeta(const Rec: TSE2Record): string;
+  begin
+    result := 'META_['+Rec.Name+']['+rec.AUnitName+']';
+  end;
+  
+
+  function FindRecordMeta(const MetaName: string; const default: integer = -1): integer;
+  var //s: string;
+      n: integer;
+  begin
+    n := MakeHash(MetaName);
+    for result := 0 to PE.MetaData.Count-1 do
+    begin
+      if n = PE.MetaData[result].MetaLinkHash then
+        if MetaName = PE.MetaData[result].MetaLinkName then
+
+      //s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
+      //if n = MakeHash(s) then
+        //if s = MetaName then
+           exit;
+    end;
+    result := default;
+  end;
+
+begin
+  if (not Method.Method.IsExternal) then
+     exit;
+
+  Meta := TSE2MetaEntry.Create;
+  Meta.MetaType    := mtMethod;
+  Meta.Name        := Method.Name;
+  Meta.AUnitName    := Method.AUnitName;
+  Meta.CodePos     := -1;
+  Meta.SourcePos   := Method.DeclPos;
+  Meta.SourceLine  := Method.DeclLine;
+  Meta.ParamCount  := Method.Method.Params.Count;
+  if Method.Method.ReturnValue <> nil then
+     Meta.ResultType := TSE2Type(Method.Method.ReturnValue.AType.InheritRoot).AType;
+  Meta.IsExternal  := Method.Method.IsExternal;
+  Meta.CallType    := Method.Method.CallConvention;
+  Meta.HasSelf     := Method.Method.HasSelfParam;
+  Meta.ParamDecl   := MakeMethodParamDecl(Method.Method);
+
+  if Method.Method.ReturnValue <> nil then
+    if Method.Method.ReturnValue.AType is TSE2Record then
+    begin
+      Meta.RTTI.Add(btRecord, -1, FindRecordMeta(GetRecordMeta(TSE2Record(Method.Method.ReturnValue.AType))));
+    end;
+
+  for i:=0 to Method.Method.Params.Count-1 do
+    if TSE2Parameter(Method.Method.Params[i]).AType is TSE2Record then
+      Meta.RTTI.Add(btRecord, i, FindRecordMeta(GetRecordMeta(TSE2Record(TSE2Parameter(Method.Method.Params[i]).AType))));
+
+  PE.MetaData.Add(Meta);
+  Method.Method.CodePos  := -1;
+  Method.Method.DebugPos := PE.MetaData.Count-1;
+  Meta.MetaLinkName := Method.Method.GenLinkerName();
+  Meta.DynIndex := -1;
+
+  Meta.Name := Meta.Name + '['+TSE2Converter.IntToStr(Method.ID)+']';
+end;
+
+procedure TSE2Linker.LinkMethodVariables(PE: TSE2PE; AUnit: TSE2Unit);
+var i: integer;
+begin
+  for i:=0 to AUnit.TypeList.Count-1 do
+    if TObject(AUnit.TypeList.List.List[i]) is TSE2MethodVariable then
+      LinkMethodVariable(PE, TSE2MethodVariable(AUnit.TypeList.List.List[i]));
 end;
 
 procedure TSE2Linker.LinkMethods(PE: TSE2PE; AUnit: TSE2Unit);
@@ -482,7 +588,7 @@ begin
     for i:=0 to AUnit.AInitialization.Count-1 do
        LinkMethod(PE, TSE2Method(AUnit.AInitialization.List.List[i]));
 
-  if AUnit.AFinalization <> nil then    
+  if AUnit.AFinalization <> nil then
     for i:=0 to AUnit.AFinalization.Count-1 do
        LinkMethod(PE, TSE2Method(AUnit.AFinalization.List.List[i]));
 
@@ -1328,18 +1434,28 @@ begin
   end;
 end;
 
+procedure TSE2Linker.OptimizeMethod2(Method: TSE2Method);
+begin
+  if Method = nil then
+     exit;
+  if (Method.OpCodes.Count = 0) or ((not Method.Used) and (not Method.IsExport)) or Method.IsExternal then
+     exit;
+
+  FOptimizer.Optimize(Method);
+end;
+
 procedure TSE2Linker.OptimizeMethods(AUnit: TSE2Unit);
 var i: integer;
 begin
   for i:=0 to AUnit.ElemList.Count-1 do
     if AUnit.ElemList[i] is TSE2Method then
-       OptimizeMethod(TSE2Method(AUnit.ElemList[i]));
+       OptimizeMethod2(TSE2Method(AUnit.ElemList[i]));
 
   for i:=0 to AUnit.AInitialization.Count-1 do
-    OptimizeMethod(TSE2Method(AUnit.AInitialization[i])); 
+    OptimizeMethod2(TSE2Method(AUnit.AInitialization[i]));
   for i:=0 to AUnit.AFinalization.Count-1 do
-    OptimizeMethod(TSE2Method(AUnit.AFinalization[i]));
-  OptimizeMethod(AUnit.Main);
+    OptimizeMethod2(TSE2Method(AUnit.AFinalization[i]));
+  OptimizeMethod2(AUnit.Main);
 end;
 
 procedure TSE2Linker.PostLinkClass(PE: TSE2PE; aClass: TSE2MetaEntry);
@@ -1529,6 +1645,5 @@ begin
     ProcessUnit(TSE2Unit(FUnitList[i]));
 end;
 {$ENDIF}
-
 
 end.

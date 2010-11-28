@@ -12,12 +12,21 @@ interface
 uses
   Classes, SysUtils, uSE2RunType, uSE2Consts, uSE2BaseTypes, uSE2OpCode, uSE2PEData, uSE2RunCall,
   uSE2RunOperation, uSE2RunAccess, uSE2SafeBlockMngr, uSE2DebugData, uSE2MemoryManager, uSE2PerfMonitor,
-  uSE2NativeCallList, uSE2RunTimeClasses, uSE2ExecutionContext, uSE2ThreadMonitor;
+  uSE2NativeCallList, uSE2RunTimeClasses, uSE2ExecutionContext, uSE2ThreadMonitor, uSE2LibraryLoader;
 
 type
   {$IFDEF SEII_FPC}
     {$UNDEF PERF_MONITOR}
   {$ENDIF}
+
+  TSE2LibraryLoadInfo = record
+    LibraryName     : string;
+    MethodName      : string;
+    MethodIndex     : word;
+
+    UsesMethodIndex : boolean;
+  end;
+  TSE2LibraryLoadEvent = procedure(Sender: TObject; const LoadInfo: TSE2LibraryLoadInfo; var Allow: boolean) of object;
 
   TScriptDelayEvent = procedure(var AbortWait: boolean) of object;
 
@@ -33,6 +42,8 @@ type
     FThreadMonitor     : TSE2ThreadMonitor;
     {$ENDIF}
 
+    FLibraries         : TSE2LibraryLoader;
+    FOnLoadLibrary     : TSE2LibraryLoadEvent;
     FOnError           : TSE2RunTimeError;
   protected
     procedure SetAppCode(const value: TSE2PE);
@@ -48,12 +59,17 @@ type
 
     function  GetOnBeforeOperation: TNotifyEvent;
     procedure SetOnBeforeOperation(value: TNotifyEvent);
+
+    function  GetAllowExternalMethodPointers: boolean;
+    procedure SetAllowExternalMethodPointers(value: boolean);
   public
     constructor Create; override;
     destructor Destroy; override;
 
-    // DO NOT CALL DIRECTLY
+    // DO NOT CALL DIRECTLY !!
     procedure DoErrorEvent(Sender: TObject; Exp: ExceptClass; const Msg: string; ErrorPos: integer; const CallStack: string);
+    // DO NOT CALL DIRECTLY !!
+    function  DoLoadMethod(Meta: TSE2MetaEntry): Pointer;
 
     // DO NOT CALL     
     {$IFNDEF SEII_NO_SCRIPT_THREAD}
@@ -74,6 +90,11 @@ type
     procedure FreeClass(AClass: Pointer);
     function  ScriptAsMethod(const Method, ClassInstance: Pointer): TMethod;
     function  MethodAsScript(Data: Pointer; MethodPos, ClassPtr: Pointer): boolean;
+
+    { Security }
+    property AllowExternalMethodPointers : boolean    read GetAllowExternalMethodPointers write SetAllowExternalMethodPointers;
+    property OnLoadLibrary     : TSE2LibraryLoadEvent read FOnLoadLibrary    write FOnLoadLibrary;
+
 
 
     {$IFNDEF SEII_NO_SCRIPT_THREAD}
@@ -121,6 +142,8 @@ begin
   FThreadContext := TThreadList.Create;
   FThreadMonitor := TSE2ThreadMonitor.Create;
   {$ENDIF}
+
+  FLibraries := TSE2LibraryLoader.Create;
 end;
 
 destructor TSE2RunTime.Destroy;
@@ -146,6 +169,8 @@ begin
   FThreadMonitor.Free;
   {$ENDIF}
 
+  FLibraries.Free;
+
   inherited;
 end;
 
@@ -155,7 +180,8 @@ begin
      exit;
      
   if not FInitialized then
-     exit;
+     exit;    
+  FInitialized := False;
 
   FContext.Run(FExecutionData.AppCode.FinalizationPoint);
   FContext.ProcessGC;
@@ -165,8 +191,8 @@ begin
   ClearThreadContext;
   FThreadMonitor.Clear;
   {$ENDIF}
-  
-  FInitialized := False;
+
+  FLibraries.CloseLibraries;
 end;
 
 procedure TSE2RunTime.Initialize;
@@ -183,6 +209,7 @@ begin
   FThreadMonitor.Clear;
   {$ENDIF}
 
+  FLibraries.CloseLibraries;
   FContext.Initialize;
   FContext.Run(FExecutionData.AppCode.InitializationPoint);
 end;
@@ -350,5 +377,38 @@ begin
 end;
 {$Hints on}
 {$ENDIF}
+
+function TSE2RunTime.DoLoadMethod(Meta: TSE2MetaEntry): Pointer;
+var Info: TSE2LibraryLoadInfo;
+    Allow: boolean;
+begin
+  if not Assigned(FOnLoadLibrary) then
+     Allow := False
+  else
+  begin
+    Info.LibraryName := Meta.LibraryName;
+    Info.MethodName  := Meta.LibPosition;
+    Info.MethodIndex := Meta.LibIndex;
+    Info.UsesMethodIndex := (Meta.LibIndex >= 0) and (Meta.LibIndex <= High(Word));
+
+    Allow := False;
+    FOnLoadLibrary(Self, Info, Allow);
+  end;
+
+  if Allow then
+     result := FLibraries.LoadEntry(Meta)
+  else
+     result := nil;
+end;
+
+function TSE2RunTime.GetAllowExternalMethodPointers: boolean;
+begin
+  result := FExecutionData.ExtMethPtrs;
+end;
+
+procedure TSE2RunTime.SetAllowExternalMethodPointers(value: boolean);
+begin
+  FExecutionData.ExtMethPtrs := value;
+end;
 
 end.

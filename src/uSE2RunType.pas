@@ -70,6 +70,10 @@ type
   end;
 
   TSE2StringHelper = class(TObject)
+  private
+    class function  InputAsWide(Input: Pointer): WideString;
+    class function  InputAsPWide(Input: Pointer): WideString;
+  public
     { String }
     class procedure StringToUTF8(Input, Output: Pointer);
     class procedure StringToWide(Input, Output: Pointer);
@@ -351,7 +355,7 @@ begin
      exit;
 
   FreeData := False;
-  newData  := MM.GetMem(TSE2MemorySize[Data.AType]);
+  newData  := MM.GetMem(TSE2MemorySize[newType]);
   case Data.AType of
   btU8 :
       begin
@@ -1423,7 +1427,7 @@ begin
   if (index < 0) or (index >= FSize) then
      result := nil
   else
-     result := inherited Items[index];
+     result := List[index];
 end;
 
 function TSE2Stack.GetTop: PSE2VarData;
@@ -1716,9 +1720,14 @@ begin
   PbtUTF8String(Output^)^ := UTF8Encode(PbtPWideChar(Input^)^);
 end;
 
+class function TSE2StringHelper.InputAsPWide(Input: Pointer): WideString;
+begin
+  result := PbtPWideChar(Input^)^;
+end;
+
 class procedure TSE2StringHelper.PWideCharToWide(Input, Output: Pointer);
 begin
-  PbtWideString(Output^)^ := PbtPWideChar(Input^)^;
+  PbtWideString(Output^)^ :=  InputAsPWide(Input);
 end;
 
 class procedure TSE2StringHelper.StringToAnsiString(Input,
@@ -1815,6 +1824,18 @@ begin
     {$ENDIF}
 end;
 
+class function TSE2StringHelper.InputAsWide(Input: Pointer): WideString;
+var s: UTF8String;
+begin
+  s := UTF8Encode(PbtWideString(Input^)^);
+  result :=
+    {$IFDEF DELPHI2009UP}
+       UTF8ToWideString( s );
+    {$ELSE}
+       UTF8Decode( s );
+    {$ENDIF}
+end;
+
 class procedure TSE2StringHelper.WideToAnsiString(Input, Ouptut: Pointer);
 begin
   PbtAnsiString(Ouptut^)^ := AnsiString(Utf8ToAnsi(UTF8Encode(PbtWideString(Input^)^)));
@@ -1835,8 +1856,10 @@ begin
 end;
 
 class procedure TSE2StringHelper.WideToPWideChar(Input, Output: Pointer);
+var s: WideString;
 begin
-  PbtPWideChar(Output^)^ := PWideChar(PbtWideString(Input^)^);
+  s := InputAsWide(Input);
+  PbtPWideChar(Output^)^ := PWideChar(s);
 end;
 
 class procedure TSE2StringHelper.WideToString(Input, Output: Pointer);

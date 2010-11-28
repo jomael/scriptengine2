@@ -27,8 +27,10 @@ type
     FNativeList   : TSE2NativeCallList;
     FPackedData   : TSE2RunTimeClasses;
     FRunTime      : Pointer;
+    FExtMethPtrs  : boolean;
     FPInitialized : PBoolean;
   public
+    property ExtMethPtrs  : boolean            read FExtMethPtrs  write FExtMethPtrs;
     property AppCode      : TSE2PE             read FAppCode      write FAppCode;
     property CodeAccess   : TSE2RunAccess      read FCodeAccess   write FCodeAccess;
     property MemoryMngr   : TSE2MemoryManager  read FMemoryMngr   write FMemoryMngr;
@@ -117,7 +119,7 @@ type
 
 implementation
 
-uses  uSE2UnitManager, uSE2SystemUnit, uSE2NativeScriptCall;
+uses uSE2RunTime, uSE2UnitManager, uSE2SystemUnit, uSE2NativeScriptCall;
 
 { TSE2RunTime }
 
@@ -280,7 +282,7 @@ begin
         btS64, btU64 :
             if r1^.ts64^ = 0 then
                FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
-        btObject, btPointer :
+        btObject, btPointer, btProcPtr :
             if PPointer(r1^.tPointer)^ = nil then
                FCodePos := PSE2OpFLOW_JIZ(OpCode).Position - 1;
         btSingle :
@@ -304,7 +306,7 @@ begin
         btS64, btU64 :
             if r1^.ts64^ <> 0 then
                FCodePos := PSE2OpFLOW_JNZ(OpCode).Position - 1;
-        btObject, btPointer :
+        btObject, btPointer, btProcPtr :
             if PPointer(r1^.tPointer)^ <> nil then
                FCodePos := PSE2OpFLOW_JNZ(OpCode).Position - 1;
         btSingle :
@@ -320,10 +322,45 @@ begin
       begin
         FCodePos := PSE2OpFLOW_CALL(OpCode).Position - 1;
       end;
+  soDAT_LOADEX  :
+      begin
+        if PSE2OpFLOW_CALLEX(FOpCodes.List[FCodePos + 1]).Position = 0 then
+        begin
+          PSE2OpFLOW_CALLEX(FOpCodes.List[FCodePos + 1]).Position :=
+            cardinal(TSE2RunTime( FExecutionData.RunTime ).DoLoadMethod(
+              FExecutionData.AppCode.MetaData[PSE2OpFLOW_CALLEX(FOpCodes.List[FCodePos + 1]).MetaIndex]
+            ));
+          //TSE2RunTime( FExecutionData.RunTime )
+        end;
+      end;
   soFLOW_CALLEX :
       begin
         FMethodCall.Clear;
         FMethodCall.Run(Pointer(PSE2OpFLOW_CALLEX(OpCode).Position), FExecutionData.AppCode.MetaData[PSE2OpFLOW_CALLEX(OpCode).MetaIndex]);
+      end;
+  soFLOW_CALLPEX :
+      begin
+        FMethodCall.Clear;
+        r1 := FStack.Top;
+        r2 := FStack.List[FStack.Size - 2];
+        if r1^.AType <> btS32 then
+           raise ESE2RunTimeError.Create('Internal error: stack not valid');
+        if r2^.AType <> btProcPtr then
+           raise ESE2RunTimeError.Create('Internal error: stack not valid');
+
+        r2 := Pointer(r2^.tPointer^);
+        CompareInt := r1.tS32^;
+
+        if CompareInt < 0 then 
+           raise ESE2RunTimeError.Create('Internal error: external method description not assigned');
+
+        Stack.Pop;
+        Stack.Pop;
+
+        if Pointer(r2) = nil then
+           raise ESE2UnassignedMethod.Create('Method pointer not assigned');
+
+        FMethodCall.Run( Pointer(r2), FExecutionData.AppCode.MetaData[CompareInt] );
       end;
   soFLOW_CALLDYN :
       begin
@@ -475,10 +512,6 @@ begin
         Pos[0] := PSE2OpFLOW_PUSHRET(OpCode).Position;
 
         FStack.PushNew(btReturnAddress)^.ts64^ := PInt64(@(Pos[0]))^;
-
-        (*FStack.PushNew(btReturnAddress).ts64^ :=
-          (Int64(PSE2OpFLOW_PUSHRET(OpCode).DebugData shl 32)) or
-          ((Int64(PSE2OpFLOW_PUSHRET(OpCode).Position) and $FFFFFFFF);*)
       end;
   soOP_OPERATION :
       begin
@@ -894,7 +927,15 @@ begin
         if Meta = nil then
            raise ESE2RunTimeError.Create('Method pointer could not be get');
 
-        Ptr[0] := Meta;
+        if Meta.IsExternal and (Meta.MetaType = mtMethod) then
+        begin
+          if FExecutionData.FExtMethPtrs then
+             Ptr[0] := Pointer(PSE2OpFLOW_CALLEX(FOpCodes.List[Meta.CodePos + 1]).Position)
+          else
+             Ptr[0] := nil;
+        end
+        else
+           Ptr[0] := Meta;
         Ptr[1] := nil;
 
         if Meta.HasSelf then
@@ -1101,10 +1142,11 @@ begin
   soSAFE_BLOCK :
       begin
         TryBlock := FSafeBlocks.TopItem;
-        while FStack.Size > TryBlock.NewStackSize do
-        begin
-          FStack.Pop;
-        end;
+        if PSE2OpSAFE_BLOCK(OpCode).StackCheck then
+           while FStack.Size > TryBlock.NewStackSize do
+           begin
+             FStack.Pop;
+           end;
 
         TryBlock.IsAquired := True;
         if TryBlock.BlockType = blExcept then

@@ -23,9 +23,9 @@ uses
   uSE2UnitManager, uSE2RunAccess,
 
   { YOU ARE NOT ALLOWED TO CHANGE AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING LINE }
-  uSE2IncDateTime, uSE2IncInfo, uSE2IncConsole, uSE2IncConvert, uSE2IncMath, uSE2IncStrings, uSE2IncTypes, uSE2IncSCriptInfo,
+  uSE2IncDateTime, uSE2IncInfo, uSE2IncConsole, uSE2IncConvert, uSE2IncMath, uSE2IncStrings, uSE2IncTypes, uSE2IncScriptInfo,
   uSE2IncScriptExceptions, uSE2IncExceptions, uSE2IncHelpers, uSE2IncTimeSpan, uSE2IncVersion, uSE2IncGuid,
-  uSE2IncSystemThreading, uSE2IncSyncObjs, uSE2IncMultiCast,
+  uSE2IncSystemThreading, uSE2IncSyncObjs, uSE2IncMultiCast, uSE2IncSystemInteropWindows,
   SysUtils;
 
 { TSE2SystemUnit }
@@ -252,19 +252,19 @@ begin
 
 
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
-  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btPointer), ''));
-  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetPtr(nil), ''));
-  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
-  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(12), ''));
+  //method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btPointer), ''));
+  //method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetPtr(nil), ''));
+  //method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(8), ''));
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
-  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(6 + 3, 0), ''));
-                                                                               
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(3 + 3, 0), ''));
+
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLDYN(destruct.DynamicIndex), ''));
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DESTROY, ''));
 
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(12), ''));
+  //method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(9), ''));
 
               (*
   PUSH FROM -1 Dynamic

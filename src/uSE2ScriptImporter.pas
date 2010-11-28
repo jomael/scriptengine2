@@ -202,7 +202,7 @@ var i: integer;
 begin
   for i:=0 to AUnit.ElemList.Count-1 do
     if AUnit.ElemList[i] is TSE2Method then
-      if TSE2Method(AUnit.ElemList[i]).IsExternal then
+      if TSE2Method(AUnit.ElemList[i]).IsExternal and (TSE2Method(AUnit.ElemList[i]).ExternalLib = '') then
         ProcessMethod(AUnit, TSE2Method(AUnit.ElemList[i]));
 end;
 

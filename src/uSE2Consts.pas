@@ -18,7 +18,7 @@ type
                     sesPlus, sesMinus, sesStar, sesSlash, sesDiv, sesMod,
                     // Comparison
                     sesEqual, sesSmaller, sesSmallerEqual, sesBiggerEqual, sesBigger, sesUnEqual,
-                    sesIs, sesAs,
+                    sesIs, sesAs, sesIn,
                     // Assignment
                     sesBecomes, sesDoublePoint, sesDot, sesDotDot, sesSemiColon, sesColon,
                     // Operators
@@ -79,7 +79,7 @@ const
                     '+', '-', '*', '/', 'div', 'mod',
                     // Comparison
                     '=', '<', '<=', '>=', '>', '<>',
-                    'is', 'as',
+                    'is', 'as', 'in',
                     // Assignment
                     ':=', ':', '.', '..', ';', ',',
                     // Operators
@@ -122,6 +122,10 @@ const
   C_SE2Double                   = 'Double';
   C_SE2Pointer                  = 'Pointer';
   C_SE2PEHeaderStr              : AnsiString = 'SEII_PE';
+
+  C_SE2Enumerator_Getter        = 'GetEnumerator';
+  C_SE2Enumerator_MoveNext      = 'MoveNext';
+  C_SE2Enumerator_Current       = 'Current';
 
   C_SE2ExceptionObject          = 'EException';
   C_SE2ExceptExternal	          = 'EExternalException';
@@ -180,7 +184,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 5; Patch: 5; Build: 0);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 6; Patch: 0; Build: 0);
 
 
 function SE2SplitFullQualifiedName(const Input: string; var AUnitName, ATypeName: string): boolean;
@@ -411,7 +415,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 10, 15);
+  result := EncodeDate(2010, 11, 28);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }

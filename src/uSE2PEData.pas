@@ -138,12 +138,21 @@ type
     FMetaLinkName : string;
     FMetaLinkHash : integer;
 
+    FLibraryName  : string;
+    FLibNameHash  : integer;
+    FLibPosition  : string;
+    FLibPosHash   : integer;
+    FLibIndex     : integer;
+
     FMetaType   : TSE2MetaType;
     FRTTI       : TSE2RTTIList;
     FDynMethods : TSE2DynMethodList;
   protected
     function  GetHasResult: boolean;
     procedure SetMetaLinkName(const value: string);
+
+    procedure SetLibraryName(const value: string);
+    procedure SetLibPosition(const value: string);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -158,6 +167,12 @@ type
     property AUnitName  : string     read FUnitName     write FUnitName;
     property MetaLinkName : string   read FMetaLinkName write SetMetaLinkName;
     property MetaLinkHash : integer  read FMetaLinkHash;
+
+    property LibraryName: string     read FLibraryName  write SetLibraryName;
+    property LibNameHash: integer    read FLibNameHash;
+    property LibPosition: string     read FLibPosition  write SetLibPosition;
+    property LibPosHash : integer    read FLibPosHash;
+    property LibIndex   : integer    read FLibIndex     write FLibIndex;
 
     property DynIndex   : integer    read FDynIndex     write FDynIndex;
     property SourcePos  : integer    read FSourcePos    write FSourcePos;
@@ -229,17 +244,42 @@ type
     property FinalizationPoint   : cardinal       read FFinalizationPoint       write FFinalizationPoint;
   end;
 
+function LibraryNameIdentical(const s1, s2: string): boolean;
+function MakeLibraryNameHash(const s: string): integer;
+
 implementation
 
 uses SysUtils;
 
 const
   TSE2OpCodes_StreamVersion    = 2;
-  TSE2OpCodes_OpCodeVersion    = 2;
+  TSE2OpCodes_OpCodeVersion    = 3;
   TSE2StringList_StreamVersion = 2;
-  TSE2MetaEntry_StreamVersion  = 3;
+  TSE2MetaEntry_StreamVersion  = 4;
   TSE2MetaList_StreamVersion   = 1;
   TSE2PE_StreamVersion         = 1;
+
+{$IFDEF MSWINDOWS}
+  {$IFNDEF WINDOWS}
+    {$DEFINE WINDOWS}
+  {$ENDIF}
+{$ENDIF}
+
+function LibraryNameIdentical(const s1, s2: string): boolean;
+begin
+  result :=
+    {$IFDEF WINDOWS}
+      AnsiSameText(s1, s2)
+    {$ELSE}
+      AnsiSameStr(s1, s2)
+    {$ENDIF}
+  ;
+end;
+
+function MakeLibraryNameHash(const s: string): integer;
+begin
+  result := MakeHash( s, {$IFDEF WINDOWS} True {$ELSE} False {$ENDIF} );
+end;
 
 { TSE2OpCodes }
 
@@ -561,7 +601,7 @@ begin
   {$ENDIF}
 
   case version of
-  1, 2, 3 :
+  1, 2, 3, 4 :
       begin
         if version > 2 then
            Stream.Read(encoding, SizeOf(encoding));
@@ -595,6 +635,15 @@ begin
 
         if version > 1 then
            FRTTI.LoadFromStream(Stream);
+
+        if (version > 3) and (FIsExternal) and (FMetaType = mtMethod) then
+        begin
+          TSE2StreamHelper.ReadString(Stream, FLibraryName);
+          SetLibraryName(FLibraryName);
+          TSE2StreamHelper.ReadString(Stream, FLibPosition);
+          SetLibPosition(FLibPosition);
+          Stream.Read(FLibIndex, SizeOf(integer));
+        end;
 
         if FMetaType = mtClass then
         begin
@@ -641,10 +690,29 @@ begin
 
   FRTTI.SaveToStream(Stream);
 
+  if FIsExternal and (FMetaType = mtMethod) then
+  begin
+    TSE2StreamHelper.WriteString(Stream, FLibraryName);
+    TSE2StreamHelper.WriteString(Stream, FLibPosition);
+    Stream.Write(FLibIndex, SizeOf(integer));
+  end;
+
   if FMetaType = mtClass then
   begin
      FDynMethods.SaveToStream(Stream);
   end;
+end;
+
+procedure TSE2MetaEntry.SetLibPosition(const value: string);
+begin
+  FLibPosition := value;
+  FLibPosHash  := MakeHash( value, False );
+end;
+
+procedure TSE2MetaEntry.SetLibraryName(const value: string);
+begin
+  FLibraryName := value;
+  FLibNameHash := MakeLibraryNameHash(value);
 end;
 
 procedure TSE2MetaEntry.SetMetaLinkName(const value: string);

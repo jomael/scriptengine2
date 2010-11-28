@@ -43,7 +43,7 @@ const
 
                 // Program execution flow
                 'soFLOW_GOTO', 'soFLOW_JIZ', 'soFLOW_JNZ', 'soFLOW_CALL', 'soFLOW_CALLEX', 'soFLOW_CALLDYN', 'soFLOW_CALLPTR',
-                'soFLOW_RET', 'soFLOW_PUSHRET',
+                'soFLOW_CALLPEX', 'soFLOW_RET', 'soFLOW_PUSHRET',
 
                 // Aritmetic operation
                 'soOP_OPERATION', 'soOP_COMPARE',
@@ -59,7 +59,7 @@ const
                 'soDAT_PTR_CREATE', 'soDAT_PTR_FREE',
 
                 // Data Assign
-                'soDAT_SetInt', 'soDAT_SetFloat', 'soDAT_SetPtr', 'soDAT_LOADRES', 'soDAT_CLEAR',
+                'soDAT_SetInt', 'soDAT_SetFloat', 'soDAT_SetPtr', 'soDAT_LOADRES', 'soDAT_CLEAR', 'soDAT_LOADEX',
                                            
                 // Special Data Assign
                 'soDAT_PUSHInt32', 'soDAT_PUSHInt64', 'soDAT_PUSHUInt64', 'soDAT_PUSHFLOAT4', 'soDAT_PUSHFLOAT8',
@@ -112,6 +112,7 @@ begin
   soFLOW_JNZ             : result := Format('JNZ [%d]', [PSE2OpFLOW_JNZ(OpCode).Position]);
   soFLOW_CALL            : result := Format('CALL [%d]', [PSE2OpFLOW_CALL(OpCode).Position]);
   soFLOW_CALLEX          : result := Format('CALL EX [%s.%s]', [PE.MetaData[PSE2OpFLOW_CALLEX(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpFLOW_CALLEX(OpCode).MetaIndex].Name]);
+  soFLOW_CALLPEX         : result := 'CALL PEX';
   soFLOW_CALLDYN         : result := Format('CALL DYN [%d]', [PSE2OpFLOW_CALLDYN(OpCode).Offset]);
   soFLOW_CALLPTR         : result := 'CALL PTR';
 
@@ -131,6 +132,7 @@ begin
   soDAT_SetPtr           : result := Format('MAKE PTR [%x]', [PtrInt(PSE2OpDAT_SetPtr(OpCode).Value)]);
   soDAT_LOADRES          : result := Format('MAKE STR [%s]', [PE.Strings[PSE2OpDAT_LOADRES(OpCode).Index]]);
   soDAT_CLEAR            : result := 'CLEAR';
+  soDAT_LOADEX           : result := 'LOAD EX';
 
 
   soDAT_PUSHInt32        : result := Format('PUSH Int32 [%d]', [PSE2OpDAT_PUSHInt32(OpCode).Value]);   

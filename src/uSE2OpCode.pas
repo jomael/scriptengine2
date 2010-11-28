@@ -147,7 +147,7 @@ type
 
                 // Program execution flow
                 soFLOW_GOTO, soFLOW_JIZ, soFLOW_JNZ, soFLOW_CALL, soFLOW_CALLEX, soFLOW_CALLDYN, soFLOW_CALLPTR,
-                soFLOW_RET, soFLOW_PUSHRET,
+                soFLOW_CALLPEX, soFLOW_RET, soFLOW_PUSHRET,
 
                 // Aritmetic operation
                 soOP_OPERATION, soOP_COMPARE,
@@ -160,10 +160,10 @@ type
 
                 // Data Pointer Movement
                 soDAT_PTR_LOAD, soDAT_PTR_SAVE,
-                soDAT_PTR_CREATE, soDAT_PTR_FREE,        
+                soDAT_PTR_CREATE, soDAT_PTR_FREE,
 
                 // Data Assign
-                soDAT_SetInt, soDAT_SetFloat, soDAT_SetPtr, soDAT_LOADRES, soDAT_CLEAR,
+                soDAT_SetInt, soDAT_SetFloat, soDAT_SetPtr, soDAT_LOADRES, soDAT_CLEAR, soDAT_LOADEX,
 
                 // Special Data Assign
                 soDAT_PUSHInt32, soDAT_PUSHInt64, soDAT_PUSHUInt64, soDAT_PUSHFLOAT4, soDAT_PUSHFLOAT8,
@@ -431,6 +431,11 @@ type
     Static     : boolean;
   end;
 
+  PSE2OpDAT_LOADEX = ^TSE2OpDAT_LOADEX;
+  TSE2OpDAT_LOADEX = packed record
+    OpCode     : TSE2OpCode;
+  end;
+
   PSE2OpDAT_PTR_LOAD = ^TSE2OpDAT_PTR_LOAD;
   TSE2OpDAT_PTR_LOAD = packed record
     OpCode     : TSE2OpCode;
@@ -584,8 +589,9 @@ type
 
   PSE2OpSAFE_BLOCK = ^TSE2OpSAFE_BLOCK;
   TSE2OpSAFE_BLOCK = packed record
-    OpCode     : TSE2OpCode;
-    SkipPoint  : cardinal;
+    OpCode       : TSE2OpCode;
+    SkipPoint    : cardinal;
+    StackCheck   : boolean;
   end;
 
   PSE2OpSAFE_TRYEND = ^TSE2OpSAFE_TRYEND;
@@ -735,6 +741,7 @@ type
     class function FLOW_CALLEX(Position: cardinal; MetaIndex: integer): PSE2OpDefault;
     class function FLOW_CALLDYN(Offset: cardinal): PSE2OpDefault;
     class function FLOW_CALLPTR: PSE2OpDefault;
+    class function FLOW_CALLPEX: PSE2OpDefault;
     class function FLOW_RET: PSE2OpDefault;
     class function FLOW_PUSHRET(Target, DebugIndex: integer): PSE2OpDefault;
     class function OP_OPERATION(OpType: byte): PSE2OpDefault;
@@ -748,6 +755,7 @@ type
     class function DAT_SetPtr(value: pointer): PSE2OpDefault;
     class function DAT_LOADRES(index: integer): PSE2OpDefault;
     class function DAT_CLEAR(Static: boolean): PSE2OpDefault;
+    class function DAT_LOADEX: PSE2OpDefault;
     class function DAT_CONVERT(NewType: TSE2TypeIdent; Index: integer): PSE2OpDefault;
     class function DAT_CHANGETYPE(NewType: TSE2TypeIdent): PSE2OpDefault;
     class function INT_INCSTATIC(Position, value: integer): PSE2OpDefault;
@@ -777,7 +785,7 @@ type
 
     class function SAFE_TRYFIN(SavePos, LeavePos: integer): PSE2OpDefault;
     class function SAFE_TRYEX(SavePos, LeavePos: integer): PSE2OpDefault;
-    class function SAFE_BLOCK(SkipPoint: cardinal): PSE2OpDefault;
+    class function SAFE_BLOCK(SkipPoint: cardinal; StackCheck: boolean): PSE2OpDefault;
     class function SAFE_TRYEND: PSE2OpDefault;
     class function SAFE_SJUMP(Target, ExitTo: cardinal): PSE2OpDefault;
     class function SAFE_INTER: PSE2OpDefault;
@@ -970,10 +978,11 @@ begin
 end;
 
 class function TSE2OpCodeGen.SAFE_BLOCK(
-  SkipPoint: cardinal): PSE2OpDefault;
+  SkipPoint: cardinal; StackCheck: boolean): PSE2OpDefault;
 begin
   result := DefaultOP(soSAFE_BLOCK);
   PSE2OpSAFE_BLOCK(result)^.SkipPoint := SkipPoint;
+  PSE2OpSAFE_BLOCK(result)^.StackCheck := StackCheck;
 end;
 
 class function TSE2OpCodeGen.SAFE_SJUMP(Target,
@@ -1032,6 +1041,11 @@ class function TSE2OpCodeGen.DAT_CLEAR(Static: boolean): PSE2OpDefault;
 begin
   result := DefaultOP(soDAT_CLEAR);
   PSE2OpDAT_CLEAR(result)^.Static := Static;
+end;
+
+class function TSE2OpCodeGen.DAT_LOADEX: PSE2OpDefault;
+begin
+  result := DefaultOP(soDAT_LOADEX);
 end;
 
 class function TSE2OpCodeGen.INT_DECSTACK(Position,
@@ -1128,6 +1142,11 @@ end;
 class function TSE2OpCodeGen.FLOW_CALLPTR: PSE2OpDefault;
 begin
   result := DefaultOP(soFLOW_CALLPTR);
+end;
+
+class function TSE2OpCodeGen.FLOW_CALLPEX: PSE2OpDefault;
+begin
+  result := DefaultOP(soFLOW_CALLPEX);
 end;
 
 class function TSE2OpCodeGen.SPEC_GetProcPtr(MetaIndex: integer;
@@ -1351,7 +1370,7 @@ begin
   soFLOW_JIZ        : PSE2OpFLOW_JIZ(FOpCode).Position    := PSE2OpFLOW_JIZ(FOpCode).Position + Offset;
   soFLOW_JNZ        : PSE2OpFLOW_JNZ(FOpCode).Position    := PSE2OpFLOW_JNZ(FOpCode).Position + Offset;
   soFLOW_CALL       : PSE2OpFLOW_CALL(FOpCode).Position   := PSE2OpFLOW_CALL(FOpCode).Position + Offset;
-  soFLOW_PUSHRET    : PSE2OpFLOW_PUSHRET(FOpCode).Position:= PSE2OpFLOW_CALL(FOpCode).Position + Offset;
+  soFLOW_PUSHRET    : PSE2OpFLOW_PUSHRET(FOpCode).Position:= PSE2OpFLOW_PUSHRET(FOpCode).Position + Offset;
 
   soSAFE_SJUMP      :
       begin
