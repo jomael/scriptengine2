@@ -1,5 +1,7 @@
 unit uSE2IncMultiCast;
 
+{$INCLUDE ScriptEngine.inc}
+
 // To use the package mode, uncomment the following define
 {.$DEFINE SE2_IMPORT_AS_PACKAGE}
 

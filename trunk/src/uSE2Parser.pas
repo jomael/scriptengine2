@@ -39,7 +39,8 @@ type
     WasFunction    : boolean;
     NoStaticPointer: boolean;
     RecordsCreated : integer;
-    IsInExceptBlock: boolean;
+    IsInExceptBlock: boolean; 
+    IsInFinallyBlock: boolean;
     IsInUsesBlock  : boolean;
 
     TargetType     : TSE2Type;
@@ -157,6 +158,7 @@ type
     function  MakeCallExOptionMask(Method: TSE2Method): integer;
     function  FindIdentifier(Method: TSE2Method; const IdentName: string; Parent: TSE2BaseType; const UnitName: string = ''; const ClassTypes: TSE2BaseTypeFilter = nil; AcceptSetType: boolean = False): TSE2BaseType;
     function  TypeExpression(Method: TSE2Method): TSE2Type;
+    function  ConstExpression(Method: TSE2Method): TSE2Constant;
     procedure CheckForDeprecated(aType: TSE2BaseType);
 
     function  ConvertIntToSingle(State: TSE2ParseState; Method: TSE2Method; aType1, aType2: TSE2Type): TSE2Type;
@@ -237,6 +239,51 @@ begin
   DEBUG_TimeMeasure := DEBUG_TimeMeasure + (t - TTimeMeasure_BeginTime[TTimeMeasure_CurrentIndex]);
 end;
                      }
+
+{ TSE2TryBlock }
+
+type
+  TSE2TryBlock = class
+  private
+    { General }
+    FMethod           : TSE2Method;
+    FState            : TSE2ParseState;
+    FParser           : TSE2Parser;
+
+    { Old Jump Lists }
+    FoldExitList      : integer;
+    FoldContinueList  : integer;
+    FoldBreakList     : integer;
+
+    { try block positions }
+    FOpCodePos1       : integer;
+    FOpCodePos2       : integer;
+
+    FIsExceptBlock    : boolean;
+
+    { Jump-List positions }
+    FgeneralRETPos    : integer;
+    FexitRETPos       : integer;
+    FcontinueRETPos   : integer;
+    FbreakRETPos      : integer;
+
+    FexitEntry        : boolean;
+    FcontinueEntry    : boolean;
+    FbreakEntry       : boolean;
+
+    FwasInTryFinally  : boolean;
+    FwasInTryExcept   : boolean;
+  protected
+  public
+    constructor Create(AMethod: TSE2Method; Parser: TSE2Parser; State: TSE2ParseState);
+
+    procedure Step1;
+    procedure Step2_TryContent;
+    procedure Step3(IsFinally: boolean);
+    procedure Step4_SafeContent;
+    procedure Step5;
+  end;
+
 { TSE2ParseState }
 
 constructor TSE2ParseState.Create(Parent: TSE2Parser);
@@ -419,9 +466,9 @@ begin
       Expected := '';
       for i:=sesNone to sesLastToken do
         if i in Symbol then
-          Expected := Expected + '"' + TSE2TokenName[i] + '", ';
+          Expected := Expected + '"' + TSE2TokenName[i] + '" or ';
 
-      Delete(Expected, length(Expected) - 1, 2);
+      Delete(Expected, length(Expected) - 3, 4);
 
       RaiseError(petError, Format(C_ERR_ExpectedButFound, [Expected, TSE2TokenName[Tokenizer.Token.AType]]));
     end else
@@ -472,7 +519,8 @@ var pUnit : TSE2Unit;
         if TSE2Class(aUnit.TypeList[i]).IsHelper then
           if ElementIsChildTypeOf(TSE2Type(Parent), TSE2Type(TSE2Class(aUnit.TypeList[i]).InheritFrom)) then
           begin
-            result := FindIdentifier(Method, IdentName, TSE2Class(aUnit.TypeList[i]), '', ClassTypes.Duplicate, AcceptSetType);
+            //result := FindIdentifier(Method, IdentName, TSE2Class(aUnit.TypeList[i]), '', ClassTypes.Duplicate, AcceptSetType);
+            result := aUnit.ElemList.FindItem(IdentName, '', aUnit.TypeList[i], nil, ClassTypes, CAllVisibilities, AcceptSetType);
             if result <> nil then
             begin
               exit;
@@ -895,6 +943,7 @@ begin
     State.IsInUsesBlock := True;
     ExpectToken([sesUses]);
     ReadNextToken;
+    ExpectToken([sesIdentifier]);
     while (FTokenizer.Token.AType = sesIdentifier) do
     begin
       fName := '';
@@ -934,7 +983,10 @@ begin
       if Tokenizer.Token.AType = sesSemiColon then
          break
       else
+      begin
         ReadNextToken;
+        ExpectToken([sesIdentifier]);
+      end;
     end;
     ReadNextToken;
     State.IsInUsesBlock := False;
@@ -1151,7 +1203,7 @@ begin
               ReadNextToken;
             end;
           end;
-          
+
           ExpectToken([sesSemiColon]);
           ReadNextToken;
 
@@ -1212,7 +1264,7 @@ begin
 
                 //TSE2Record(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(NewVar.AType));
               end else
-              begin                        
+              begin
                 if TSE2Type(NewVar.AType.InheritRoot).DataSize = 0 then
                    RaiseError(petError, 'Internal error: data size can not be 0');
 
@@ -1331,7 +1383,14 @@ begin
     FUnit.TypeList.Add(newMethod);
     newMethod.Method := MethodDeclaration(State, True);
     if newMethod.Method <> nil then
-       newMethod.Method.IsMethodType := True;
+    begin
+      newMethod.Method.Name      := newMethod.Name;
+      newMethod.Method.AUnitName := newMethod.AUnitName;
+      newMethod.Method.DeclLine  := newMethod.DeclLine;
+      newMethod.Method.DeclPos   := newMethod.DeclPos;
+      newMethod.Method.InlineDoc := newMethod.InlineDoc;
+      newMethod.Method.IsMethodType := True;
+    end;
   finally
 
   end;
@@ -1379,8 +1438,23 @@ begin
         newSet := TSE2SetOf.Create;
         DeclareType(State, newSet, TypeName);
         newSet.Strict   := True;
-        newSet.AType    := btU32;
-        newSet.DataSize := 4;
+        case enumList.Count of
+        0..8 :
+            begin
+              newSet.AType    := btU8;
+              newSet.DataSize := 1;
+            end;
+        9..16 :
+            begin
+              newSet.AType    := btU16;
+              newSet.DataSize := 2;
+            end;
+        else
+            begin
+              newSet.AType    := btU32;
+              newSet.DataSize := 4;
+            end;
+        end;
         FUnit.TypeList.Add(newSet);
 
         for i:=0 to enumList.Count-1 do
@@ -1462,7 +1536,13 @@ begin
             newType.AType := btU8;
 
         end else
-           newType.AType := btU32;
+        begin
+          case enumList.Count of
+          0..8  : newType.AType := btU8;
+          9..16 : newType.AType := btU16;
+          else    newType.AType := btU32;
+          end;
+        end;
 
         case newType.AType of
         btU32  : newType.DataSize := 4;
@@ -2210,6 +2290,7 @@ var Method       : TSE2Method;
     MinParam     : integer;
     ParamCount   : integer;
     WasForwarded : boolean;
+    LibNameConst : TSE2BaseType;
 
   procedure ParamListDeclaration(Method: TSE2Method);  
   var Param     : TSE2Parameter;
@@ -2675,20 +2756,87 @@ begin
               if Method.IsOverride then
                  RaiseError(petError, '"'+Method.GetStrongName+'" external must be set before override')
               else
+              if Method.AddHasSelfParam then
+                 RaiseError(petError, 'External modificator not allowed for instanced method " ' + Method.GetStrongName + '"')
+              else
               begin
-                 if State.CurrentOwner <> nil then
-                 begin
-                   if State.CurrentOwner is TSE2Class then
-                   begin
-                     if TSE2Type(State.CurrentOwner.InheritRoot) <> TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
-                      RaiseError(petError, 'External method "'+Method.Name+'" must be declared in classes which inherits from TExternalObject');
-                   end else
-                   begin
-                   end;
-                 end;
-
                  Method.IsExternal := True;
                  Method.IsForwarded := False;
+              end;
+              ReadNextToken;
+              if Tokenizer.Token.AType in [sesIdentifier, sesString] then
+              begin
+                if Method.Parent <> nil then
+                begin
+                  if not Method.IsStatic then
+                     RaiseError(petError, 'External library methods must be static');
+                  if Method.HasSelfParam then
+                  begin
+                    Method.Params.Delete(0);
+                  end;
+                end;
+                if Tokenizer.Token.AType = sesString then
+                begin
+                  if Trim(Tokenizer.Token.Value) = '' then
+                     RaiseError(petError, 'Library name can not be empty');
+                  Method.ExternalLib := Tokenizer.Token.Value;
+                end else
+                begin
+                  LibNameConst := ConstExpression(nil);
+
+                  if not (TSE2Type(TSE2Constant(LibNameConst).AType.InheritRoot).AType in
+                         [btString, btAnsiString, btUTF8String, btWideString, btPAnsiChar, btPWideChar, btPChar]) then
+                     RaiseError(petError, 'Identifier "'+Tokenizer.Token.Value+'" must be a string constant');
+
+
+                  if Trim(TSE2Constant(LibNameConst).Value) = '' then
+                     RaiseError(petError, 'Library name can not be empty');
+                  Method.ExternalLib := TSE2Constant(LibNameConst).Value;
+                end;
+                ReadNextToken;
+                if Tokenizer.Token.AType = sesIdentifier then
+                begin
+                  if StringIdentical(Tokenizer.Token.Value, 'name') then
+                  begin
+                     ReadNextToken;
+                     ExpectToken([sesIdentifier, sesString]);
+
+                     if Tokenizer.Token.AType = sesString then
+                        Method.ExternalName := Tokenizer.Token.Value
+                     else
+                     begin
+                       LibNameConst := ConstExpression(nil);
+
+                       if not (TSE2Type(TSE2Constant(LibNameConst).AType.InheritRoot).AType in
+                              [btString, btAnsiString, btUTF8String, btWideString, btPAnsiChar, btPWideChar, btPChar]) then
+                          RaiseError(petError, 'Identifier "'+Tokenizer.Token.Value+'" must be a string constant');
+
+                       Method.ExternalName := TSE2Constant(LibNameConst).Value;
+                     end;
+                     Method.ExternalIndex := -1;
+                  end else
+                  if StringIdentical(Tokenizer.Token.Value, 'index') then
+                  begin
+                     ReadNextToken;
+                     ExpectToken([sesInteger]);
+                     if (Tokenizer.Token.AsInteger < 0) or (Tokenizer.Token.AsInteger > High(Word)) then
+                        RaiseError(petError, 'Method index must be between 0 and '+IntToStr(High(Word)));
+
+                     Method.ExternalIndex := Tokenizer.Token.AsInteger;
+                  end else
+                     RaiseError(petError, '"name" or "index" expected, but found "'+Tokenizer.Token.Value+'" instead');
+
+                  ReadNextToken;
+                end else
+                begin
+                  Method.ExternalName := Method.Name;
+                  Method.ExternalIndex := -1;
+                end;
+              end else
+              begin
+                if State.CurrentOwner is TSE2Class then
+                   if TSE2Type(State.CurrentOwner.InheritRoot) <> TSE2Class(FindIdentifier(nil, C_SE2TExternalObjectName, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Class]))) then
+                      RaiseError(petError, 'External method "'+Method.Name+'" must be declared in classes which inherits from TExternalObject');
               end;
             end;
         sesForward :
@@ -2703,6 +2851,8 @@ begin
                  RaiseError(petError, 'This method is already forwarded')
               else
                  Method.IsForwarded := True;
+
+              ReadNextToken;
             end;
         sesVirtual :
             begin
@@ -2726,6 +2876,8 @@ begin
                  Method.DynamicIndex := TSE2Class(State.CurrentOwner).DynMethods;
                  TSE2Class(State.CurrentOwner).DynMethods := TSE2Class(State.CurrentOwner).DynMethods + 1;
               end;
+
+              ReadNextToken;
             end;
         sesAbstract :
             begin
@@ -2749,6 +2901,8 @@ begin
                  Method.DynamicIndex := TSE2Class(State.CurrentOwner).DynMethods;
                  TSE2Class(State.CurrentOwner).DynMethods := TSE2Class(State.CurrentOwner).DynMethods + 1;
               end;
+
+              ReadNextToken;
             end;
         sesOverride :
             begin
@@ -2779,17 +2933,22 @@ begin
                   end;
                 end;
               end;
+
+              ReadNextToken;
             end;
         sesOverload :
             begin
               Method.IsOverload := True;
+              ReadNextToken;
             end;
         sesExport :
             begin
               Method.IsExport := True;
+              ReadNextToken;
             end;
+        else
+            ReadNextToken;
         end;
-        ReadNextToken;
         ExpectToken([sesSemiColon]);
         ReadNextToken;
       end;
@@ -2829,6 +2988,8 @@ begin
 
       if Method.IsExternal then
       begin
+        if Method.ExternalLib <> '' then
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_LOADEX, ''));
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLEX(0, 0{MakeCallExOptionMask(Method)}), Method.GenLinkerName));
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
       end;       
@@ -2960,6 +3121,8 @@ begin
       end;
   sesContinue, sesBreak, sesExit :
       begin
+        if State.IsInFinallyBlock then
+           RaiseError(petError, '''continue'', ''break'' or ''exit'' is not allowed here');
         LoopFlowStatement(State, Method);
       end;
   sesTry :
@@ -3425,7 +3588,7 @@ begin
        LastParamSetter(Self, State, Method, TSE2Parameter(CallMethod.Params[iStop]).AType);
     State.NoStaticPointer := wasStaticPointer;
 
-    if (CallMethod.AUnitName <> '') and (CallMethod.Name <> '') then
+    if (CallMethod.AUnitName <> '') and (CallMethod.Name <> '') and (not (CallMethod.IsMethodType)) then
         {$IFDEF SEII_SMART_LINKING}
         Method.UsedMethods.Add(CallMethod);
         {$ELSE}
@@ -3484,10 +3647,24 @@ begin
          PSE2OpFLOW_PUSHRET(Method.OpCodes[Method.OpCodes.Count-1].OpCode)^.Position + 1;
       i := CallMethod.Params.Count;
       if not CallMethod.HasSelfParam then
+      begin
          i := i + 1;
+         if CallMethod.ReturnValue <> nil then
+            i := i + 1;
+      end;
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-i, False), ''));
       State.IncStack;
-      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLPTR, ''));
+      if CallMethod.IsExternal then
+      begin
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.META_PUSH(0), CallMethod.GenLinkerName()));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLPEX, ''));
+        // Return value is still in the stack, because CALLPEX does not use it, so manually remove it
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+      end else
+      begin
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLPTR, ''));
+      end;
+      // return value removed
       State.DecStack;
     end else
     begin
@@ -4937,6 +5114,16 @@ var oldBreakList    : integer;
     oldVar          : TSE2Variable;
     lastVar         : TSE2Variable;
     exprType        : TSE2Type;
+
+    newVariable     : TSE2Variable;
+    newVarStart     : TSE2Type;
+
+    enumTryBlock    : TSE2TryBlock;
+    enumerator      : TSE2BaseType;
+    enumGetEnum     : TSE2BaseType;
+    enumMoveNext    : TSE2BaseType;
+    enumCurrent     : TSE2BaseType;
+    enumAnonymPos   : integer;
 begin
   oldBreakList     := Method.Lists.BreakList.Count;
   oldContinueList  := Method.Lists.ContinueList.Count;
@@ -4944,6 +5131,9 @@ begin
   ExpectToken([sesFor]);
   ReadNextToken;
 
+  enumAnonymPos := 0;
+  enumTryBlock := nil;
+  newVariable := nil;
   oldVar := State.LastVariable;
   try                      
     { Push old }
@@ -4951,86 +5141,368 @@ begin
     oldLoopStack     := State.StackSize;
 
     State.LastTargetVar := nil;
-    Statement(State, Method);
-    if State.LastTargetVar = nil then
-       RaiseError(petError, 'for-loop requires a index variable');
 
-    if not IsCompatible(State.LastTargetVar.AType, GetIntegerType, sesNone, True, Self) then
-       RaiseError(petError, 'For loop requires an ordinary variable type');
-
-    ExpectToken([sesTo, sesDownTo]);
-    loopIncrease := Tokenizer.Token.AType in [sesTo];
-    ReadNextToken;
-
-    State.TargetType := State.LastTargetVar.AType;
-    lastVar := State.LastSetVariable;
-                               
-    State.IsExpression := True;
-    exprType := Expression(State, Method, nil);
-    if not IsCompatible(State.TargetType, exprType, sesPlus, True, Self) then
-       RaiseError(petError, GenIncompatibleExpression(exprType, State.TargetType));
-    State.IsExpression := False;
-
-    ConvertVariableCode(State, Method, exprType, lastVar.AType);
-
-    ExpectToken([sesDo]);
-    ReadNextToken;
-
-    opCodePos2 := Method.OpCodes.Count;
-    PushVarToStack(State, Method, lastVar, False);
-    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
-    State.IncStack;
-
-    if loopIncrease then
-       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(5), ''))
-    else
-       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(4), ''));
-    State.DecStack;
-
-    opCodePos1 := Method.OpCodes.Count;
-    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
-    State.DecStack;
-
-    { New values }
-    State.IsInLoop      := True;
-    State.LoopStackSize := State.StackSize;
-
-    Statement(State, Method);
-
-
-    for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
-      PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode)^.Position := Method.OpCodes.Count;
-
-
-    PushVarToStack(State, Method, lastVar, False);
-    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btS32), ''));
-    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(1), ''));
-    if loopIncrease then
-       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(2), ''))
-    else
-       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(3), '')); 
-    PopStackToVar(State, Method, lastVar);
-
-    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(opCodePos2), ''));
-
-
-    for i:=Method.Lists.BreakList.Count-1 downto oldBreakList do
+    ExpectToken([sesIdentifier, sesVar]);
+    if Tokenizer.Token.AType = sesVar then
     begin
-      PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.BreakList[i]].OpCode).Position := Method.OpCodes.Count;
-      Method.Lists.BreakList.Delete(Method.Lists.BreakList.Count-1);
+      ReadNextToken;
+      ExpectToken([sesIdentifier]);
+
+      newVariable := TSE2Variable.Create;
+      DeclareType(State, newVariable, Tokenizer.Token.Value);
+      State.IncStack;
+
+      if Method.Variables.FindItem(Tokenizer.Token.Value) <> nil then
+         RaiseError(petError, 'Variable name already in use: "'+Tokenizer.Token.Value+'"');
+      if Method.Types.FindItem(Tokenizer.Token.Value) <> nil then
+         RaiseError(petError, 'Variable name already in use: "'+Tokenizer.Token.Value+'"');
+      if Method.Params.FindItem(Tokenizer.Token.Value) <> nil then
+         RaiseError(petError, 'Variable name already in use: "'+Tokenizer.Token.Value+'"');
+
+      ReadNextToken;
+      ExpectToken([sesDoublePoint, sesIn]);
+      if Tokenizer.Token.AType = sesIn then
+      begin
+        enumTryBlock := TSE2TryBlock.Create(Method, Self, State);
+        newVariable.CodePos := State.StackSize - 1 + Method.StackSize;
+        enumAnonymPos := Method.OpCodes.Count;
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btS32), ''));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.NOOP, ''));
+        ReadNextToken;
+      end else
+      begin
+        ReadNextToken;
+        newVariable.AType := TypeExpression(Method);
+        newVariable.Used  := True;
+
+        ReadNextToken;
+        ExpectToken([sesBecomes, sesIn]);
+        if Tokenizer.Token.AType = sesIn then
+        begin
+          enumTryBlock := TSE2TryBlock.Create(Method, Self, State);
+        end;
+        ReadNextToken;
+
+        newVariable.CodePos := State.StackSize - 1 + Method.StackSize;
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(TSE2Type(newVariable.AType.InheritRoot).AType), ''));
+        if newVariable.AType is TSE2Record then
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + TSE2Record(newVariable.AType).GenLinkerName));
+        end;
+
+
+        if enumTryBlock = nil then
+        begin
+          State.IsExpression := True;
+          newVarStart := Expression(State, Method, newVariable.AType);
+          State.IsExpression := False;
+          if not IsCompatible(newVariable.AType, newVarStart) then
+             RaiseError(petError, GenIncompatibleExpression(newVarStart, newVariable.AType));
+
+          Method.Variables.Add(newVariable);
+          PopStackToVar(State, Method, newVariable);
+        end else
+          Method.Variables.Add(newVariable);
+      end;
+      State.LastTargetVar := newVariable;
+      State.LastSetVariable := newVariable;
+    end else
+    begin
+      ExpectToken([sesIdentifier]);
+      newVariable := TSE2Variable(FindIdentifier(Method, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Variable])));
+      if newVariable = nil then
+         RaiseError(petError, 'Unknown identifier: "'+Tokenizer.Token.Value+'"');
+      try
+        ReadNextToken;
+        ExpectToken([sesBecomes, sesIn]);
+        if Tokenizer.Token.AType = sesIn then
+        begin
+          enumTryBlock := TSE2TryBlock.Create(Method, Self, State);
+        end;
+        ReadNextToken;
+
+        if enumTryBlock = nil then
+        begin
+          State.IsExpression := True;
+          newVarStart := Expression(State, Method, newVariable.AType);
+          State.IsExpression := False;
+
+          if not IsCompatible(newVariable.AType, newVarStart) then
+             RaiseError(petError, GenIncompatibleExpression(newVarStart, newVariable.AType));
+
+          PopStackToVar(State, Method, newVariable);
+        end;
+        State.LastTargetVar := newVariable;
+        State.LastSetVariable := newVariable;
+      finally
+        newVariable := nil;
+      end;
     end;
 
-    for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
-      Method.Lists.ContinueList.Delete(Method.Lists.ContinueList.Count-1);
+    if enumTryBlock = nil then
+    begin
+      if not IsCompatible(State.LastTargetVar.AType, GetIntegerType, sesNone, True, Self) then
+         RaiseError(petError, 'For loop requires an ordinary variable type');
 
-    PSE2OpFLOW_JIZ(Method.OpCodes[opCodePos1].OpCode).Position := Method.OpCodes.Count;
-    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-    State.DecStack;
+      ExpectToken([sesTo, sesDownTo]);
+      loopIncrease := Tokenizer.Token.AType in [sesTo];
+      ReadNextToken;
+
+      State.TargetType := State.LastTargetVar.AType;
+      lastVar := State.LastSetVariable;
+                               
+      State.IsExpression := True;
+      exprType := Expression(State, Method, nil);
+      if not IsCompatible(State.TargetType, exprType, sesPlus, True, Self) then
+         RaiseError(petError, GenIncompatibleExpression(exprType, State.TargetType));
+      State.IsExpression := False;
+
+      ConvertVariableCode(State, Method, exprType, lastVar.AType);
+
+      ExpectToken([sesDo]);
+      ReadNextToken;
+
+      opCodePos2 := Method.OpCodes.Count;
+      PushVarToStack(State, Method, lastVar, False);
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+      State.IncStack;
+
+      if loopIncrease then
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(5), ''))
+      else
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(4), ''));
+      State.DecStack;
+
+      opCodePos1 := Method.OpCodes.Count;
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
+      State.DecStack;
+
+      { New values }
+      State.IsInLoop      := True;
+      State.LoopStackSize := State.StackSize;
+
+      Statement(State, Method);
+
+
+      for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
+        PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode)^.Position := Method.OpCodes.Count;
+
+
+      PushVarToStack(State, Method, lastVar, False);
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btS32), ''));
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(1), ''));
+      if loopIncrease then
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(2), ''))
+      else
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(3), '')); 
+      PopStackToVar(State, Method, lastVar);
+
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(opCodePos2), ''));
+
+
+      for i:=Method.Lists.BreakList.Count-1 downto oldBreakList do
+      begin
+        PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.BreakList[i]].OpCode).Position := Method.OpCodes.Count;
+        Method.Lists.BreakList.Delete(Method.Lists.BreakList.Count-1);
+      end;
+
+      for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
+        Method.Lists.ContinueList.Delete(Method.Lists.ContinueList.Count-1);
+
+      PSE2OpFLOW_JIZ(Method.OpCodes[opCodePos1].OpCode).Position := Method.OpCodes.Count;
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+      State.DecStack;
+
+    end else
+    begin
+      State.IsExpression := True;
+      enumerator := Expression(State, Method, nil);
+      if enumerator = nil then
+         RaiseError(petError, 'Expression did not return any value');
+      State.IsExpression := False;
+
+      //if not ((enumerator is TSE2Class) or (enumerator is TSE2Record)) then
+      //   RaiseError(petError, 'for-each loop only works with classes or records');
+
+      enumGetEnum := FindIdentifier(Method, C_SE2Enumerator_Getter, enumerator);
+      if enumGetEnum = nil then
+         RaiseError(petError, 'Required declaration "'+enumerator.GetStrongName+'.'+C_SE2Enumerator_Getter+'" not found');
+      if not (enumGetEnum is TSE2Method) then
+         RaiseError(petError, '"'+C_SE2Enumerator_Getter+'" must be a function');
+      if (TSE2Method(enumGetEnum).MethodType <> mtFunction) or
+         (not TSE2Method(enumGetEnum).HasSelfParam) or
+         (TSE2Method(enumGetEnum).Params.Count <> 1) or
+         (TSE2Method(enumGetEnum).IsOverload) or        
+         (TSE2Method(enumGetEnum).IsStatic) or
+         (TSE2Method(enumGetEnum).ReturnValue = nil) or
+         (not (TSE2Method(enumGetEnum).ReturnValue.AType is TSE2Class)) then
+         RaiseError(petError, '"'+C_SE2Enumerator_Getter+'" must be a function returning the enumerator instance');
+
+      ExpectToken([sesDo]);
+      enumerator := MethodCall(State, Method, TSE2Method(enumGetEnum));
+
+      enumMoveNext := FindIdentifier(Method, C_SE2Enumerator_MoveNext, enumerator);
+      if enumMoveNext = nil then
+         RaiseError(petError, 'Declaration "'+C_SE2Enumerator_MoveNext+'" inside the returned enumerator not found');
+      if not (enumMoveNext is TSE2Method) then
+         RaiseError(petError, '"'+C_SE2Enumerator_MoveNext+'" must be a function');
+      if (TSE2Method(enumMoveNext).MethodType <> mtFunction) or
+         (not TSE2Method(enumMoveNext).HasSelfParam) or
+         (TSE2Method(enumMoveNext).IsStatic) or       
+         (TSE2Method(enumMoveNext).IsOverload) or
+         (TSE2Method(enumMoveNext).Params.Count <> 1) or
+         (TSE2Method(enumMoveNext).ReturnValue = nil) or
+         (TSE2Method(enumMoveNext).ReturnValue.AType.InheritRoot <> GetBooleanType) then
+         RaiseError(petError, '"'+C_SE2Enumerator_MoveNext+'" must be a function');
+
+
+      enumCurrent := FindIdentifier(Method, C_SE2Enumerator_Current, enumerator);
+      if enumCurrent = nil then
+         RaiseError(petError, 'Declaration "'+C_SE2Enumerator_Current+'" inside the returned enumerator not found');
+      if not (enumCurrent is TSE2Property) then
+         RaiseError(petError, '"'+C_SE2Enumerator_Current+'" must be a property');
+      if (TSE2Property(enumCurrent).Getter = nil) or
+         (TSE2Property(enumCurrent).IsStatic) or
+         (TSE2Property(enumCurrent).Params.Count <> 0) then
+         RaiseError(petError, '"'+C_SE2Enumerator_Current+'" must be a none-indexed property');
+
+
+      if Method.Variables.IndexOf(State.LastTargetVar) < 0 then
+      begin
+        State.LastTargetVar.AType   := TSE2Property(enumCurrent).AType;
+
+        PSE2OpSTACK_INC(Method.OpCodes[enumAnonymPos].OpCode).AType := TSE2Type(State.LastTargetVar.AType.InheritRoot).AType;
+        if State.LastTargetVar.AType is TSE2Record then
+        begin
+          PSE2OpSTACK_INC(Method.OpCodes[enumAnonymPos + 1].OpCode).OpCode := soREC_MAKE;
+          Method.OpCodes[enumAnonymPos + 1].CodeIndex := 'META_' + TSE2Record(State.LastTargetVar.AType).GenLinkerName;
+        end;
+        Method.Variables.Add(State.LastTargetVar);
+      end;
+
+      if not IsCompatible(State.LastTargetVar.AType, TSE2Property(enumCurrent).AType) then
+         RaiseError(petError, GenIncompatibleExpression(TSE2Property(enumCurrent).AType, State.LastTargetVar.AType));
+
+      ReadNextToken;
+
+
+      enumTryBlock.Step1;
+
+      { while enum.MoveNext }
+      {
+      [START]
+      [PUSH FROM [enumerator]]
+      [PUSH U8]
+      [PUSH FROM [-1 DYNAMIC]]
+      [PUSH RET +2]
+      [CALL [MoveNext]]
+      [POP]
+      [POP TO [-1 DYNAMIC]]
+      [JIZ END]  }        
+      opCodePos1 := Method.OpCodes.Count;
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, False), ''));
+      MethodCall(State, Method, TSE2Method(enumMoveNext));
+
+      opCodePos2 := Method.OpCodes.Count;
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_JIZ(0), ''));
+
+      {   p := enum.Current; }
+      {
+      [PUSH FROM [enumerator]]
+      [PUSH [value type]]
+      [PUSH FROM [-1 DYNAMIC]]
+      [PUSH RET +2]
+      [CALL [GetCurrent]]
+      [POP]
+      [POP TO -1]
+      [POP TO [variable position]]    }
+      State.IncStack;
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, False), ''));
+      if TSE2Property(enumCurrent).Getter is TSE2Method then
+      begin
+        MethodCall(State, Method, TSE2Method(TSE2Property(enumCurrent).Getter));
+        PopStackToVar(State, Method, State.LastTargetVar);
+      end else
+      begin
+        PushVarToStack(State, Method, TSE2Variable(TSE2Property(enumCurrent).Getter), False); 
+        PopStackToVar(State, Method, State.LastTargetVar);
+      end;
+
+      
+      State.IsInLoop      := True;
+      State.LoopStackSize := State.StackSize;
+      Statement(State, Method);
+
+      { end }
+      {[GOTO START]
+      [END]  }
+
+      { New values }
+
+      for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
+        PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode)^.Position := Method.OpCodes.Count;
+
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(opCodePos1), ''));
+      PSE2OpFLOW_GOTO(Method.OpCodes[opCodePos2].OpCode).Position := Method.OpCodes.Count;
+
+      for i:=Method.Lists.BreakList.Count-1 downto oldBreakList do
+      begin
+        PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.BreakList[i]].OpCode).Position := Method.OpCodes.Count;
+        Method.Lists.BreakList.Delete(Method.Lists.BreakList.Count-1);
+      end;
+
+      for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
+        Method.Lists.ContinueList.Delete(Method.Lists.ContinueList.Count-1);
+
+      enumTryBlock.Step3(True);
+
+      { Destroy Enumerator }
+      if TSE2Type(enumerator).InheritRoot = GetExternalObjectType then
+        enumCurrent := TSE2Method(FindIdentifier(nil, 'Free', GetExternalObjectType, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Method])))
+      else
+        enumCurrent := TSE2Method(FindIdentifier(nil, 'Free', GetScriptObjectType, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Method])));
+      {$IFDEF SEII_SMART_LINKING}
+      Method.UsedMethods.Add(TSE2Method(enumCurrent));
+      {$ELSE}
+      TSE2Method(enumCurrent).Used := True;
+      {$ENDIF}
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(Method.OpCodes.Count + 2, 0), ''));
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALL(0), TSE2Method(enumCurrent).GenLinkerName));
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+
+      enumTryBlock.Step5;
+
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+      State.DecStack;
+
+              {
+      enumGetEnum     : TSE2BaseType;
+      enumMoveNext    : TSE2BaseType;
+      enumCurrent     : TSE2BaseType;     }
+    end;
+
 
     { Pop old }
     State.IsInLoop      := oldIsInLoop;
     State.LoopStackSize := oldLoopStack;
   finally
+    if newVariable <> nil then
+    begin
+
+      if newVariable.AType is TSE2Record then
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_FREE(0), ''));
+
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+      State.DecStack;
+
+      if Method.Variables.IndexOf(newVariable) >= 0 then
+         Method.Variables.Delete(newVariable)
+      else
+         newVariable.Free;
+    end;
+
+    enumTryBlock.Free;
     State.LastVariable := oldVar;
   end;
 end;
@@ -5081,7 +5553,7 @@ end;
 
 procedure TSE2Parser.TryStatement(State: TSE2ParseState;
   Method: TSE2Method);
-var oldExitList     : integer;
+(*var oldExitList     : integer;
     oldContinueList : integer;
     oldBreakList    : integer;
 
@@ -5108,7 +5580,44 @@ var oldExitList     : integer;
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
   end;
 
-begin
+var generalRETPos : integer;
+    exitRETPos    : integer;
+    continueRETPos: integer;
+    breakRETPos   : integer;
+
+    exitEntry     : boolean;
+    continueEntry : boolean;
+    breakEntry    : boolean;
+
+    wasInTryFinally : boolean;
+                               *)
+var tryBlock: TSE2TryBlock;
+begin          
+  ExpectToken([sesTry]);
+  ReadNextToken;
+  tryBlock := TSE2TryBlock.Create(Method, Self, State);
+  try
+    tryBlock.Step1;
+    tryBlock.Step2_TryContent;
+
+    ExpectToken([sesFinally, sesExcept]);
+
+    tryBlock.Step3(Tokenizer.Token.AType = sesFinally);
+    
+    ReadNextToken;
+    tryBlock.Step4_SafeContent;
+
+    tryBlock.Step5;
+
+    
+    State.IsInExceptBlock := False;
+    ExpectToken([sesEnd]);
+    ReadNextToken;
+  finally
+    tryBlock.Free;
+  end;
+  (*
+
   ExpectToken([sesTry]);
   ReadNextToken;
 
@@ -5123,6 +5632,31 @@ begin
 
   ExpectToken([sesFinally, sesExcept]);
 
+  generalRETPos  := 0;
+  exitRETPos     := 0;
+  continueRETPos := 0;
+  breakRETPos    := 0;
+
+  // finally - flow
+  //   [try]  1    2   3   4  [finally]   5    6   [end]  7
+  //   ------------------------------------------------------
+  //   Normal-Code:
+  //     goto [1] until [2]; [2] prepares later jump to [7] and goto [5]; [5] returns to [7]
+  //
+  //   Exit-Code
+  //     goto [1] skip [2]; [3] prepares later jump to [6] and goto [5]; [5] returns to [6] where exit is processed
+  //
+  //   Except-Code
+  //     goto [1] skip [2,3]; [4] prepares later jump to [end] and goto [5]; [5] returns to [end]
+
+  if Tokenizer.Token.AType = sesFinally then
+  begin
+    generalRETPos := Method.OpCodes.Count;
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+    State.IncStack;
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+  end;
+
   PSE2OpSAFE_TRYFIN(Method.OpCodes[OpCodePos2].OpCode).SavePos := Method.OpCodes.Count;
   OpCodePos1 := Method.OpCodes.Count;
 
@@ -5130,63 +5664,132 @@ begin
   case Tokenizer.Token.AType of
   sesFinally :
       begin
-        for i:=Method.Lists.ExitList.Count-1 downto oldExitList do
+        if Method.Lists.ExitList.Count > oldExitList then
         begin
-          if Method.OpCodes[Method.Lists.ExitList[i]].OpCode.OpCode <> soSAFE_SJUMP then
-          begin
-            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).OpCode := soSAFE_SJUMP;
-            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).Target := 0;
-            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).ExitTo := Method.OpCodes.Count;
-          end else
-          if PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).Target = 0 then
-             PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).Target := Method.OpCodes.Count;
+          for i:=Method.Lists.ExitList.Count-1 downto oldExitList do
+            PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.ExitList[i]].OpCode).Position := Method.OpCodes.Count;
+          exitRETPos := Method.OpCodes.Count;
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
         end;
 
-        for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
-          if Method.OpCodes[Method.Lists.ContinueList[i]].OpCode.OpCode <> soSAFE_SJUMP then
-          begin
-            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode).OpCode := soSAFE_SJUMP;
-            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode).ExitTo := Method.OpCodes.Count;
-          end;
+        if Method.Lists.ContinueList.Count > oldContinueList then
+        begin
+          for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
+            PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.ContinueList[i]].OpCode).Position := Method.OpCodes.Count;
+          continueRETPos := Method.OpCodes.Count;
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+        end;
 
-        for i:=Method.Lists.BreakList.Count-1 downto oldBreakList do
-          if Method.OpCodes[Method.Lists.BreakList[i]].OpCode.OpCode <> soSAFE_SJUMP then
-          begin
-            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.BreakList[i]].OpCode).OpCode := soSAFE_SJUMP;
-            PSE2OpSAFE_SJUMP(Method.OpCodes[Method.Lists.BreakList[i]].OpCode).ExitTo := Method.OpCodes.Count;
-          end;
+        if Method.Lists.BreakList.Count > oldBreakList then
+        begin
+          for i:=Method.Lists.BreakList.Count-1 downto oldBreakList do
+            PSE2OpFLOW_GOTO(Method.OpCodes[Method.Lists.BreakList[i]].OpCode).Position := Method.OpCodes.Count;
+          breakRETPos := Method.OpCodes.Count;
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+        end;
+                                                                                              
+        PSE2OpFLOW_GOTO(Method.OpCodes[generalRETPos  + 1].OpCode).Position := Method.OpCodes.Count;
 
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0), ''));
+        if Method.Lists.ExitList.Count > oldExitList then
+           PSE2OpFLOW_GOTO(Method.OpCodes[exitRETPos     + 1].OpCode).Position := Method.OpCodes.Count;
+        if Method.Lists.ContinueList.Count > oldContinueList then
+           PSE2OpFLOW_GOTO(Method.OpCodes[continueRETPos + 1].OpCode).Position := Method.OpCodes.Count;
+        if Method.Lists.BreakList.Count > oldBreakList then
+           PSE2OpFLOW_GOTO(Method.OpCodes[breakRETPos    + 1].OpCode).Position := Method.OpCodes.Count;
+
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0, False), ''));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(Method.OpCodes.Count + 3), ''));
+
+        OpCodePos1 := Method.OpCodes.Count;
+        PSE2OpSAFE_TRYFIN(Method.OpCodes[OpCodePos2].OpCode).SavePos := Method.OpCodes.Count;
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0, True), ''));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+
       end;
   sesExcept :
       begin
         bIsExceptBlock := True;
         PSE2OpSAFE_TRYEX(Method.OpCodes[OpCodePos2].OpCode).OpCode := soSAFE_TRYEX;
-        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0), ''));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0, True), ''));
       end;
   end;
   ReadNextToken;
   State.IsInExceptBlock := bIsExceptBlock;
-  StatementSquence(State, Method);
-  State.IsInExceptBlock := False;
-  ExpectToken([sesEnd]);
-  ReadNextToken;
 
+  exitEntry     := Method.Lists.ExitList.Count > oldExitList;
+  continueEntry := Method.Lists.ContinueList.Count > oldContinueList;
+  breakEntry    := Method.Lists.BreakList.Count > oldBreakList;
 
-  if bIsExceptBlock then
+  if not bIsExceptBlock then
   begin
-    CallExceptFree;
+    for i:=Method.Lists.ExitList.Count-1 downto oldExitList do
+      Method.Lists.ExitList.Delete(Method.Lists.ExitList.Count-1);
+    for i:=Method.Lists.ContinueList.Count-1 downto oldContinueList do
+      Method.Lists.ContinueList.Delete(Method.Lists.ContinueList.Count-1);
+    for i:=Method.Lists.BreakList.Count-1 downto oldBreakList do
+      Method.Lists.BreakList.Delete(Method.Lists.BreakList.Count-1);
   end;
 
-  PSE2OpSAFE_TRYFIN(Method.OpCodes[OpCodePos2].OpCode).LeavePos := Method.OpCodes.Count;
-  PSE2OpSAFE_BLOCK(Method.OpCodes[OpCodePos1].OpCode).SkipPoint := Method.OpCodes.Count;
+  wasInTryFinally := State.IsInFinallyBlock;
+  if not bIsExceptBlock then
+     State.IsInFinallyBlock := True;
 
-  GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_TRYEND, ''));
+  try
+    StatementSquence(State, Method);
+  finally
+    State.IsInFinallyBlock := wasInTryFinally;
+  end;
+
+  if not bIsExceptBlock then
+  begin
+    State.DecStack;
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+
+    if exitEntry then
+    begin
+      PSE2OpFLOW_PUSHRET(Method.OpCodes[exitRETPos].OpCode).Position  := Method.OpCodes.Count;
+      Method.Lists.ExitList.Add(Method.OpCodes.Count);
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+    end;
+
+    if continueEntry then
+    begin
+      PSE2OpFLOW_PUSHRET(Method.OpCodes[continueRETPos].OpCode).Position  := Method.OpCodes.Count;
+      Method.Lists.ContinueList.Add(Method.OpCodes.Count);
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+    end;
+    
+    if breakEntry then
+    begin
+      PSE2OpFLOW_PUSHRET(Method.OpCodes[breakRETPos].OpCode).Position  := Method.OpCodes.Count;
+      Method.Lists.BreakList.Add(Method.OpCodes.Count);
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+    end;
+                                                                                
+    PSE2OpFLOW_PUSHRET(Method.OpCodes[OpCodePos1 + 1].OpCode).Position := Method.OpCodes.Count;
+    PSE2OpFLOW_PUSHRET(Method.OpCodes[generalRETPos].OpCode).Position  := Method.OpCodes.Count;
+
+    
+    PSE2OpSAFE_TRYFIN(Method.OpCodes[OpCodePos2].OpCode).LeavePos := Method.OpCodes.Count;
+    PSE2OpSAFE_BLOCK(Method.OpCodes[OpCodePos1].OpCode).SkipPoint := Method.OpCodes.Count;
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_TRYEND, ''));
+  end else
+  begin
+    CallExceptFree;
+
+    PSE2OpSAFE_TRYFIN(Method.OpCodes[OpCodePos2].OpCode).LeavePos := Method.OpCodes.Count;
+    PSE2OpSAFE_BLOCK(Method.OpCodes[OpCodePos1].OpCode).SkipPoint := Method.OpCodes.Count;
+
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_TRYEND, ''));
+  end;
+
+  State.IsInExceptBlock := False;
+  ExpectToken([sesEnd]);
+  ReadNextToken; *)
 end;
-
-(*procedure TSE2Parser.Condition(State: TSE2ParseState; Method: TSE2Method);
-begin
-end;*)
 
 function TSE2Parser.Term(State: TSE2ParseState; Method: TSE2Method;
   TargetType: TSE2Type): TSE2Type;
@@ -5498,7 +6101,11 @@ class function TSE2Parser.IsCompatible(TargetType, CurrentType: TSE2Type;
     if (Meth1 = nil) or (Meth2 = nil) then
        exit;
 
+
     result := False;
+    if Meth1.IsExternal then
+       exit;
+       
     if Meth1.Params.Count <> Meth2.Params.Count then
        exit;
 
@@ -6052,17 +6659,23 @@ var i: integer;
 
   procedure CheckUnit(AUnit: TSE2Unit);
   var i: integer;
+      n: TSE2BaseType;
       m: TSE2Method;
   begin
-    for i:=0 to AUnit.ElemList.Count-1 do
-      if AUnit.ElemList[i] is TSE2Method then
+    for i:=AUnit.ElemList.Count-1 downto 0 do
+    begin
+      n := AUnit.ElemList[i];
+      if (n.Parent = Method.Parent) and (n.NameHash = Method.NameHash) then
       begin
-        m := TSE2Method(AUnit.ElemList[i]);
-        if (m.IsOverload) and (m.Parent = Method.Parent) and
-           (m.IsStatic = Method.IsStatic) then
-           if m.IsName(Method.Name, Method.NameHash) then
-              Target.Add(m);
+        if n is TSE2Method then
+        begin
+          m := TSE2Method(n);
+          if (m.IsOverload) and (m.IsStatic = Method.IsStatic) then
+             if m.IsName(Method.Name) then
+                Target.Add(m);
+        end;
       end;
+    end;
   end;
 
 begin
@@ -6703,6 +7316,9 @@ begin
 
         
 
+        
+        if TSE2Method(aSource).ExternalLib <> '' then
+           GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_LOADEX, ''));
         GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLEX(0, 0), TSE2Method(aSource).GenLinkerName));
         GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
 
@@ -6850,6 +7466,9 @@ begin
         FUnit.ElemList.Add(aSource);
         aProperty.Setter := aSource;
 
+        
+        if TSE2Method(aSource).ExternalLib <> '' then
+           GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_LOADEX, ''));
         GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALLEX(0, 0), TSE2Method(aSource).GenLinkerName));
         GenCode(TSE2Method(aSource), TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
 
@@ -7445,6 +8064,76 @@ begin
   end;
 end;
 
+function TSE2Parser.ConstExpression(Method: TSE2Method): TSE2Constant;
+var aType     : TSE2BaseType;
+    sUnitName : string;
+    sCheckName: string;
+    aParent   : TSE2Type;
+    FirstAttempt : boolean;
+begin
+  result  := nil;
+  aParent := State.CurrentOwner;
+  ExpectToken([sesIdentifier]);
+  FirstAttempt := True;
+
+  sUnitName  := '';
+  sCheckName := '';
+  while true do
+  begin
+    aType := FindIdentifier(Method, Tokenizer.Token.Value, aParent, sUnitName, TSE2BaseTypeFilter.Create([TSE2Unit, TSE2Type, TSE2Constant]));
+    if (aType = nil) and (sCheckName = '') and (aParent = State.CurrentOwner) and (aParent <> nil) and FirstAttempt then
+    begin
+      aParent := nil;
+      aType   := FindIdentifier(Method, Tokenizer.Token.Value, aParent, sUnitName, TSE2BaseTypeFilter.Create([TSE2Unit, TSE2Type, TSE2Constant]));
+    end;
+
+    FirstAttempt := False;
+    if aType = nil then
+    begin
+       RaiseError(petError, 'Unkown identifier: ' + Tokenizer.Token.Value);
+       exit;
+    end;
+
+    if aType is TSE2Unit then
+    begin
+      if sCheckName <> '' then
+         sCheckName := sCheckName + '.';
+      sCheckName := sCheckName + Tokenizer.Token.Value;
+
+      sUnitName := aType.Name;
+      ReadNextToken;
+      ExpectToken([sesDot]);
+      ReadNextToken;
+      ExpectToken([sesIdentifier]);
+    end else
+    if aType is TSE2Type then
+    begin
+      if sCheckName <> '' then
+         if not StringIdentical(sUnitName, sCheckName) then
+            RaiseError(petError, 'Unknown identifier: ' + sCheckName + '.' + Tokenizer.Token.Value);
+
+      ReadNextToken;
+      ExpectToken([sesDot]);
+      ReadNextToken;
+      ExpectToken([sesIdentifier]);
+      aParent := TSE2Type(aType);
+    end else
+    if aType is TSE2Constant then
+    begin       
+      if sCheckName <> '' then
+         if not StringIdentical(sUnitName, sCheckName) then
+            RaiseError(petError, 'Unknown identifier: ' + sCheckName + '.' + Tokenizer.Token.Value);
+
+      result := TSE2Constant(aType);
+      break;
+    end else
+    begin
+      RaiseError(petError, 'Identifier is not a declared type: ' + Tokenizer.Token.Value);
+      exit;
+    end;
+  end;
+end;
+
 {
 
 }
@@ -7682,6 +8371,201 @@ begin
     else
        RaiseError(petWarning, aType.GetStrongName + ' is deprecated.');
   end;
+end;
+
+{ TSE2TryBlock }
+
+constructor TSE2TryBlock.Create(AMethod: TSE2Method;
+  Parser: TSE2Parser; State: TSE2ParseState);
+begin
+  inherited Create;
+  FParser := Parser;
+  FMethod := AMethod;
+  FState  := State;
+end;
+
+procedure TSE2TryBlock.Step1;
+begin
+
+  FgeneralRETPos  := 0;
+  FexitRETPos     := 0;
+  FcontinueRETPos := 0;
+  FbreakRETPos    := 0;
+  
+  FoldExitList     := FMethod.Lists.ExitList.Count;
+  FoldContinueList := FMethod.Lists.ContinueList.Count;
+  FoldBreakList    := FMethod.Lists.BreakList.Count;
+
+  FOpCodePos2      := FMethod.OpCodes.Count;
+  FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_TRYFIN(0, 0), ''));
+end;
+
+procedure TSE2TryBlock.Step2_TryContent;
+begin
+  FParser.StatementSquence(FState, FMethod);
+end;
+
+procedure TSE2TryBlock.Step3(IsFinally: boolean);
+var i: integer;
+begin
+  FIsExceptBlock := not IsFinally;
+
+  if IsFinally then
+  begin
+    FgeneralRETPos := FMethod.OpCodes.Count;
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+    FState.IncStack;
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+  end;
+
+  PSE2OpSAFE_TRYFIN(FMethod.OpCodes[FOpCodePos2].OpCode).SavePos := FMethod.OpCodes.Count;
+  FOpCodePos1 := FMethod.OpCodes.Count;
+
+  if IsFinally then
+  begin
+    if FMethod.Lists.ExitList.Count > FoldExitList then
+    begin
+      for i:=FMethod.Lists.ExitList.Count-1 downto FoldExitList do
+        PSE2OpFLOW_GOTO(FMethod.OpCodes[FMethod.Lists.ExitList[i]].OpCode).Position := FMethod.OpCodes.Count;
+      FexitRETPos := FMethod.OpCodes.Count;
+      FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+      FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+    end;
+
+    if FMethod.Lists.ContinueList.Count > FoldContinueList then
+    begin
+      for i:=FMethod.Lists.ContinueList.Count-1 downto FoldContinueList do
+        PSE2OpFLOW_GOTO(FMethod.OpCodes[FMethod.Lists.ContinueList[i]].OpCode).Position := FMethod.OpCodes.Count;
+      FcontinueRETPos := FMethod.OpCodes.Count;
+      FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+      FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+    end;
+
+    if FMethod.Lists.BreakList.Count > FoldBreakList then
+    begin
+      for i:=FMethod.Lists.BreakList.Count-1 downto FoldBreakList do
+        PSE2OpFLOW_GOTO(FMethod.OpCodes[FMethod.Lists.BreakList[i]].OpCode).Position := FMethod.OpCodes.Count;
+      FbreakRETPos := FMethod.OpCodes.Count;
+      FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+      FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+    end;
+
+    PSE2OpFLOW_GOTO(FMethod.OpCodes[FgeneralRETPos  + 1].OpCode).Position := FMethod.OpCodes.Count;
+
+    if FMethod.Lists.ExitList.Count > FoldExitList then
+       PSE2OpFLOW_GOTO(FMethod.OpCodes[FexitRETPos     + 1].OpCode).Position := FMethod.OpCodes.Count;
+    if FMethod.Lists.ContinueList.Count > FoldContinueList then
+       PSE2OpFLOW_GOTO(FMethod.OpCodes[FcontinueRETPos + 1].OpCode).Position := FMethod.OpCodes.Count;
+    if FMethod.Lists.BreakList.Count > FoldBreakList then
+       PSE2OpFLOW_GOTO(FMethod.OpCodes[FbreakRETPos    + 1].OpCode).Position := FMethod.OpCodes.Count;
+
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0, False), ''));
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(FMethod.OpCodes.Count + 3), ''));
+
+    FOpCodePos1 := FMethod.OpCodes.Count;
+    PSE2OpSAFE_TRYFIN(FMethod.OpCodes[FOpCodePos2].OpCode).SavePos := FMethod.OpCodes.Count;
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0, True), ''));
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
+
+  end else
+  begin
+    PSE2OpSAFE_TRYEX(FMethod.OpCodes[FOpCodePos2].OpCode).OpCode := soSAFE_TRYEX;
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0, True), ''));
+  end;
+
+  FState.IsInExceptBlock := not IsFinally;
+
+  FexitEntry     := FMethod.Lists.ExitList.Count > FoldExitList;
+  FcontinueEntry := FMethod.Lists.ContinueList.Count > FoldContinueList;
+  FbreakEntry    := FMethod.Lists.BreakList.Count > FoldBreakList;
+
+  if IsFinally then
+  begin
+    for i:=FMethod.Lists.ExitList.Count-1 downto FoldExitList do
+      FMethod.Lists.ExitList.Delete(FMethod.Lists.ExitList.Count-1);
+    for i:=FMethod.Lists.ContinueList.Count-1 downto FoldContinueList do
+      FMethod.Lists.ContinueList.Delete(FMethod.Lists.ContinueList.Count-1);
+    for i:=FMethod.Lists.BreakList.Count-1 downto FoldBreakList do
+      FMethod.Lists.BreakList.Delete(FMethod.Lists.BreakList.Count-1);
+  end;
+
+  FwasInTryFinally := FState.IsInFinallyBlock;
+  FwasInTryExcept  := FState.IsInExceptBlock;
+  if IsFinally then
+     FState.IsInFinallyBlock := True;
+end;
+
+procedure TSE2TryBlock.Step4_SafeContent;
+begin
+  FParser.StatementSquence(FState, FMethod);
+end;
+
+procedure TSE2TryBlock.Step5;
+
+  procedure CallExceptFree;
+  var aMethod: TSE2Method;
+  begin
+    aMethod := TSE2Method(FParser.FindIdentifier(nil, 'Free', FParser.GetScriptObjectType, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Method])));
+
+    {$IFDEF SEII_SMART_LINKING}
+    FMethod.UsedMethods.Add(aMethod);
+    {$ELSE}
+    aMethod.Used := True;
+    {$ENDIF}                       
+
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_PEX, ''));
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(FMethod.OpCodes.Count + 2, 0), ''));
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_CALL(0), aMethod.GenLinkerName));
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+  end;
+
+begin
+  FState.IsInFinallyBlock := FwasInTryFinally;
+
+  if not FIsExceptBlock then
+  begin
+    FState.DecStack;
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+
+    if FexitEntry then
+    begin
+      PSE2OpFLOW_PUSHRET(FMethod.OpCodes[FexitRETPos].OpCode).Position  := FMethod.OpCodes.Count;
+      FMethod.Lists.ExitList.Add(FMethod.OpCodes.Count);
+      FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+    end;
+
+    if FcontinueEntry then
+    begin
+      PSE2OpFLOW_PUSHRET(FMethod.OpCodes[FcontinueRETPos].OpCode).Position  := FMethod.OpCodes.Count;
+      FMethod.Lists.ContinueList.Add(FMethod.OpCodes.Count);
+      FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+    end;
+    
+    if FbreakEntry then
+    begin
+      PSE2OpFLOW_PUSHRET(FMethod.OpCodes[FbreakRETPos].OpCode).Position  := FMethod.OpCodes.Count;
+      FMethod.Lists.BreakList.Add(FMethod.OpCodes.Count);
+      FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
+    end;
+                                                                                
+    PSE2OpFLOW_PUSHRET(FMethod.OpCodes[FOpCodePos1 + 1].OpCode).Position := FMethod.OpCodes.Count;
+    PSE2OpFLOW_PUSHRET(FMethod.OpCodes[FgeneralRETPos].OpCode).Position  := FMethod.OpCodes.Count;
+
+    
+    PSE2OpSAFE_TRYFIN(FMethod.OpCodes[FOpCodePos2].OpCode).LeavePos := FMethod.OpCodes.Count;
+    PSE2OpSAFE_BLOCK(FMethod.OpCodes[FOpCodePos1].OpCode).SkipPoint := FMethod.OpCodes.Count;
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_TRYEND, ''));
+  end else
+  begin
+    CallExceptFree;
+
+    PSE2OpSAFE_TRYFIN(FMethod.OpCodes[FOpCodePos2].OpCode).LeavePos := FMethod.OpCodes.Count;
+    PSE2OpSAFE_BLOCK(FMethod.OpCodes[FOpCodePos1].OpCode).SkipPoint := FMethod.OpCodes.Count;
+
+    FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_TRYEND, ''));
+  end;
+
+  FState.IsInExceptBlock := FwasInTryExcept;
 end;
 
 end.

@@ -156,7 +156,7 @@ var
 begin
   FIntCritSect.Enter;
   try
-    h := GetCurrentThreadId;
+    h := cardinal(GetCurrentThreadId);
   finally
     FIntCritSect.Leave;
   end;

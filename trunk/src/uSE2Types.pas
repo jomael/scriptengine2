@@ -481,6 +481,9 @@ type
     FUsedMethods    : TSE2UsedByList;
     FUsageProcessed : boolean;
 
+    FExternalLib    : string;
+    FExternalName   : string;
+    FExternalIndex  : integer;
 
     FVariables      : TSE2BaseTypeList;
     FTypes          : TSE2BaseTypeList;
@@ -501,6 +504,11 @@ type
     property Variables         : TSE2BaseTypeList   read FVariables;
     property Types             : TSE2BaseTypeList   read FTypes;
     property Lists             : TSE2MethodLists    read FLists;
+
+    
+    property ExternalLib       : string   read FExternalLib   write FExternalLib;
+    property ExternalName      : string   read FExternalName  write FExternalName;
+    property ExternalIndex     : integer  read FExternalIndex write FExternalIndex;
 
     property UsageProcessed    : boolean            read FUsageProcessed  write FUsageProcessed;
     property UsedMethods       : TSE2UsedByList     read FUsedMethods;
@@ -708,7 +716,7 @@ begin
   end;
   Obj    := FParent;
   result := False;
-  while (Obj <> nil) and (not result) do
+  while (Obj <> nil) do
   begin
     if Obj = Parent then
     begin
@@ -979,7 +987,7 @@ begin
   else
   begin
 
-    obj := FList[index];
+    obj := FList.List[index];
     FList.Delete(index);
     try
       if FOwnsObjs then
@@ -1011,36 +1019,53 @@ var NameHash : integer;
     i, c     : integer;
     Filter   : integer;
     obj      : TSE2BaseType;
+    vis      : integer;
+    hasUnitName : boolean;
 begin
   NameHash := MakeHash(Name);
   UnitHash := MakeHash(DeclUnit);
 
+  hasUnitName := DeclUnit <> '';
+  if visPrivate in Visibility then
+     vis := 0
+  else
+  if visProtected in Visibility then
+     vis := 1
+  else
+     vis := 2;
+
   for i:=FList.Count-1 downto 0 do
   begin
-    obj := FList[i];
+    obj := FList.List[i];
 
-    if not (obj.Visibility in Visibility) then
+    if integer(obj.Visibility) < vis then
        continue;
+
+    if obj.NameHash <> NameHash then
+       continue;
+
+    if not obj.IsChildOf(Parent) then
+       continue;
+
+    if InheritedFrom <> nil then
+       if not obj.IsTypeOf(InheritedFrom) then
+          continue;
+
+    if not obj.IsName(Name) then
+       continue;
+
+    if hasUnitName then
+       if not obj.IsUnit(DeclUnit, UnitHash) then
+          continue;
+
+    //if not (obj.Visibility in Visibility) then
+    //   continue;
 
     if obj is TSE2Constant then
       if TSE2Constant(obj).AType is TSE2SetOf then
         if not AcceptSetType then
            continue;
 
-    if not obj.IsName(Name, NameHash) then
-       continue;
-
-    if DeclUnit <> '' then
-       if not obj.IsUnit(DeclUnit, UnitHash) then
-          continue;
-
-    //if Parent <> nil then
-       if not obj.IsChildOf(Parent) then
-          continue;
-
-    if InheritedFrom <> nil then
-       if not obj.IsTypeOf(InheritedFrom) then
-          continue;
 
     if ClassTypes <> nil then
     begin
@@ -1073,13 +1098,13 @@ begin
   if (i < 0) or (i >= FList.Count) then
      result := nil
   else
-     result := FList[i];
+     result := FList.List[i];
 end;
 
 function TSE2BaseTypeList.IndexOf(obj: TSE2BaseType): integer;
 begin
   for result:=FList.Count-1 downto 0 do
-    if FList[result] = obj then
+    if FList.List[result] = obj then
       exit;
   result := -1;
 end;
@@ -1087,7 +1112,7 @@ end;
 procedure TSE2BaseTypeList.SetItem(i: integer; const obj: TSE2BaseType);
 begin
   if (i >= 0) and (i < FList.Count) then
-     FList[i] := obj;
+     FList.List[i] := obj;
 end;
 
 procedure TSE2BaseTypeList.SetEntryID(Entry: TSE2BaseType);
@@ -1100,8 +1125,8 @@ var i: integer;
     Hash := MakeHash(value);
     result := True;
     for i:=FList.Count-1 downto 0 do
-      if TSE2BaseType(FList[i]).FCachedUniqueHash = Hash then
-         if TSE2BaseType(FList[i]).FCachedUniqueID = value then
+      if TSE2BaseType(FList.List[i]).FCachedUniqueHash = Hash then
+         if TSE2BaseType(FList.List[i]).FCachedUniqueID = value then
             exit;
     result := False;
   end;
@@ -1244,7 +1269,7 @@ begin
         begin
           obj := uSE2UnitCache.GetClassByName(TSE2StreamHelper.ReadString(Stream)).Create;
           obj.LoadFromStream(Stream, Weaver);
-          FList[i] := (obj);
+          FList.List[i] := (obj);
         end;
       end
   else RaiseIncompatibleStream;
@@ -1266,7 +1291,7 @@ begin
   Stream.Write(count, SizeOf(count));
   for i:=0 to count-1 do
   begin
-    obj := Items[i];
+    obj := FList.List[i];
     obj.SaveToStream(Stream);
   end;                       
 end;
@@ -1475,7 +1500,9 @@ begin
     if IsStatic then
     begin
       if not IsExternal then
-         result := True;
+         result := True
+      else
+         result := ExternalLib = '';
     end;
   end;
 end;
@@ -1489,7 +1516,7 @@ begin
      exit;
 
   case version of
-  1 :
+  1, 2 :
       begin
         FParams.LoadFromStream(Stream, Weaver);
         Stream.Read(FIsAbstract     , SizeOf(boolean));
@@ -1518,6 +1545,13 @@ begin
         Stream.Read(FMethodType     , SizeOf(TSE2MethodType));
         FLists.LoadFromStream(Stream);
 
+        if (version > 1) and FIsExternal then
+        begin
+          FExternalLib := TSE2StreamHelper.ReadString(Stream);
+          FExternalName := TSE2StreamHelper.ReadString(Stream);
+          Stream.Read(FExternalIndex, SizeOf(integer));
+        end;
+
         FVariables.LoadFromStream(Stream, Weaver);
         FTypes.LoadFromStream(Stream, Weaver);
 
@@ -1532,7 +1566,7 @@ procedure TSE2Method.SaveToStream(Stream: TStream);
 var version: byte;
 begin
   inherited;
-  version := 1;
+  version := 2;
   Stream.Write(version, SizeOf(version));
 
   FParams.SaveToStream(Stream);
@@ -1557,6 +1591,13 @@ begin
 
   Stream.Write(FMethodType     , SizeOf(TSE2MethodType));
   FLists.SaveToStream(Stream);
+
+  if FIsExternal then
+  begin
+    TSE2StreamHelper.WriteString(Stream, FExternalLib);
+    TSE2StreamHelper.WriteString(Stream, FExternalName);
+    Stream.Write(FExternalIndex, SizeOf(integer));
+  end;
 
   FVariables.SaveToStream(Stream);
   FTypes.SaveToStream(Stream);
@@ -1786,7 +1827,7 @@ begin
      result := False
   else
   begin
-    Item := FList[index];
+    Item := FList.List[index];
     FList.Delete(index);
     Item.Free;
     result := True;
@@ -1810,7 +1851,7 @@ begin
   if (index < 0) or (index >= FList.Count) then
      result := nil
   else
-     result := FList[index];
+     result := FList.List[index];
 end;
 
 function TSE2LinkStringList.GetNextID: integer;
@@ -1822,7 +1863,7 @@ end;
 function TSE2LinkStringList.IndexOf(const ID: integer): integer;
 begin
   for result:=FList.Count-1 downto 0 do
-    if TSE2LinkString(FList[result]).ID = ID then
+    if TSE2LinkString(FList.List[result]).ID = ID then
       exit;
   result := -1;
 end;
@@ -1830,7 +1871,7 @@ end;
 function TSE2LinkStringList.IndexOf(const value: string): integer;
 begin
   for result:=FList.Count-1 downto 0 do
-    if AnsiSameStr(TSE2LinkString(FList[result]).Value, value) then
+    if AnsiSameStr(TSE2LinkString(FList.List[result]).Value, value) then
       exit;
   result := -1;
 end;
@@ -1878,7 +1919,7 @@ begin
   Stream.Write(count, SizeOf(count));
   for i:=0 to count-1 do
   begin
-    obj := FList[i];
+    obj := FList.List[i];
     obj.SaveToStream(Stream);
   end;
   Stream.Write(FNextID, SizeOf(FNextID));
@@ -1969,7 +2010,7 @@ begin
      result := False
   else
   begin
-    p := FList[index];
+    p := FList.List[index];
     FList.Delete(index);
     result := True;
     Dispose(p);
@@ -1993,14 +2034,14 @@ begin
   if (index < 0) or (index >= FList.Count) then
      result := 0
   else
-     result := PInteger(FList[index])^;
+     result := PInteger(FList.List[index])^;
 
 end;
 
 function TSE2IntegerList.IndexOf(value: integer): integer;
 begin
   for result := FList.Count - 1 downto 0 do
-    if PInteger(FList[result])^ = value then
+    if PInteger(FList.List[result])^ = value then
       exit;
   result := -1;
 end;
@@ -2024,7 +2065,7 @@ begin
         begin
           New(p);
           Stream.Read(p^, SizeOf(integer));
-          FList[i] := p;
+          FList.List[i] := p;
         end;
       end;
   else
@@ -2052,7 +2093,7 @@ end;
 procedure TSE2IntegerList.SetItem(index, value: integer);
 begin
   if (index >= 0) and (index < FList.Count) then
-     PInteger(FList[index])^ := value;
+     PInteger(FList.List[index])^ := value;
 end;
 
 { TSE2MethodLists }
@@ -2373,7 +2414,7 @@ procedure TSE2ClassRTTI.Clear;
 var i: integer;
 begin
   for i:=FList.Count-1 downto 0 do
-    Dispose(PSE2ClassRTTIEntry(Flist[i]));
+    Dispose(PSE2ClassRTTIEntry(Flist.List[i]));
   FList.Clear;
 end;
 
@@ -2394,7 +2435,7 @@ function TSE2ClassRTTI.Duplicate(index,
   deltaOffset: integer): PSE2ClassRTTIEntry;
 var source: PSE2ClassRTTIEntry;
 begin
-  source := FList[index];
+  source := FList.List[index];
   New(result);
   result^.Offset := source^.Offset + deltaOffset;
   result^.Size   := source^.Size;
@@ -2411,7 +2452,7 @@ begin
   if (index < 0) or (index >= FList.Count) then
      result := nil
   else
-     result := Flist[index];
+     result := Flist.List[index];
 end;
 
 procedure TSE2ClassRTTI.LoadFromStream(Stream: TStream;
@@ -2434,8 +2475,8 @@ begin
           New(p);
           Stream.Read(p^.Offset, SizeOf(integer));
           Stream.Read(p^.Size, SizeOf(integer));
-          Stream.Read(p^.aType, SizeOf(TSE2TypeIdent));
-          Flist[i] := p;
+          Stream.Read(p^.aType, SizeOf(TSE2TypeIdent)); 
+          Flist.List[i] := p;
 
           if p^.aType = btRecord then
              Weaver.Add(TSE2StreamHelper.ReadString(Stream), @(p^.Size));
@@ -2458,7 +2499,7 @@ begin
   Stream.Write(count, SizeOf(count));
   for i:=0 to count-1 do
   begin
-    p := Flist[i];
+    p := Flist.List[i];
     Stream.Write(p^.Offset, SizeOf(integer));
     Stream.Write(p^.Size, SizeOf(integer));
     Stream.Write(p^.aType, SizeOf(TSE2TypeIdent));
@@ -2486,7 +2527,7 @@ procedure TSE2UsedByList.Clear;
 var i: integer;
 begin
   for i:=FList.Count-1 downto 0 do
-    Dispose(FList[i]);
+    Dispose(FList.List[i]);
   FList.Clear;
 end;
 
@@ -2513,13 +2554,13 @@ begin
   if (index < 0) or (index >= FList.Count) then
      result := nil
   else
-     result := PPointer(FList[index])^;
+     result := PPointer(FList.List[index])^;
 end;
 
 function TSE2UsedByList.IndexOf(Item: TSE2BaseType): integer;
 begin
   for result := FList.Count-1 downto 0 do
-    if PPointer(FList[result])^ = Item then
+    if PPointer(FList.List[result])^ = Item then
       exit;
 
   result := -1;
@@ -2544,7 +2585,7 @@ begin
         for i:=0 to count-1 do
         begin
           New(p);
-          FList[i] := p;
+          FList.List[i] := p;
           Weaver.Add(TSE2StreamHelper.ReadString(Stream), p);
         end;
       end;

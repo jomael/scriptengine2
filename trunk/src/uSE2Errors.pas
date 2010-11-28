@@ -17,7 +17,7 @@ const
                     '+', '-', '*', '/', 'div', 'mod',
                     // Comparison
                     '=', '<', '<=', '>=', '>', '<>',
-                    'is', 'as',
+                    'is', 'as', 'in',
                     // Assignment
                     ':=', ':', '.', '..', ';', ',',
                     // Operators
