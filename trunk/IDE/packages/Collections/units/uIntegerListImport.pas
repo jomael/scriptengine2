@@ -15,9 +15,23 @@ const
   C_UnitSource = 
         'unit Collections;' + #13#10 +
         #13#10 + 
-        'interface' + #13#10 +
+        'interface' + #13#10 + 
         #13#10 + 
         'type' + #13#10 + 
+        '  TIntegerList = class;' + #13#10 + 
+        #13#10 + 
+        '  TIntegerListEnumerator = class' + #13#10 + 
+        '  private' + #13#10 + 
+        '    FIndex: Integer;' + #13#10 + 
+        '    FList  : TIntegerList;' + #13#10 + 
+        '  protected' + #13#10 + 
+        '    function GetCurrent: integer;' + #13#10 + 
+        '  public' + #13#10 + 
+        '    constructor Create(AList: TIntegerList);' + #13#10 + 
+        '    function MoveNext: Boolean;' + #13#10 + 
+        '    property Current: integer read GetCurrent;' + #13#10 + 
+        '  end;' + #13#10 + 
+        #13#10 + 
         '  TIntegerList = class(TList)' + #13#10 + 
         '  protected' + #13#10 + 
         '    function GetItem(index: integer): integer; external;' + #13#10 + 
@@ -32,8 +46,23 @@ const
         '    procedure Insert(index, value: integer); external;' + #13#10 + 
         '    function  Remove(value: integer): integer; external;' + #13#10 + 
         '    procedure Sort(Ascending: boolean); external;' + #13#10 + 
+        '    function  GetEnumerator: TIntegerListEnumerator;' + #13#10 + 
         #13#10 + 
         '    property Items[index: integer]: integer read GetItem write SetItem;' + #13#10 + 
+        '  end;' + #13#10 + 
+        #13#10 + 
+        '  TInt64List = class;' + #13#10 + 
+        #13#10 + 
+        '  TInt64ListEnumerator = class' + #13#10 + 
+        '  private' + #13#10 + 
+        '    FIndex : Integer;' + #13#10 + 
+        '    FList  : TInt64List;' + #13#10 + 
+        '  protected' + #13#10 + 
+        '    function GetCurrent: int64;' + #13#10 + 
+        '  public' + #13#10 + 
+        '    constructor Create(AList: TInt64List);' + #13#10 + 
+        '    function MoveNext: Boolean;' + #13#10 + 
+        '    property Current: Int64 read GetCurrent;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 + 
         '  TInt64List = class(TList)' + #13#10 + 
@@ -53,11 +82,70 @@ const
         '    procedure Insert(index: integer; value: int64); external;' + #13#10 + 
         '    function  Remove(value: int64): integer; external;' + #13#10 + 
         '    procedure Sort(Ascending: boolean); external;' + #13#10 + 
+        '    function  GetEnumerator: TInt64ListEnumerator;' + #13#10 + 
         #13#10 + 
         '    property Items[index: integer]: int64 read GetItem write SetItem;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 + 
         'implementation' + #13#10 + 
+        #13#10 + 
+        'constructor TIntegerListEnumerator.Create(AList: TIntegerList);' + #13#10 + 
+        'begin' + #13#10 + 
+        '  inherited Create;' + #13#10 + 
+        '  Self.FIndex := -1;' + #13#10 + 
+        '  Self.FList  := AList;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TIntegerListEnumerator.GetCurrent: Integer;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := FList.Items[FIndex];' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TIntegerListEnumerator.MoveNext: boolean;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  Result := FIndex < FList.Count - 1;' + #13#10 + 
+        '  if Result then' + #13#10 + 
+        '  begin' + #13#10 + 
+        '     FIndex := FIndex + 1;' + #13#10 + 
+        '  end;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        '{ TListHelperEnumerator }' + #13#10 + 
+        #13#10 + 
+        'function TIntegerList.GetEnumerator: TIntegerListEnumerator;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := TIntegerListEnumerator.Create(Self);' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        '{ TInt64ListEnumerator }' + #13#10 + 
+        #13#10 + 
+        'constructor TInt64ListEnumerator.Create(AList: TInt64List);' + #13#10 + 
+        'begin' + #13#10 + 
+        '  inherited Create;' + #13#10 + 
+        '  Self.FIndex := -1;' + #13#10 + 
+        '  Self.FList  := AList;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TInt64ListEnumerator.GetCurrent: Int64;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := FList.Items[FIndex];' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TInt64ListEnumerator.MoveNext: boolean;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  Result := FIndex < FList.Count - 1;' + #13#10 + 
+        '  if Result then' + #13#10 + 
+        '  begin' + #13#10 + 
+        '     FIndex := FIndex + 1;' + #13#10 + 
+        '  end;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        '{ TListHelperEnumerator }' + #13#10 + 
+        #13#10 + 
+        'function TInt64List.GetEnumerator: TInt64ListEnumerator;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := TInt64ListEnumerator.Create(Self);' + #13#10 + 
+        'end;' + #13#10 + 
         #13#10 + 
         'end.';
 

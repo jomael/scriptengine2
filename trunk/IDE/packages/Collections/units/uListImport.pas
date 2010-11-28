@@ -25,12 +25,26 @@ const
         'type' + #13#10 + 
         '  TListNotification = (lnAdded, lnExtracted, lnDeleted);' + #13#10 + 
         '  TListAssignOp = (laCopy, laAnd, laOr, laXor, laSrcUnique, laDestUnique);' + #13#10 + 
-        '  TDuplicates = (dupIgnore, dupAccept, dupError);' + #13#10 +
-        #13#10 +
-        '  EListError = class(EExternalException)'+#13#10+
-        '  public'+#13#10+
-        '    constructor Create(const Message: string); override;'+#13#10+
-        '  end;'+#13#10+
+        '  TDuplicates = (dupIgnore, dupAccept, dupError);' + #13#10 + 
+        #13#10 + 
+        '  EListError = class(EExternalException)' + #13#10 + 
+        '  public' + #13#10 + 
+        '    constructor Create(const Message: string); override;' + #13#10 + 
+        '  end;' + #13#10 + 
+        #13#10 + 
+        '  TList = class;' + #13#10 + 
+        #13#10 + 
+        '  TListEnumerator = class' + #13#10 + 
+        '  private' + #13#10 + 
+        '    FIndex: Integer;' + #13#10 + 
+        '    FList : TList;' + #13#10 + 
+        '  protected' + #13#10 + 
+        '    function GetCurrent: Pointer;' + #13#10 + 
+        '  public' + #13#10 + 
+        '    constructor Create(AList: TList);' + #13#10 + 
+        '    function MoveNext: Boolean;' + #13#10 + 
+        '    property Current: Pointer read GetCurrent;' + #13#10 + 
+        '  end;' + #13#10 + 
         #13#10 + 
         '  TList = class(TExternalObject)' + #13#10 + 
         '  private' + #13#10 + 
@@ -60,16 +74,44 @@ const
         '    procedure Assign(ListA: TList; AOperator: TListAssignOp); overload; external;' + #13#10 + 
         '    procedure Assign(ListA: TList); overload; external;' + #13#10 + 
         #13#10 + 
+        '    function  GetEnumerator: TListEnumerator;' + #13#10 + 
+        #13#10 + 
         '    property Capacity: Integer read GetCapacity write SetCapacity;' + #13#10 + 
         '    property Count   : Integer read GetCount write SetCount;' + #13#10 + 
         '    property Items[Index: Integer]: Pointer read GetItem write SetItem;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 + 
         'implementation' + #13#10 + 
-        #13#10 +                  
-        'constructor EListError.Create(const Message: string);' + #13#10 +
+        #13#10 + 
+        'constructor EListError.Create(const Message: string);' + #13#10 + 
         'begin inherited; end;' + #13#10 + 
-        #13#10 +
+        #13#10 + 
+        'function TList.GetEnumerator: TListEnumerator;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := TListEnumerator.Create(Self);' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'constructor TListEnumerator.Create(AList: TList);' + #13#10 + 
+        'begin' + #13#10 + 
+        '  inherited Create;' + #13#10 + 
+        '  Self.FIndex := -1;' + #13#10 + 
+        '  Self.FList  := AList;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TListEnumerator.GetCurrent: Pointer;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := FList.Items[FIndex];' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TListEnumerator.MoveNext: boolean;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  Result := FIndex < FList.Count - 1;' + #13#10 + 
+        '  if Result then' + #13#10 + 
+        '  begin' + #13#10 + 
+        '     FIndex := FIndex + 1;' + #13#10 + 
+        '  end;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
         'end.';
 
 procedure RegisterMethods(Module: TPackageModule; Data: Pointer; CallBack: TSE2PackageFunctionRegister);
