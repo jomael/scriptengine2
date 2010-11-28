@@ -20,12 +20,26 @@ const
         'uses' + #13#10 + 
         '  IO.Streams;' + #13#10 + 
         #13#10 + 
-        'type' + #13#10 +
-        '  EStringListError = class(EExternalException)'+#13#10+
-        '  public'+#13#10+
-        '    constructor Create(const Message: string); override;'+#13#10+
-        '  end;'+#13#10+
-        #13#10 +
+        'type' + #13#10 + 
+        '  EStringListError = class(EExternalException)' + #13#10 + 
+        '  public' + #13#10 + 
+        '    constructor Create(const Message: string); override;' + #13#10 + 
+        '  end;' + #13#10 + 
+        #13#10 + 
+        '  TStrings = class;' + #13#10 + 
+        #13#10 + 
+        '  TStringsEnumerator = class' + #13#10 + 
+        '  private' + #13#10 + 
+        '    FIndex : integer;' + #13#10 + 
+        '    FList  : TStrings;' + #13#10 + 
+        '  protected' + #13#10 + 
+        '    function GetCurrent: string;' + #13#10 + 
+        '  public' + #13#10 + 
+        '    constructor Create(AList: TStrings);' + #13#10 + 
+        '    function MoveNext: boolean;' + #13#10 + 
+        '    property Current: string read GetCurrent;' + #13#10 + 
+        '  end;' + #13#10 + 
+        #13#10 + 
         '  TStrings = class(TPersistent)' + #13#10 + 
         '  private' + #13#10 + 
         '    function  GetCapacity: integer; external;' + #13#10 + 
@@ -76,6 +90,7 @@ const
         '    procedure SaveToFile(const FileName: string);  external;' + #13#10 + 
         '    procedure SaveToStream(Stream: TStream);  external;' + #13#10 + 
         '    procedure SetText(Text: PChar);  external;' + #13#10 + 
+        '    function  GetEnumerator: TStringsEnumerator;' + #13#10 + 
         #13#10 + 
         '    property Capacity: Integer read GetCapacity write SetCapacity;' + #13#10 + 
         '    property CommaText: string read GetCommaText write SetCommaText;' + #13#10 + 
@@ -89,13 +104,41 @@ const
         '    property ValueFromIndex[Index: Integer]: string read GetValueFromIndex write SetValueFromIndex;' + #13#10 + 
         '    property NameValueSeparator: string read GetNameValueSeparator write SetNameValueSeparator;' + #13#10 + 
         '    property Strings[Index: Integer]: string read GetString write PutString;' + #13#10 + 
-        '    property Text: string read GetTextStr write SetTextStr;' + #13#10 +
-        '  end;' + #13#10 +
-        #13#10 +
-        'implementation' + #13#10 +   
-        #13#10 +                  
-        'constructor EStringListError.Create(const Message: string);' + #13#10 +
-        'begin inherited; end;' + #13#10 +
+        '    property Text: string read GetTextStr write SetTextStr;' + #13#10 + 
+        '  end;' + #13#10 + 
+        #13#10 + 
+        'implementation' + #13#10 + 
+        #13#10 + 
+        'constructor EStringListError.Create(const Message: string);' + #13#10 + 
+        'begin inherited; end;' + #13#10 + 
+        #13#10 + 
+        'constructor TStringsEnumerator.Create(AList: TStrings);' + #13#10 + 
+        'begin' + #13#10 + 
+        '  inherited Create;' + #13#10 + 
+        '  Self.FIndex := -1;' + #13#10 + 
+        '  Self.FList  := AList;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TStringsEnumerator.GetCurrent: string;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := FList.Strings[FIndex];' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TStringsEnumerator.MoveNext: boolean;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  Result := FIndex < FList.Count - 1;' + #13#10 + 
+        '  if Result then' + #13#10 + 
+        '  begin' + #13#10 + 
+        '     FIndex := FIndex + 1;' + #13#10 + 
+        '  end;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        '{ TStringsHelperEnumerator }' + #13#10 + 
+        #13#10 + 
+        'function TStrings.GetEnumerator: TStringsEnumerator;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := TStringsEnumerator.Create(Self);' + #13#10 + 
+        'end;' + #13#10 + 
         #13#10 + 
         'end.';
 

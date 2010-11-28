@@ -15,9 +15,23 @@ const
   C_UnitSource = 
         'unit Collections;' + #13#10 +
         #13#10 + 
-        'interface' + #13#10 + 
+        'interface' + #13#10 +  
         #13#10 + 
         'type' + #13#10 + 
+        '  TFloatList = class;' + #13#10 + 
+        #13#10 + 
+        '  TFloatListEnumerator = class' + #13#10 + 
+        '  private' + #13#10 + 
+        '    FIndex: Integer;' + #13#10 + 
+        '    FList: TFloatList;' + #13#10 + 
+        '  protected' + #13#10 + 
+        '    function GetCurrent: double;' + #13#10 + 
+        '  public' + #13#10 + 
+        '    constructor Create(AList: TFloatList);' + #13#10 + 
+        '    function MoveNext: Boolean;' + #13#10 + 
+        '    property Current: double read GetCurrent;' + #13#10 + 
+        '  end;' + #13#10 + 
+        #13#10 + 
         '  TFloatList = class(TList)' + #13#10 + 
         '  protected' + #13#10 + 
         '    function GetItem(index: integer): double; external;' + #13#10 + 
@@ -35,10 +49,40 @@ const
         '    function  Remove(value: double): integer; external;' + #13#10 + 
         '    procedure Sort(Ascending: boolean); external;' + #13#10 + 
         #13#10 + 
+        '    function  GetEnumerator: TFloatListEnumerator;' + #13#10 + 
+        #13#10 + 
         '    property Items[index: integer]: double read GetItem write SetItem;' + #13#10 + 
         '  end;' + #13#10 + 
         #13#10 + 
         'implementation' + #13#10 + 
+        #13#10 + 
+        'constructor TFloatListEnumerator.Create(AList: TFloatList);' + #13#10 + 
+        'begin' + #13#10 + 
+        '  inherited Create;' + #13#10 + 
+        '  Self.FIndex := -1;' + #13#10 + 
+        '  Self.FList  := AList;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TFloatListEnumerator.GetCurrent: double;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := FList.Items[FIndex];' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        'function TFloatListEnumerator.MoveNext: boolean;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  Result := FIndex < FList.Count - 1;' + #13#10 + 
+        '  if Result then' + #13#10 + 
+        '  begin' + #13#10 + 
+        '     FIndex := FIndex + 1;' + #13#10 + 
+        '  end;' + #13#10 + 
+        'end;' + #13#10 + 
+        #13#10 + 
+        '{ TFloatList }' + #13#10 + 
+        #13#10 + 
+        'function TFloatList.GetEnumerator: TFloatListEnumerator;' + #13#10 + 
+        'begin' + #13#10 + 
+        '  result := TFloatListEnumerator.Create(Self);' + #13#10 + 
+        'end;' + #13#10 + 
         #13#10 + 
         'end.';
 
