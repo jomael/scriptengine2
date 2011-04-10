@@ -61,6 +61,7 @@ type
     { Garbage Collector }
     FClassGC           : TSE2ClassGC;
     FRecordGC          : TSE2RecordGC;
+    FArrayGC           : TSE2RecordGC;
 
     { Runtime Data }
     FCodePos           : integer;
@@ -83,6 +84,7 @@ type
     procedure MetaEntryToItem(Entry: TSE2MetaEntry; StackIndex: integer; Target: TSE2StackItem);
 
     procedure RemoveUnusedRecords(numRecords: integer);
+    procedure RemoveUnusedArrays(numArrays: integer);
 
     function  ExceptionCallStack: string;
     procedure Process;
@@ -103,6 +105,7 @@ type
                          
     procedure ProcessGC;
     procedure ProcessRecordGC;
+    procedure ProcessArrayGC;
 
     procedure Initialize;
 
@@ -133,6 +136,7 @@ begin
   FDataComparison := TSE2VarCompare.Create(FStackHelper);
   FClassGC        := TSE2ClassGC.Create;
   FRecordGC       := TSE2RecordGC.Create;
+  FArrayGC        := TSE2RecordGC.Create;
 
   FStack          := TSE2Stack.Create(FStackHelper);
   FSafeBlocks     := TSE2SafeBlockMngr.Create;
@@ -146,6 +150,7 @@ begin
   FStack.Free;
   FClassGC.Free;
   FRecordGC.Free;
+  FArrayGC.Free;
   FMethodCall.Free;
 
   FStackHelper.Free;
@@ -155,6 +160,14 @@ begin
   FPackedData.Free;
 
   inherited;
+end;
+
+procedure TSE2ExecutionContext.ProcessArrayGC;
+var i: integer;
+begin
+  for i:=FArrayGC.Count-1 downto 0 do
+    FPackedData.DestroyScriptArray(PSE2RecordGCEntry(FArrayGC[i])^.Ptr);
+  FArrayGC.Clear;
 end;
 
 procedure TSE2ExecutionContext.ProcessRecordGC;
@@ -205,6 +218,25 @@ begin
   end;
 end;
 
+procedure TSE2ExecutionContext.RemoveUnusedArrays(numArrays: integer);
+var i: integer;
+    p: PSE2RecordGCEntry;
+    m: integer;
+begin
+  m := FArrayGC.Count-1-numArrays;
+  if m < 0 then
+     m := 0;
+  for i:=FArrayGC.Count-1 downto m do
+  begin
+    p := FArrayGC.Items[i];
+    if p^.StackSize >= FStack.Size then
+    begin
+      FPackedData.DestroyScriptArray(p^.Ptr);
+      FArrayGC.Delete(i);
+    end;
+  end;
+end;
+
 procedure TSE2ExecutionContext.Process;
 
 type
@@ -227,9 +259,13 @@ begin
   while (FCodePos > 0) and (not FDoAbort) do
   begin
     try
+                  
+  while (FCodePos > 0) and (not FDoAbort) do
+  begin
+
   OpCode := FOpCodes.List[FCodePos];
-  if OpCode = nil then
-     exit;
+//  if OpCode = nil then
+//     exit;
 
   if Assigned(FOnBeforeOperation) then
      FOnBeforeOperation(TObject(FExecutionData.RunTime));
@@ -315,6 +351,74 @@ begin
         btDouble :
             if r1^.tDouble^ <> 0 then
                FCodePos := PSE2OpFLOW_JNZ(OpCode).Position - 1;
+        end;
+        FStack.Pop;
+      end;
+  soFLOW_JGZ :
+      begin
+        r1 := FStack.Top;
+
+        case r1.AType of
+        btU8     : if r1^.tU8^ > 0 then      FCodePos := PSE2OpFLOW_JGZ(OpCode).Position - 1;
+        btS8     : if r1^.tS8^ > 0 then      FCodePos := PSE2OpFLOW_JGZ(OpCode).Position - 1;
+        btU16    : if r1^.tU16^ > 0 then     FCodePos := PSE2OpFLOW_JGZ(OpCode).Position - 1;
+        btS16    : if r1^.tS16^ > 0 then     FCodePos := PSE2OpFLOW_JGZ(OpCode).Position - 1;
+        btU32    : if r1^.tU32^ > 0 then     FCodePos := PSE2OpFLOW_JGZ(OpCode).Position - 1;
+        btS32    : if r1^.tS32^ > 0 then     FCodePos := PSE2OpFLOW_JGZ(OpCode).Position - 1;
+        btS64,
+        btU64    : if r1^.ts64^ > 0 then     FCodePos := PSE2OpFLOW_JGZ(OpCode).Position - 1;
+        btSingle : if r1^.tSingle^ > 0 then  FCodePos := PSE2OpFLOW_JGZ(OpCode).Position - 1;
+        btDouble : if r1^.tDouble^ > 0 then  FCodePos := PSE2OpFLOW_JGZ(OpCode).Position - 1;
+        end;
+        FStack.Pop;
+      end;
+  soFLOW_JGEZ :
+      begin
+        r1 := FStack.Top;
+
+        case r1.AType of
+        btU8     : FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;
+        btS8     : if r1^.tS8^ >= 0 then      FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;
+        btU16    : FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;
+        btS16    : if r1^.tS16^ >= 0 then     FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;
+        btU32    : FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;
+        btS32    : if r1^.tS32^ >= 0 then     FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;
+        btU64    : FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;               
+        btS64    : if r1^.ts64^ >= 0 then     FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;
+        btSingle : if r1^.tSingle^ >= 0 then  FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;
+        btDouble : if r1^.tDouble^ >= 0 then  FCodePos := PSE2OpFLOW_JGEZ(OpCode).Position - 1;
+        end;
+        FStack.Pop;
+      end;
+  soFLOW_JLZ :
+      begin
+        r1 := FStack.Top;
+
+        case r1.AType of
+        btS8     : if r1^.tS8^ < 0 then      FCodePos := PSE2OpFLOW_JLZ(OpCode).Position - 1;
+        btS16    : if r1^.tS16^ < 0 then     FCodePos := PSE2OpFLOW_JLZ(OpCode).Position - 1;
+        btS32    : if r1^.tS32^ < 0 then     FCodePos := PSE2OpFLOW_JLZ(OpCode).Position - 1;
+        btS64    : if r1^.ts64^ < 0 then     FCodePos := PSE2OpFLOW_JLZ(OpCode).Position - 1;
+        btSingle : if r1^.tSingle^ < 0 then  FCodePos := PSE2OpFLOW_JLZ(OpCode).Position - 1;
+        btDouble : if r1^.tDouble^ < 0 then  FCodePos := PSE2OpFLOW_JLZ(OpCode).Position - 1;
+        end;
+        FStack.Pop;
+      end;
+  soFLOW_JLEZ :
+      begin
+        r1 := FStack.Top;
+
+        case r1.AType of
+        btU8     : if r1^.tU8^ <= 0 then      FCodePos := PSE2OpFLOW_JLEZ(OpCode).Position - 1;
+        btS8     : if r1^.tS8^ <= 0 then      FCodePos := PSE2OpFLOW_JLEZ(OpCode).Position - 1;
+        btU16    : if r1^.tU16^ <= 0 then     FCodePos := PSE2OpFLOW_JLEZ(OpCode).Position - 1;
+        btS16    : if r1^.tS16^ <= 0 then     FCodePos := PSE2OpFLOW_JLEZ(OpCode).Position - 1;
+        btU32    : if r1^.tU32^ <= 0 then     FCodePos := PSE2OpFLOW_JLEZ(OpCode).Position - 1;
+        btS32    : if r1^.tS32^ <= 0 then     FCodePos := PSE2OpFLOW_JLEZ(OpCode).Position - 1;
+        btS64,
+        btU64    : if r1^.ts64^ <= 0 then     FCodePos := PSE2OpFLOW_JLEZ(OpCode).Position - 1;
+        btSingle : if r1^.tSingle^ <= 0 then  FCodePos := PSE2OpFLOW_JLEZ(OpCode).Position - 1;
+        btDouble : if r1^.tDouble^ <= 0 then  FCodePos := PSE2OpFLOW_JLEZ(OpCode).Position - 1;
         end;
         FStack.Pop;
       end;
@@ -516,26 +620,6 @@ begin
   soOP_OPERATION :
       begin
         case PSE2OpOP_OPERATION(OpCode).OpType of
-        1, 20,
-        21      :
-            begin
-              r1 { VarDat[0] } := FStack.Top;
-
-              if r1 { VarDat[0] }^.RefContent then
-              begin
-                r3 { VarDat[2] } := FStackHelper.CreateVarData(r1 { VarDat[0] }^.AType);
-                FStackHelper.SetVarData(r1 { VarDat[0] }, r3 { VarDat[2] });
-                FStackHelper.FreeVarData(r1 { VarDat[0] });
-
-                FStack[FStack.Size - 1] := r3 { VarDat[2] };
-              end;
-
-              case PSE2OpOP_OPERATION(OpCode).OpType of
-              1  : FDataOperation.Negation(FStack.Top); // negation
-              20 : FDataOperation.BitNot(FStack.Top);
-              21 : FDataOperation.BooleanNot(FStack.Top);
-              end;
-            end;
         2..11   :
             begin
               r2 { VarDat[1] } := FStack.Top;
@@ -567,6 +651,25 @@ begin
 
               // Aritmetic
               FStack.Pop;
+            end;
+        else
+            begin
+              r1 { VarDat[0] } := FStack.Top;
+
+              if r1 { VarDat[0] }^.RefContent then
+              begin
+                r3 { VarDat[2] } := FStackHelper.CreateVarData(r1 { VarDat[0] }^.AType);
+                FStackHelper.SetVarData(r1 { VarDat[0] }, r3 { VarDat[2] });
+                FStackHelper.FreeVarData(r1 { VarDat[0] });
+
+                FStack[FStack.Size - 1] := r3 { VarDat[2] };
+              end;
+
+              case PSE2OpOP_OPERATION(OpCode).OpType of
+              1  : FDataOperation.Negation(FStack.Top); // negation
+              20 : FDataOperation.BitNot(FStack.Top);
+              21 : FDataOperation.BooleanNot(FStack.Top);
+              end;
             end;
         end;
       end;
@@ -885,6 +988,44 @@ begin
           Pointer(r2.tPointer) := Pointer(r1);
         end;
       end;
+  
+  soSPEC_INCPD :
+      begin
+        r1 := FStack.Top;
+        case r1.AType of
+        btU8   : CompareInt := r1.tU8^;
+        btS8   : CompareInt := r1.tS8^;
+        btU16  : CompareInt := r1.tU16^;
+        btS16  : CompareInt := r1.tS16^;
+        btU32  : CompareInt := r1.tU32^;
+        btS32  : CompareInt := r1.tS32^;
+        btS64  : CompareInt := r1.tS64^;
+        btU64  : CompareInt := r1.tU64^;
+        else CompareInt := 0;
+        end;
+        FStack.Pop;
+
+        if PSE2OpSPEC_INCPD(OpCode).NoRef then
+        begin
+          r1 := Pointer(FStack.Top.tPointer^);
+          r1 := Pointer(PtrInt(r1) + CompareInt);
+          FStack.Pop;
+
+          r2 := FStack.PushNew(PSE2OpSPEC_INCPD(OpCode).newType);
+          PPointer(r2.tPointer)^ := Pointer(r1);
+        end else
+        begin
+          r1 := Pointer(FStack.Top.tPointer^);
+          r1 := Pointer(PtrInt(r1) + CompareInt);
+          FStack.Pop;
+
+          r2 := FStack.PushNew($FF);
+          r2.AType := PSE2OpSPEC_INCPD(OpCode).newType;
+          r2.RefContent := True;
+
+          Pointer(r2.tPointer) := Pointer(r1);
+        end;
+      end;
   soSPEC_DECP   :
       begin
         CompareInt := PSE2OpSPEC_DECP(OpCode).Target;
@@ -915,10 +1056,13 @@ begin
           r1 { VarDat[0] } := FStack[FStack.Size-1 + CompareInt].tPointer;
         end;
 
-        if not PSE2OpSPEC_GetRef(OpCode).UsePush then   
+        if not PSE2OpSPEC_GetRef(OpCode).UsePush then
            FStack.Pop;
 
         r2 { VarDat[1] } := FStack.PushNew(btPointer);
+        if PSE2OpSPEC_GetRef(OpCode).UsePush then
+           r2.RefContent := True;
+
         PPointer(r2 { VarDat[1] }.tPointer)^ := Pointer(r1 { VarDat[0] });
       end;
   soSPEC_GetProcPtr :
@@ -998,6 +1142,18 @@ begin
 
         Pointer(r1 { VarDat[0] }.tPointer^) := FPackedData.CreateScriptRecord(FExecutionData.AppCode.MetaData[PSE2OpREC_MAKE(OpCode).MetaIndex], FExecutionData.AppCode);
       end;
+  soARR_MAKE :
+      begin
+        r1 := FStack[FStack.Size - PSE2OpARR_MAKE(OpCode).Variables - 1];
+
+        if PSE2OpARR_MAKE(OpCode).MetaIndex = -1 then
+           raise ESE2RunTimeError.Create('Runtime error: Meta index not assigned');
+
+        if r1.AType <> btArray then
+           raise ESE2RunTimeError.Create('Runtime error: stack corrupt');
+
+        Pointer(r1.tPointer^) := FPackedData.CreateScriptArray(FExecutionData.AppCode.MetaData[PSE2OpARR_MAKE(OpCode).MetaIndex], FExecutionData.AppCode);
+      end;
   soMEM_REC_MAKE :
       begin
         // Self - Pointer
@@ -1011,6 +1167,18 @@ begin
 
         Pointer(r1 { VarDat[0] }.tPointer^) := FExecutionData.PackedData.CreateScriptRecord(FExecutionData.AppCode.MetaData[PSE2OpMEM_REC_MAKE(OpCode).MetaIndex], FExecutionData.AppCode);
       end;
+  soMEM_ARR_MAKE :
+      begin
+        r1 := FExecutionData.StaticMemory[FExecutionData.StaticMemory.Size - 1];
+
+        if PSE2OpMEM_ARR_MAKE(OpCode).MetaIndex = -1 then
+           raise ESE2RunTimeError.Create('Runtime error: Meta index not assigned');
+
+        if r1.aType <> btArray then
+           raise ESE2RunTimeError.Create('Runtime error: stack corrupt');
+
+        Pointer(r1.tPointer^) := FExecutionData.PackedData.CreateScriptArrayLength(PSE2OpMEM_ARR_MAKE(OpCode).Variables, FExecutionData.AppCode.MetaData[PSE2OpMEM_ARR_MAKE(OpCode).MetaIndex], FExecutionData.AppCode);
+      end;
   soREC_FREE :
       begin
         r1 { VarDat[0] } := FStack.Items[FStack.Size - 1 + PSE2OpREC_FREE(OpCode).Offset];
@@ -1018,11 +1186,140 @@ begin
         FRecordGC.Delete(Pointer(r1 { VarDat[0] }.tPointer^));
         FPackedData.DestroyScriptRecord(Pointer(r1 { VarDat[0] }.tPointer^));
       end;
+  soARR_FREE :
+      begin
+        r1 { VarDat[0] } := FStack.Items[FStack.Size - 1 + PSE2OpARR_FREE(OpCode).Offset];
+
+        FArrayGC.Delete(Pointer(r1 { VarDat[0] }.tPointer^));
+        FPackedData.DestroyScriptArray(Pointer(r1 { VarDat[0] }.tPointer^));
+      end;
   soMEM_REC_FREE :
-      begin  
+      begin
         r1 { VarDat[0] } := FExecutionData.StaticMemory.Items[FExecutionData.StaticMemory.Size - 1 + PSE2OpMEM_REC_FREE(OpCode).Offset];
 
         FExecutionData.PackedData.DestroyScriptRecord(Pointer(r1 { VarDat[0] }.tPointer^));
+      end;
+  soMEM_ARR_FREE :
+      begin
+        r1 { VarDat[0] } := FExecutionData.StaticMemory.Items[FExecutionData.StaticMemory.Size - 1 + PSE2OpMEM_ARR_FREE(OpCode).Offset];
+
+        FExecutionData.FPackedData.DestroyScriptArray(Pointer(r1 { VarDat[0] }.tPointer^));
+      end;
+  soARR_GLEN    :
+      begin
+        r1 := FStack.Top;
+        if (r1.AType <> btArray) then
+           raise ESE2RunTimeError.Create('Invalid stack element! Expected array');
+
+        CompareInt := FPackedData.GetScriptArrayLength(Pointer(r1.tPointer^));
+        FStack.Pop;
+
+        r2 := FStack.PushNew(btS32);
+        r2^.ts32^ := CompareInt;
+      end;
+  soARR_SLEN    :
+      begin
+        r1 := FStack.List[FStack.Size - 2 + PSE2OpARR_SLEN(OpCode).Offset];
+        r2 := FStack.Top;
+
+        if PSE2OpARR_SLEN(OpCode).MetaIndex = -1 then
+           raise ESE2RunTimeError.Create('Runtime error: Meta index not assigned');
+
+        if r1.AType <> btArray then
+           raise ESE2RunTimeError.Create('Runtime error: stack corrupt');
+
+        case r2.AType of
+        btS8  : CompareInt := r2.tS8^;
+        btU8  : CompareInt := r2.tU8^;
+        btS16 : CompareInt := r2.tS16^;
+        btU16 : CompareInt := r2.tU16^;
+        btS32 : CompareInt := r2.tS32^;
+        btU32 : CompareInt := r2.tU32^;
+        btS64 : CompareInt := r2.tS64^;
+        btU64 : CompareInt := r2.tU64^;
+        else
+           raise ESE2RunTimeError.Create('Runtime error: stack corrupt');
+        end;
+
+        FStack.Pop;
+        PPointer(r1^.tPointer)^ := FPackedData.CreateScriptArrayLength(CompareInt,
+                                        FExecutionData.AppCode.MetaData[PSE2OpARR_SLEN(OpCode).MetaIndex], FExecutionData.AppCode);
+      end;
+  soARR_SFL :
+      begin
+        r1 := FStack.Top;
+
+        if PSE2OpARR_SLEN(OpCode).MetaIndex = -1 then
+           raise ESE2RunTimeError.Create('Runtime error: Meta index not assigned');
+
+         if r1.AType <> btArray then
+           raise ESE2RunTimeError.Create('Runtime error: stack corrupt');
+
+        PPointer(r1^.tPointer)^ := FPackedData.CreateScriptArrayLength(PSE2OpARR_SFL(OpCode).Length,
+                                        FExecutionData.AppCode.MetaData[PSE2OpARR_SFL(OpCode).MetaIndex], FExecutionData.AppCode);
+
+      end;
+  soARR_CHECK_RANGE :
+      begin
+        r1 := FStack.List[FStack.Size - 2];
+        r2 := FStack.Top;
+
+        if not (r1.AType in [btPointer, btArray]) then
+           raise ESE2RunTimeError.Create('Runtime error: array check not possible');
+
+        case r2.AType of
+        btS8  : CompareInt := r2.tS8^;
+        btU8  : CompareInt := r2.tU8^;
+        btS16 : CompareInt := r2.tS16^;
+        btU16 : CompareInt := r2.tU16^;
+        btS32 : CompareInt := r2.tS32^;
+        btU32 : CompareInt := r2.tU32^;
+        btS64 : CompareInt := r2.tS64^;
+        btU64 : CompareInt := r2.tU64^;
+        else
+           raise ESE2RunTimeError.Create('Runtime error: array check not possible');
+        end;
+
+        if PSE2OpARR_CHECK_RANGE(OpCode).ArrayLen >= 0 then
+           Pos[0] := PSE2OpARR_CHECK_RANGE(OpCode).ArrayLen
+        else
+           Pos[0] := FPackedData.GetScriptArrayLength(PPointer(r1^.tPointer)^);
+
+        if (CompareInt < 0) or (CompareInt >= Pos[0]) then
+           raise ERangeError.CreateFmt('Array access out of range! Array size: %d - access to index %d',
+                         [Pos[0], CompareInt]);
+      end;
+  soARR_COPY_TO :
+      begin
+        CompareInt := PSE2OpARR_COPY_TO(OpCode).Target;
+
+        if CompareInt >= 0 then
+           r1 := FExecutionData.StaticMemory[CompareInt]
+        else
+           r1 := FStack[FStack.Size-1 + CompareInt];
+
+        r2 := FStack.Top;
+        case r2.AType of
+        btU8 : CompareInt := r2.tU8^;
+        btS8 : CompareInt := r2.tS8^;
+        btU16 : CompareInt := r2.tU16^;
+        btS16 : CompareInt := r2.tS16^;
+        btU32 : CompareInt := r2.tU32^;
+        btS32 : CompareInt := r2.tS32^;
+        btU64 : CompareInt := r2.tU64^;
+        btS64 : CompareInt := r2.tS64^;
+        else raise ESE2RunTimeError.Create('Stack invalid: array copy not possible');
+        end;
+        FStack.Pop;
+
+        if (not (r1.AType in [btPointer, btArray])) or
+           (FStack.Top.AType <> btArray) then
+           raise ESE2RunTimeError.Create('Array copy not possible');
+
+        if CompareInt < 0 then
+           CompareInt := FPackedData.GetScriptArrayLength(PPointer(FStack.Top.tPointer)^);
+
+        FPackedData.CopyScriptArray(PPointer(FStack.Top.tPointer)^, PPointer(r1.tPointer)^, CompareInt, FExecutionData.AppCode.MetaData[PSE2OpARR_COPY_TO(OpCode).MetaIndex]);
       end;
   soREC_COPY_TO :
       begin
@@ -1033,7 +1330,7 @@ begin
         else
            r1 := FStack[FStack.Size-1 + CompareInt];
 
-        if (r1.AType <> btRecord) or
+        if (not (r1.AType in [btPointer, btRecord])) or
            (FStack.Top.AType <> btRecord) then
            raise ESE2RunTimeError.Create('Record copy not possible');
 
@@ -1048,6 +1345,16 @@ begin
   soREC_DEL_RECS  :
       begin
         RemoveUnusedRecords(PSE2OpREC_DEL_RECS(OpCode).MaxRecords);
+      end;
+  soARR_MARK_DEL :
+      begin
+        r1 { VarDat[0] } := FStack.Top;
+        if r1 { VarDat[0] }.AType = btArray then
+           FArrayGC.Add(PPointer(r1 { VarDat[0] }.tPointer)^, FStack.Size - 1);
+      end;
+  soARR_DEL_ARRS :
+      begin
+        RemoveUnusedArrays(PSE2OpARR_DEL_ARRS(OpCode).MaxArrays);
       end;
   soREC_EQUAL :
       begin
@@ -1213,8 +1520,9 @@ begin
   soNOOP : ;
   end;
 
-  FCodePos := FCodePos + 1;
+  inc(FCodePos);// := FCodePos + 1;
 
+  end;
     except
       on E:Exception do
       begin
@@ -1758,6 +2066,7 @@ var MetaEntry  : TSE2MetaEntry;
       aParamType  : byte;
       Parameter   : TVarRec;
       RecMeta     : TSE2MetaEntry;
+      tmpExtended : Extended;
   begin
     // result
     if MetaEntry.HasResult then
@@ -1812,8 +2121,17 @@ var MetaEntry  : TSE2MetaEntry;
             SetVariableContent(aParamType, vtInteger, Parameter.VPointer);
         btS64, btU64 :
             SetVariableContent(aParamType, vtInt64, Parameter.VPointer);
-        btSingle, btDouble :
-            SetVariableContent(aParamType, btExtended, Parameter.VPointer);
+
+        btSingle :
+            begin
+              tmpExtended := PSingle(Parameter.VPointer)^;
+              SetVariableContent(aParamType, vtExtended, @tmpExtended);
+            end;
+        btDouble :
+            begin
+              tmpExtended := PDouble(Parameter.VPointer)^;
+              SetVariableContent(aParamType, vtExtended, @tmpExtended);
+            end;
         btString, btUTF8String, btAnsiString :
             SetVariableContent(aParamType, vtAnsiString, Parameter.VPointer);
         btWideString :
@@ -2060,6 +2378,7 @@ begin
   FSafeBlocks.Clear;
   FClassGC.Clear;
   FRecordGC.Clear;
+  FArrayGC.Clear;
 end;
 
 procedure TSE2ExecutionContext.SetExecutionData(value: TSE2ExecutionData);

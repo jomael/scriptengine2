@@ -31,6 +31,8 @@ type
     procedure LinkClasses(PE: TSE2PE; AUnit: TSE2Unit);
     procedure LinkRecord(PE: TSE2PE; ARecord: TSE2Record);
     procedure LinkRecords(PE: TSE2PE; AUnit: TSE2Unit);
+    procedure LinkArray(PE: TSE2PE; AArray: TSE2Array);
+    procedure LinkArrays(PE: TSE2PE; AUnit: TSE2Unit);
     procedure LinkMethodVariable(PE: TSE2PE; Method: TSE2MethodVariable); 
     procedure LinkMethodVariables(PE: TSE2PE; AUnit: TSE2Unit);
     procedure LinkGlobalVars(PE: TSE2PE);
@@ -49,11 +51,14 @@ type
     function  GetParentClass(PE: TSE2PE; aClass: TSE2MetaEntry): TSE2MetaEntry;
     function  GetParentRecord(PE: TSE2PE; aRecord: TSE2MetaEntry): TSE2MetaEntry;
     function  GetIndexOfRecord(PE: TSE2PE; aRecord: TSE2Record): integer;
+    function  GetIndexOfArray(PE: TSE2PE; aArray: TSE2Array): integer;
 
     procedure PostLinkClass(PE: TSE2PE; aClass: TSE2MetaEntry);
     procedure PostLinkClasses(PE: TSE2PE);
     procedure PostLinkRecord(PE: TSE2PE; aRecord: TSE2MetaEntry; MetaIndex: integer);
     procedure PostLinkRecords(PE: TSE2PE);
+    procedure PostLinkArray(PE: TSE2PE; aArray: TSE2MetaEntry; MetaIndex: integer);
+    procedure PostLinkArrays(PE: TSE2PE);
     procedure GenCode(PE: TSE2PE; OpCode: PSE2OpDefault);
   public
     constructor Create(const UnitList: TSE2BaseTypeList); reintroduce;
@@ -109,6 +114,9 @@ begin
     LinkRecords(result, TSE2Unit(FUnitList[i]));
 
   for i:=0 to FUnitList.Count-1 do
+    LinkArrays(result, TSE2Unit(FUnitList[i]));
+
+  for i:=0 to FUnitList.Count-1 do
     LinkClasses(result, TSE2Unit(FUnitList[i]));
 
   for i:=0 to FUnitList.Count-1 do
@@ -123,6 +131,7 @@ begin
 
   PostLinkClasses(Result);
   PostLinkRecords(Result);
+  PostLinkArrays(Result);
 
   LinkInitialization(result);
   LinkFinalization(result);
@@ -275,8 +284,20 @@ begin
           SetCodePos(pVar.GenLinkerName, Index, -1, TSE2Variable(AUnit.ElemList[j]).AType);
           GenCode(PE, TSE2OpCodeGen.MEM_MAKE(aType));
           if TSE2Variable(AUnit.ElemList[j]).AType is TSE2Record then
-            GenCode(PE, TSE2OpCodeGen.MEM_REC_MAKE(0, GetIndexOfRecord(PE, TSE2Record(TSE2Variable(AUnit.ElemList[j]).AType))))
+             GenCode(PE, TSE2OpCodeGen.MEM_REC_MAKE(0, GetIndexOfRecord(PE, TSE2Record(TSE2Variable(AUnit.ElemList[j]).AType))))
           else
+          if TSE2Variable(AUnit.ElemList[j]).AType is TSE2Array then
+          begin
+            GenCode(PE, TSE2OpCodeGen.STACK_INC(btArray));
+            if TSE2Array(TSE2Variable(AUnit.ElemList[j]).AType).IsDynamic then
+               GenCode(PE, TSE2OpCodeGen.ARR_MAKE(0, GetIndexOfArray(PE, TSE2Array(TSE2Variable(AUnit.ElemList[j]).AType))))
+            else
+            begin
+              GenCode(PE, TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(TSE2Variable(AUnit.ElemList[j]).AType).ArrayCount));
+              GenCode(PE, TSE2OpCodeGen.ARR_SLEN(0, GetIndexOfArray(PE, TSE2Array(TSE2Variable(AUnit.ElemList[j]).AType))));
+            end;
+            GenCode(PE, TSE2OpCodeGen.DAT_COPY_TO(Index, True));
+          end else
           if (i = 0) and bFirst then
             GenCode(PE, TSE2OpCodeGen.SAVE_INSTANCE)
           else
@@ -330,6 +351,25 @@ begin
   result := FindRecordMeta('META_' + aRecord.GenLinkerName);
 end;
 
+function TSE2Linker.GetIndexOfArray(PE: TSE2PE;
+  aArray: TSE2Array): integer;
+
+  function FindArrayMeta(const MetaName: string): integer;
+  var s: string;
+  begin
+    for result := 0 to PE.MetaData.Count-1 do
+    begin
+      s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
+      if s = MetaName then
+         exit;
+    end;
+    result := -1;
+  end;
+
+begin
+  result := FindArrayMeta('META_' + aArray.GenLinkerName);
+end;
+
 procedure TSE2Linker.LinkMethod(PE: TSE2PE; Method: TSE2Method);
 var CodePos: integer;
     i      : integer;
@@ -357,19 +397,19 @@ var CodePos: integer;
     result := 'META_['+Rec.Name+']['+rec.AUnitName+']';
   end;
 
-  function FindRecordMeta(const MetaName: string; const default: integer = -1): integer;
-  var //s: string;
-      n: integer;
+  function GetArrayMeta(const Arr: TSE2Array): string;
+  begin
+    result := 'META_['+Arr.Name+']['+Arr.AUnitName+']';
+  end;
+
+  function FindMeta(const MetaName: string; const default: integer = -1): integer;
+  var n: integer;
   begin
     n := MakeHash(MetaName);
     for result := 0 to PE.MetaData.Count-1 do
     begin
       if n = PE.MetaData[result].MetaLinkHash then
         if MetaName = PE.MetaData[result].MetaLinkName then
-
-      //s := 'META_['+PE.MetaData[result].Name+']['+PE.MetaData[result].AUnitName+']';
-      //if n = MakeHash(s) then
-        //if s = MetaName then
            exit;
     end;
     result := default;
@@ -418,14 +458,23 @@ begin
   Meta.LibIndex    := Method.ExternalIndex;
 
   if Method.ReturnValue <> nil then
+  begin
     if Method.ReturnValue.AType is TSE2Record then
     begin
-      Meta.RTTI.Add(btRecord, -1, FindRecordMeta(GetRecordMeta(TSE2Record(Method.ReturnValue.AType))));
+      Meta.RTTI.Add(btRecord, -1, FindMeta(GetRecordMeta(TSE2Record(Method.ReturnValue.AType))));
+    end else
+    if Method.ReturnValue.AType is TSE2Array then
+    begin
+      Meta.RTTI.Add(btArray, -1, FindMeta(GetArrayMeta(TSE2Array(Method.ReturnValue.AType))));
     end;
+  end;
 
   for i:=0 to Method.Params.Count-1 do
     if TSE2Parameter(Method.Params[i]).AType is TSE2Record then
-      Meta.RTTI.Add(btRecord, i, FindRecordMeta(GetRecordMeta(TSE2Record(TSE2Parameter(Method.Params[i]).AType))));
+      Meta.RTTI.Add(btRecord, i, FindMeta(GetRecordMeta(TSE2Record(TSE2Parameter(Method.Params[i]).AType))))
+    else
+    if TSE2Parameter(Method.Params[i]).AType is TSE2Array then
+      Meta.RTTI.Add(btArray, i, FindMeta(GetArrayMeta(TSE2Array(TSE2Parameter(Method.Params[i]).AType))));
 
   PE.MetaData.Add(Meta);
 
@@ -476,10 +525,16 @@ begin
       soMETA_PUSH            : PSE2OpMETA_PUSH(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
       soMETA_SHARE           : PSE2OpMETA_SHARE(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
       soMETA_CAST            : PSE2OpMETA_CAST(OpCode.OpCode).MetaIndex := FindClassMeta(OpCode.CodeIndex);
-      soREC_MAKE             : PSE2OpREC_MAKE(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
-      soREC_EQUAL            : PSE2OpREC_EQUAL(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
-      soREC_UNEQUAL          : PSE2OpREC_UNEQUAL(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex);
-      soREC_COPY_TO          : PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex := FindRecordMeta(OpCode.CodeIndex, PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex);
+
+      soREC_MAKE             : PSE2OpREC_MAKE(OpCode.OpCode).MetaIndex := FindMeta(OpCode.CodeIndex);
+      soREC_EQUAL            : PSE2OpREC_EQUAL(OpCode.OpCode).MetaIndex := FindMeta(OpCode.CodeIndex);
+      soREC_UNEQUAL          : PSE2OpREC_UNEQUAL(OpCode.OpCode).MetaIndex := FindMeta(OpCode.CodeIndex);
+      soREC_COPY_TO          : PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex := FindMeta(OpCode.CodeIndex, PSE2OpREC_COPY_TO(OpCode.OpCode).MetaIndex);
+
+      soARR_COPY_TO          : PSE2OpARR_COPY_TO(OpCode.OpCode).MetaIndex := FindMeta(OpCode.CodeIndex, PSE2OpARR_COPY_TO(OpCode.OpCode).MetaIndex);
+      soARR_MAKE             : PSE2OpARR_MAKE(OpCode.OpCode).MetaIndex := FindMeta(OpCode.CodeIndex);
+      soARR_SLEN             : PSE2OpARR_SLEN(OpCode.OpCode).MetaIndex := FindMeta(OpCode.CodeIndex);
+      soARR_SFL              : PSE2OpARR_SFL(OpCode.OpCode).MetaIndex := FindMeta(OpCode.CodeIndex);
       end;
     end;
   end;
@@ -681,6 +736,9 @@ var i, j     : integer;
           if Method.OpCodes[c].OpCode.OpCode = soREC_COPY_TO then
             if TypeMeta is TSE2Type then
                PSE2OpREC_COPY_TO(Method.OpCodes[c].OpCode).MetaIndex := TSE2Type(TypeMeta).MetaIndex;
+          if Method.OpCodes[c].OpCode.OpCode = soARR_COPY_TO then
+            if TypeMeta is TSE2Type then
+               PSE2OpARR_COPY_TO(Method.OpCodes[c].OpCode).MetaIndex := TSE2Type(TypeMeta).MetaIndex;
 
           if DebugPos >= 0 then
           begin
@@ -750,7 +808,12 @@ begin
   case OpCode.OpCode of
   soFLOW_GOTO       : PSE2OpFLOW_GOTO(OpCode)^.Position := PSE2OpFLOW_GOTO(OpCode)^.Position + Offset;
   soFLOW_JIZ        : PSE2OpFLOW_JIZ(OpCode)^.Position  := PSE2OpFLOW_JIZ(OpCode)^.Position + Offset;
-  soFLOW_JNZ        : PSE2OpFLOW_JNZ(OpCode)^.Position  := PSE2OpFLOW_JNZ(OpCode)^.Position + Offset;
+  soFLOW_JNZ        : PSE2OpFLOW_JNZ(OpCode)^.Position  := PSE2OpFLOW_JNZ(OpCode)^.Position + Offset;   
+  soFLOW_JGZ        : PSE2OpFLOW_JGZ(OpCode)^.Position  := PSE2OpFLOW_JGZ(OpCode)^.Position + Offset;
+  soFLOW_JGEZ       : PSE2OpFLOW_JGEZ(OpCode)^.Position := PSE2OpFLOW_JGEZ(OpCode)^.Position + Offset;
+  soFLOW_JLZ        : PSE2OpFLOW_JLZ(OpCode)^.Position  := PSE2OpFLOW_JLZ(OpCode)^.Position + Offset;
+  soFLOW_JLEZ       : PSE2OpFLOW_JLEZ(OpCode)^.Position := PSE2OpFLOW_JLEZ(OpCode)^.Position + Offset;
+
   soFLOW_CALL       : PSE2OpFLOW_CALL(OpCode)^.Position := PSE2OpFLOW_CALL(OpCode)^.Position + Offset;
   soFLOW_PUSHRET    : PSE2OpFLOW_PUSHRET(OpCode)^.Position := PSE2OpFLOW_PUSHRET(OpCode)^.Position + Offset;
   soSAFE_BLOCK      : PSE2OpSAFE_BLOCK(OpCode)^.SkipPoint := PSE2OpSAFE_BLOCK(OpCode)^.SkipPoint + Offset;
@@ -804,12 +867,22 @@ begin
     for j:=0 to TSE2Unit(FUnitList[i]).ElemList.Count-1 do
       if TSE2Unit(FUnitList[i]).ElemList[j] is TSE2Variable then
         if TSE2Variable(TSE2Unit(FUnitList[i]).ElemList[j]).IsStatic then
+        begin
           if TSE2Variable(TSE2Unit(FUnitList[i]).ElemList[j]).AType is TSE2Record then
           begin
             iPos := TSE2Variable(TSE2Unit(FUnitList[i]).ElemList[j]).CodePos;
             iPos := numStatic - iPos;
             GenCode(PE, TSE2OpCodeGen.MEM_REC_FREE( -iPos + 1 ));
+          end else
+          if TSE2Variable(TSE2Unit(FUnitList[i]).ElemList[j]).AType is TSE2Array then
+          begin
+            iPos := TSE2Variable(TSE2Unit(FUnitList[i]).ElemList[j]).CodePos;
+            //iPos := numStatic - iPos;
+            GenCode(PE, TSE2OpCodeGen.DAT_COPY_FROM( iPos, True));
+            GenCode(PE, TSE2OpCodeGen.ARR_FREE( 0 ));
+            GenCode(PE, TSE2OpCodeGen.STACK_DEC);
           end;
+        end;
 
   // no unlink of global variables - this is done by the runtime automatically
 
@@ -1545,7 +1618,7 @@ var i: integer;
     for m:=0 to PE.MetaData.Count-1 do
     begin
       meta := PE.MetaData[m];
-      if (meta.MetaType = mtRecord) or (meta.MetaType = mtClass) then
+      if (meta.MetaType = mtRecord) or (meta.MetaType = mtClass) or (meta.MetaType = mtArray) then
       begin
         for i:=0 to meta.RTTI.Count-1 do
         begin
@@ -1645,5 +1718,103 @@ begin
     ProcessUnit(TSE2Unit(FUnitList[i]));
 end;
 {$ENDIF}
+
+procedure TSE2Linker.LinkArray(PE: TSE2PE; AArray: TSE2Array);
+var Meta   : TSE2MetaEntry;
+
+  procedure LinkArrayRTTI(AArray: TSE2Array);
+  var p: PSE2ClassRTTIEntry;
+      i: integer;
+  begin
+    for i:=0 to AArray.RTTI.Count-1 do
+    begin
+      p := AArray.RTTI[i];
+      Meta.RTTI.Add(p^.aType, p^.Offset, p^.Size);
+    end;
+
+    if AArray.InheritFrom is TSE2Array then
+       LinkArrayRTTI(TSE2Array(AArray.InheritFrom));
+
+  end;
+
+begin
+  Meta := TSE2MetaEntry.Create;
+  Meta.MetaType := mtArray;
+  Meta.Name     := AArray.Name;
+  Meta.AUnitName := AArray.AUnitName;
+  Meta.CodePos  := integer(AArray); //AClass.Variables;
+  Meta.SourcePos  := AArray.DeclPos;
+  Meta.SourceLine := AArray.DeclLine;
+  if AArray.IsDynamic then
+     Meta.ParamCount := -1
+  else
+     Meta.ParamCount := AArray.ArraySize;
+  Meta.DynMethods.Count := 0; //ARecord.DynMethods;
+  Meta.DynIndex := AArray.ElemSize;
+  Meta.MetaLinkName := 'META_['+Meta.Name+']['+Meta.AUnitName+']';
+
+  if AArray.InheritFrom is TSE2Array then
+     Meta.ParamDecl := AnsiString(AArray.InheritFrom.AUnitName + '.' + AArray.InheritFrom.Name);
+
+  LinkArrayRTTI(AArray);
+
+  AArray.MetaIndex := PE.MetaData.Count;
+  PE.MetaData.Add(Meta);
+end;
+
+procedure TSE2Linker.LinkArrays(PE: TSE2PE; AUnit: TSE2Unit);
+var i       : integer;
+    AArray  : TSE2Array;
+begin
+  for i:=0 to AUnit.TypeList.Count-1 do
+  begin
+    if AUnit.TypeList[i] is TSE2Array then
+    begin
+      AArray := TSE2Array(AUnit.TypeList[i]);
+      LinkArray(PE, AArray);
+    end;
+  end;
+end;
+
+procedure TSE2Linker.PostLinkArray(PE: TSE2PE; aArray: TSE2MetaEntry;
+  MetaIndex: integer);
+var i: integer;
+
+  procedure UpdateArrayRTTI(MetaIndex: integer; AArray: integer);
+  var i, m : integer;
+      meta : TSE2MetaEntry;
+      p    : PSE2RTTIEntry;
+  begin
+    for m:=0 to PE.MetaData.Count-1 do
+    begin
+      meta := PE.MetaData[m];
+      if (meta.MetaType = mtRecord) or (meta.MetaType = mtClass) or (meta.MetaType = mtArray) then
+      begin
+        for i:=0 to meta.RTTI.Count-1 do
+        begin
+          p := meta.RTTI[i];
+          if p^.AType = btArray then
+            if p^.Size = AArray then
+              meta.RTTI[i].Size := MetaIndex;
+        end;
+      end;
+    end;
+  end;
+
+
+begin
+  for i:=0 to PE.MetaData.Count-1 do
+    UpdateArrayRTTI(MetaIndex, AArray.CodePos);
+
+  AArray.CodePos := -1;
+end;
+
+procedure TSE2Linker.PostLinkArrays(PE: TSE2PE);
+var i: integer;
+begin
+  for i:=0 to PE.MetaData.Count-1 do
+    if PE.MetaData[i].MetaType = mtArray then
+      PostLinkArray(PE, PE.MetaData[i], i);
+end;
 
 end.

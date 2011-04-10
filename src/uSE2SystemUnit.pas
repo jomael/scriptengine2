@@ -13,6 +13,7 @@ type
     class procedure FillBaseTypes(AUnit: TSE2Unit);
     class function  FillTObject(AUnit: TSE2Unit): TSE2Class;
     class procedure FillTExternalObject(AUnit: TSE2Unit; pTObject: TSE2Class);
+    class procedure FillTBaseArray(AUnit: TSE2Unit);
   public
     class procedure FillSystemUnit(AUnit: TSE2Unit);
   end;
@@ -135,14 +136,212 @@ begin
   DoAddType(C_SE2Double, btDouble, SizeOf(Double), visPublic, nil, 'Represents a double precision floating point value');
 
   DoAddType('Pointer', btPointer, SizeOf(Pointer), visPublic, nil, 'Represents a pointer to any value');
+end;
 
-  (*SetCompatible('byte'    , ['shortint', 'word', 'smallint', 'cardinal', 'integer', 'int64']);
-  SetCompatible('shortint', ['byte', 'word', 'smallint', 'cardinal', 'integer', 'int64']);
-  SetCompatible('word'    , ['byte', 'shortint', 'smallint', 'cardinal', 'integer', 'int64']);
-  SetCompatible('smallint', ['byte', 'shortint', 'word', 'cardinal', 'integer', 'int64']);
-  SetCompatible('cardinal', ['byte', 'shortint', 'word', 'smallint', 'integer', 'int64']);
-  SetCompatible('integer' , ['byte', 'shortint', 'word', 'smallint', 'cardinal', 'int64']);
-  SetCompatible('int64'   , ['byte', 'shortint', 'word', 'smallint', 'cardinal', 'integer']);         *)
+class procedure TSE2SystemUnit.FillTBaseArray(AUnit: TSE2Unit);
+var aArray  : TSE2Array;
+    method  : TSE2Method;
+    param   : TSE2Parameter;
+    prop    : TSE2Property;
+
+  function FindType(const Name: string): TSE2Type;
+  var i: integer;
+  begin
+    for i:=0 to AUnit.TypeList.Count-1 do
+      if AUnit.TypeList[i].IsName(Name) then
+        if AUnit.TypeList[i] is TSE2Type then
+        begin
+          result := TSE2Type(AUnit.TypeList[i]);
+          exit;
+        end;
+    result := nil;
+  end;
+
+begin
+  aArray := TSE2Array.Create;
+  aArray.Name        := C_SE2BaseSystemArray;
+  aArray.AUnitName    := C_SE2SystemUnitName;
+  aArray.AType       := btArray;
+  aArray.Visibility  := visPublic;
+  aArray.Content.AType   := nil;
+  aArray.ArrayCount  := 0;
+  aArray.ArraySize   := 0;
+  aArray.IsDynamic   := False;
+  AUnit.TypeList.Add(aArray);
+  aArray.InlineDoc   := 'The basic array definition for every script array';
+
+  { MIN Index }
+  method := TSE2Method.Create;
+  AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Returns the minimum index of the array';
+  method.Parent       := aArray;
+  method.Name         := 'GetMinIndex';
+  method.AUnitName     := C_SE2SystemUnitName;
+  method.IsStatic     := False;
+  method.MethodType   := mtFunction;
+  method.IsExternal   := False;
+  method.CallConvention := callRegister;
+  method.Visibility     := visPrivate;
+
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(0), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-3, False), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+
+  Param := TSE2Parameter.Create;
+  param.Name := 'Self';
+  param.AUnitName := C_SE2SystemUnitName;
+  Param.Visibility  := visPublic;
+  Param.Parent := Method;
+  Param.AType  := aArray;
+  Param.Visibility := visPrivate;
+  Param.IsStatic   := False;
+  Param.Visibility := visProtected;
+  Method.Params.Insert(0, Param);
+
+  method.ReturnValue          := TSE2Variable.Create;
+  method.ReturnValue.Name     := 'result';
+  method.ReturnValue.AUnitName := C_SE2SystemUnitName;
+  method.ReturnValue.AType    := FindType(C_SE2Int32);
+  method.ReturnValue.Visibility := visPublic;
+
+  prop := TSE2Property.Create;
+  AUnit.ElemList.Add(prop);
+  prop.Parent := aArray;
+  prop.Name := 'MinIndex';
+  prop.AUnitName := C_SE2SystemUnitName;
+  prop.IsStatic := False;
+  prop.Getter := method;
+  prop.AType := method.ReturnValue.AType;
+  prop.Visibility := visPublic;
+  
+  { MAX Index }
+  method := TSE2Method.Create;
+  AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Returns the maximum index of the array';
+  method.Parent       := aArray;
+  method.Name         := 'GetMaxIndex';
+  method.AUnitName     := C_SE2SystemUnitName;
+  method.IsStatic     := False;
+  method.MethodType   := mtFunction;
+  method.IsExternal   := False;    
+  method.CallConvention := callRegister;
+  method.Visibility     := visPrivate;
+
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(0), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-3, False), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+
+  Param := TSE2Parameter.Create;
+  param.Name := 'Self';
+  param.AUnitName := C_SE2SystemUnitName;
+  Param.Visibility  := visPublic;
+  Param.Parent := Method;
+  Param.AType  := aArray;
+  Param.Visibility := visPrivate;
+  Param.IsStatic   := False;
+  Param.Visibility := visProtected;
+  Method.Params.Insert(0, Param);
+
+  method.ReturnValue          := TSE2Variable.Create;
+  method.ReturnValue.Name     := 'result';
+  method.ReturnValue.AUnitName := C_SE2SystemUnitName;
+  method.ReturnValue.AType    := FindType(C_SE2Int32);
+  method.ReturnValue.Visibility := visPublic;
+
+  prop := TSE2Property.Create;
+  AUnit.ElemList.Add(prop);
+  prop.Parent := aArray;
+  prop.Name := 'MaxIndex';
+  prop.AUnitName := C_SE2SystemUnitName;
+  prop.IsStatic := False;
+  prop.Getter := method;
+  prop.AType := method.ReturnValue.AType;
+  prop.Visibility := visPublic;
+
+  { Array length }
+  method := TSE2Method.Create;
+  AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Returns the length of the array';
+  method.Parent       := aArray;
+  method.Name         := 'GetLength';
+  method.AUnitName     := C_SE2SystemUnitName;
+  method.IsStatic     := False;
+  method.MethodType   := mtFunction;
+  method.IsExternal   := False;    
+  method.CallConvention := callRegister;
+  method.Visibility     := visPrivate;
+
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(0), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-3, False), ''));
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+
+  Param := TSE2Parameter.Create;
+  param.Name := 'Self';
+  param.AUnitName := C_SE2SystemUnitName;
+  Param.Visibility  := visPublic;
+  Param.Parent := Method;
+  Param.AType  := aArray;
+  Param.Visibility := visPrivate;
+  Param.IsStatic   := False;
+  Param.Visibility := visProtected;
+  Method.Params.Insert(0, Param);
+
+  method.ReturnValue          := TSE2Variable.Create;
+  method.ReturnValue.Name     := 'result';
+  method.ReturnValue.AUnitName := C_SE2SystemUnitName;
+  method.ReturnValue.AType    := FindType(C_SE2Int32);
+  method.ReturnValue.Visibility := visPublic;
+
+  prop := TSE2Property.Create;
+  AUnit.ElemList.Add(prop);
+  prop.Parent := aArray;
+  prop.Name := 'Length';
+  prop.AUnitName := C_SE2SystemUnitName;
+  prop.IsStatic := False;
+  prop.Getter := method;
+  prop.AType := method.ReturnValue.AType;
+  prop.Visibility := visPublic;
+
+  { Length Setter }
+  method := TSE2Method.Create;
+  AUnit.ElemList.Add(method);
+  method.InlineDoc    := 'Set the length of the array';
+  method.Parent       := aArray;
+  method.Name         := 'SetLength';
+  method.AUnitName     := C_SE2SystemUnitName;
+  method.IsStatic     := False;
+  method.MethodType   := mtProcedure;
+  method.IsExternal   := False;    
+  method.CallConvention := callRegister;
+  method.Visibility     := visPrivate;
+
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
+
+  Param := TSE2Parameter.Create;
+  param.Name := 'Self';
+  param.AUnitName := C_SE2SystemUnitName;
+  Param.Visibility  := visPublic;
+  Param.Parent := Method;
+  Param.AType  := aArray;
+  Param.Visibility := visPrivate;
+  Param.IsStatic   := False;
+  Param.Visibility := visProtected;
+  method.Params.Insert(0, Param);
+
+  Param := TSE2Parameter.Create;
+  param.Name := 'newLength';
+  param.AUnitName := C_SE2SystemUnitName;
+  Param.Visibility  := visPublic;
+  Param.Parent := Method;
+  Param.AType  := FindType(C_SE2Int32);
+  Param.Visibility := visPrivate;
+  Param.IsStatic   := False;
+  Param.Visibility := visProtected;
+  method.Params.Add(param);
+
+  prop.Setter := method;
+
+
 end;
 
 class function TSE2SystemUnit.FillTObject(AUnit: TSE2Unit): TSE2Class;
@@ -172,6 +371,7 @@ begin
   aClass.AType       := btObject;
   aClass.Visibility  := visPublic;
   aClass.DataSize    := SizeOf(Pointer);
+  aClass.ClassSize   := 0; //SizeOf(Pointer); // GC-Node
   AUnit.TypeList.Add(aClass);
   aClass.InlineDoc   := 'The basic class definition for every script class';
 
@@ -311,7 +511,7 @@ begin
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btPointer), ''));
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetPtr(nil), ''));
-  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));   
+  method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_COMPARE(6), ''));
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(-3, False), ''));
   method.OpCodes.Add(TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_RET, ''));
 
@@ -686,6 +886,7 @@ begin
   AUnit.IsProgram  := False;
 
   FillBaseTypes(AUnit);
+  FillTBaseArray(AUnit);
   FillTExternalObject(AUnit, FillTObject(AUnit));
 end;
 
@@ -752,7 +953,140 @@ begin
   '  Int    = int32;'+#13#10+
   '  IntPtr = int64;'+#13#10+
   #13#10+
-  'implementation end.';
+  'procedure Inc(var i: byte); overload;' + #13#10 + 
+  'procedure Inc(var i: Shortint); overload;' + #13#10 +
+  'procedure Inc(var i: word); overload;' + #13#10 + 
+  'procedure Inc(var i: Smallint); overload;' + #13#10 + 
+  'procedure Inc(var i: Cardinal); overload;' + #13#10 + 
+  'procedure Inc(var i: Integer); overload;' + #13#10 + 
+  'procedure Inc(var i: UInt64); overload;' + #13#10 + 
+  'procedure Inc(var i: Int64); overload;' + #13#10 + 
+  #13#10 + 
+  'procedure Dec(var i: byte); overload;' + #13#10 + 
+  'procedure Dec(var i: Shortint); overload;' + #13#10 + 
+  'procedure Dec(var i: word); overload;' + #13#10 + 
+  'procedure Dec(var i: Smallint); overload;' + #13#10 + 
+  'procedure Dec(var i: Cardinal); overload;' + #13#10 + 
+  'procedure Dec(var i: Integer); overload;' + #13#10 + 
+  'procedure Dec(var i: UInt64); overload;' + #13#10 + 
+  'procedure Dec(var i: Int64); overload;' + #13#10 + 
+  #13#10 + 
+  'procedure Inc(var i: byte; delta: byte); overload;' + #13#10 + 
+  'procedure Inc(var i: Shortint; delta: Shortint); overload;' + #13#10 + 
+  'procedure Inc(var i: word; delta: Word); overload;' + #13#10 + 
+  'procedure Inc(var i: Smallint; delta: Smallint); overload;' + #13#10 + 
+  'procedure Inc(var i: Cardinal; delta: Cardinal); overload;' + #13#10 + 
+  'procedure Inc(var i: Integer; delta: Integer); overload;' + #13#10 + 
+  'procedure Inc(var i: UInt64; delta: UInt64); overload;' + #13#10 + 
+  'procedure Inc(var i: Int64; delta: Int64); overload;' + #13#10 + 
+  #13#10 +
+  'procedure Dec(var i: byte; delta: byte); overload;' + #13#10 +
+  'procedure Dec(var i: Shortint; delta: Shortint); overload;' + #13#10 +
+  'procedure Dec(var i: word; delta: Word); overload;' + #13#10 +
+  'procedure Dec(var i: Smallint; delta: Smallint); overload;' + #13#10 +
+  'procedure Dec(var i: Cardinal; delta: Cardinal); overload;' + #13#10 +
+  'procedure Dec(var i: Integer; delta: Integer); overload;' + #13#10 +
+  'procedure Dec(var i: UInt64; delta: UInt64); overload;' + #13#10 +
+  'procedure Dec(var i: Int64; delta: Int64); overload;' + #13#10 +
+  'implementation'+#13#10+
+  #13#10+
+  'procedure Inc(var i: byte);' + #13#10 +
+  'begin i := i + 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Shortint);' + #13#10 +
+  'begin i := i + 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: word);' + #13#10 +
+  'begin i := i + 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Smallint);' + #13#10 +
+  'begin i := i + 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Cardinal);' + #13#10 +
+  'begin i := i + 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Integer);' + #13#10 +
+  'begin i := i + 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: UInt64);' + #13#10 +
+  'begin i := i + 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Int64);' + #13#10 +
+  'begin i := i + 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: byte);' + #13#10 +
+  'begin i := i - 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Shortint);' + #13#10 +
+  'begin i := i - 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: word);' + #13#10 +
+  'begin i := i - 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Smallint);' + #13#10 +
+  'begin i := i - 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Cardinal);' + #13#10 +
+  'begin i := i - 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Integer);' + #13#10 +
+  'begin i := i - 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: UInt64);' + #13#10 +
+  'begin i := i - 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Int64);' + #13#10 +
+  'begin i := i - 1; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: byte; delta: byte);' + #13#10 +
+  'begin i := i + delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Shortint; delta: Shortint);' + #13#10 +
+  'begin i := i + delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: word; delta: Word);' + #13#10 +
+  'begin i := i + delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Smallint; delta: Smallint);' + #13#10 +
+  'begin i := i + delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Cardinal; delta: Cardinal);' + #13#10 +
+  'begin i := i + delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Integer; delta: integer);' + #13#10 +
+  'begin i := i + delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: UInt64; delta: UInt64);' + #13#10 +
+  'begin i := i + delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Inc(var i: Int64; delta: Int64);' + #13#10 +
+  'begin i := i + delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: byte; delta: Byte);' + #13#10 +
+  'begin i := i - delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Shortint; delta: Shortint);' + #13#10 +
+  'begin i := i - delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: word; delta: word);' + #13#10 +
+  'begin i := i - delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Smallint; delta: Smallint);' + #13#10 +
+  'begin i := i - delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Cardinal; delta: cardinal);' + #13#10 +
+  'begin i := i - delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Integer; delta: integer);' + #13#10 +
+  'begin i := i - delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: UInt64; delta: UInt64);' + #13#10 +
+  'begin i := i - delta; end;' + #13#10 +
+  #13#10 +
+  'procedure Dec(var i: Int64; delta: Int64);' + #13#10 +
+  'begin i := i - delta; end;' + #13#10 +
+  #13#10 +
+  'end.';
 end;
 
 procedure RegisterUnit;

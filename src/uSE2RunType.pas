@@ -116,7 +116,7 @@ type
     class procedure PAnsiCharToChar(Input, Output: Pointer);
     class procedure PAnsiCharToAnsiString(Input, Output: Pointer);
     class procedure PAnsiCharToPWideChar(Input, Output: Pointer);
-    { PWideChar }      
+    { PWideChar }
     class procedure PWideCharToString(Input, Ouptut: Pointer);
     class procedure PWideCharToUTF8(Input, Output: Pointer);
     class procedure PWideCharToWide(Input, Output: Pointer);
@@ -855,7 +855,7 @@ procedure TSE2VarHelper.CreateVarContent(Data: PSE2VarData;
 var pS : PbtString;
     pW : PbtWideString;
     pU : PbtUTF8String;
-    pC : PbtPChar;    
+    pC : PbtPChar;
     pAS: PbtAnsiString;
     pAC: PbtPAnsiChar;
     pWC: PbtPWideChar;
@@ -893,7 +893,7 @@ begin
         New(pC);
         pC^ := '';
         Pointer(Data.tString^) := pC;
-      end;    
+      end;
   btAnsiString :
       begin
         New(pAS);
@@ -1284,7 +1284,7 @@ procedure TSE2VarPool.Clear;
 var i: integer;
 begin
   for i:=FCounter-1 downto 0 do
-    FVarHelp.FreeVarData(FList[i]);
+    FVarHelp.FreeVarData(FList.List[i]);
   FCounter := 0;
   FList.Clear;
 {$ELSE}
@@ -1327,7 +1327,7 @@ var Difference : integer;
 begin
   for i:=FCounter to FMaxCount - 1 do
   begin
-    FList[i] := FVarHelp.CreateVarData($FF);
+    FList.List[i] := FVarHelp.CreateVarData($FF);
   end;
   FCounter := FMaxCount;
   exit;
@@ -1336,7 +1336,7 @@ begin
   begin
     for i:=0 to Difference do
     begin
-      FList[FCounter] := FVarHelp.CreateVarData($FF);
+      FList.List[FCounter] := FVarHelp.CreateVarData($FF);
       FCounter := FCounter + 1;
     end;
   end;
@@ -1354,21 +1354,22 @@ begin
     result := FVarHelp.CreateVarData(AType);
     result.RefCounter := 1;
   {$IFDEF SEII_STACK_USE_CACHE}
-    exit;
-  end;
+  end else
+  begin
   {$ENDIF}
 
   {$IFDEF SEII_STACK_USE_CACHE}
-  FCounter := FCounter - 1;
-  result := FList[FCounter];
-  //FList.Delete(FList.Count - 1);
+    dec(FCounter);
+    result := FList.List[FCounter];
 
-  result.AType      := AType;
-  result.RefCounter := 1;
-  FVarHelp.CreateVarContent(result);
+    result.AType      := AType;
+    result.RefCounter := 1;
+    FVarHelp.CreateVarContent(result);
   {$ENDIF}
 
-  //ManagePool;
+  {$IFDEF SEII_STACK_USE_CACHE}
+  end;
+  {$ENDIF}
 end;
 
 procedure TSE2VarPool.Push(const Data: PSE2VarData);
@@ -1378,8 +1379,8 @@ begin
   begin
     FVarHelp.FreeVarContent(Data);
     Data.RefContent := False;
-    FList[FCounter] := (Data);
-    FCounter := FCounter + 1;
+    FList.List[FCounter] := (Data);
+    inc(FCounter);
   end else
   {$ENDIF}
     FVarHelp.FreeVarData(Data);
@@ -1463,53 +1464,22 @@ end;
 procedure TSE2Stack.Pop;
 var p: PSE2VarData;
 begin
-  if Self.Count = 0 then
-     exit;
-
-  p := inherited Items[FSize - 1];
-  p^.RefCounter := p^.RefCounter - 1;
-
-  if p^.RefCounter = 0 then
-     FPool.Push(p);
-
-  FSize := FSize - 1;
-  FTop  := List[FSize - 1];
-
-  //ManageStack;
-end;
-
-(*procedure TSE2Stack.Pop(index: integer);
-var p: PSE2VarData;
-begin
-  if index = FSize - 1 then
-     Pop
-  else
+  if Count > 0 then
   begin
-    if (index >= 0) and (index < FSize) then
-    begin
-      p := FList[index];
-      p^.RefCounter := p^.RefCounter - 1;
+    p := List[FSize - 1]; // inherited Items[FSize - 1];
+    dec(p^.RefCounter);
 
-      if p^.RefCounter = 0 then
-         FPool.Push(p);
+    if p^.RefCounter = 0 then
+       FPool.Push(p);
 
-      FList[index] := nil;
-    end;
+    dec(FSize);
+    if FSize > 0 then
+       FTop  := List[FSize - 1]
+    else
+       FTop  := nil;
   end;
-end;*)
-
-{procedure TSE2Stack.PopNoDel;
-begin
-  Pop;
-  //FSize := FSize - 1;
   //ManageStack;
 end;
-
-procedure TSE2Stack.PopNoDel(index: integer);
-begin
-  if index = FSize - 1 then
-     PopNoDel;
-end;  }
 
 procedure TSE2Stack.Push(Data: PSE2VarData);
 begin
@@ -1517,8 +1487,8 @@ begin
      ManageStack;
   FSize := FSize + 1;
 
-  inherited Items[FSize - 1] := Data;
-  Data^.RefCounter := Data^.RefCounter + 1;
+  List[FSize - 1] := Data;
+  inc(Data^.RefCounter);
   FTop := Data;
 end;
 
@@ -1526,10 +1496,10 @@ function TSE2Stack.PushNew(AType: TSE2TypeIdent): PSE2VarData;
 begin
   if Self.Count <= FSize + 1 then
      ManageStack;
-  FSize := FSize + 1;
+  inc(FSize);
 
   result           := FPool.Pop(AType);
-  inherited Items[FSize - 1] := result;
+  List[FSize - 1]  := result;
   FTop := result;
 end;
 
@@ -1881,7 +1851,7 @@ end;
 procedure TSE2ClassGC.Add(ptr: pointer);
 begin
   if ptr <> nil then
-    if FList.IndexOf(ptr) < 0 then
+    if IndexOf(ptr) < 0 then
        FList.Add(ptr);
 end;
 
@@ -1899,7 +1869,7 @@ end;
 procedure TSE2ClassGC.Delete(ptr: pointer);
 var i: integer;
 begin
-  i := FList.IndexOf(ptr);
+  i := IndexOf(ptr);
   if i > -1 then
      FList.Delete(i);
 end;
@@ -1926,12 +1896,15 @@ begin
   if (index < 0) or (index >= FList.Count) then
      result := nil
   else
-     result := Flist[index];
+     result := Flist.List[index];
 end;
 
 function TSE2ClassGC.IndexOf(ptr: Pointer): integer;
 begin
-  result := FList.IndexOf(ptr);
+  for result := FList.Count-1 downto 0 do
+    if FList.List[result] = ptr then
+      exit;
+  result := -1;
 end;
 
 { TSE2RecordGC }
@@ -1949,7 +1922,7 @@ procedure TSE2RecordGC.Clear;
 var i: integer;
 begin
   for i:=FList.Count-1 downto 0 do
-    Dispose(PSE2RecordGCEntry(FList[i]));
+    Dispose(PSE2RecordGCEntry(FList.List[i]));
   FList.Clear;
 end;
 
@@ -1962,7 +1935,7 @@ end;
 procedure TSE2RecordGC.Delete(index: integer);
 var p: PSE2RecordGCEntry;
 begin
-  p := FList[index];
+  p := FList.List[index];
   Flist.Delete(index);
   Dispose(p);
 end;
@@ -1992,15 +1965,15 @@ begin
   if (index < 0) or (index >= FList.Count) then
      result := nil
   else
-     result := Flist[index];
+     result := Flist.List[index];
 end;
 
 function TSE2RecordGC.IndexOf(ptr: Pointer; StackSize: integer): integer;
 begin
   for result := FList.Count-1 downto 0 do
   begin
-    if PSE2RecordGCEntry(FList[result])^.Ptr = ptr then
-      if PSE2RecordGCEntry(FList[result])^.StackSize = StackSize then
+    if PSE2RecordGCEntry(FList.List[result])^.Ptr = ptr then
+      if PSE2RecordGCEntry(FList.List[result])^.StackSize = StackSize then
          exit;
   end;
   result := -1;
@@ -2010,7 +1983,7 @@ function TSE2RecordGC.IndexOf(ptr: Pointer): integer;
 begin
   for result := FList.Count-1 downto 0 do
   begin
-    if PSE2RecordGCEntry(FList[result])^.Ptr = ptr then
+    if PSE2RecordGCEntry(FList.List[result])^.Ptr = ptr then
        exit;
   end;
   result := -1;
@@ -2067,7 +2040,7 @@ var i: integer;
 begin
   for i:=FList.Count-1 downto 0 do
   begin
-    p := FList[i];
+    p := FList.List[i];
     Dispose(p);
   end;
   FList.Clear;
@@ -2093,7 +2066,7 @@ begin
   isUnknown := False;
   for i := FList.Count-1 downto 0 do
   begin
-    p := FList[i];
+    p := FList.List[i];
     if p.AClass = Ex then
     begin
       result := p^.Meta;
@@ -2103,7 +2076,7 @@ begin
 
   for i := FList.Count-1 downto 0 do
   begin
-    p := FList[i];
+    p := FList.List[i];
     if Ex.InheritsFrom(p.AClass) then
     begin
       result := p^.Meta;
@@ -2113,7 +2086,7 @@ begin
 
   for i := 0 to FList.Count-1 do
   begin
-    p := FList[i];
+    p := FList.List[i];
     if SameText(p^.Meta.AUnitName, C_SE2SystemUnitName) then
       if SameText(p^.Meta.Name, C_SE2ExceptUnknown) then
       begin        

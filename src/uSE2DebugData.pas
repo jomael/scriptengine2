@@ -39,10 +39,11 @@ const
                 'soSTACK_DEC', 'soSTACK_DEC_NODEL', 'soSTACK_DEC_COUNT',
 
                 // Memory Methods
-                'soMEM_MAKE', 'soMEM_REC_MAKE', 'soMEM_REC_FREE',
+                'soMEM_MAKE', 'soMEM_REC_MAKE', 'soMEM_REC_FREE', 'soMEM_ARR_MAKE', 'soMEM_ARR_FREE', 
 
                 // Program execution flow
-                'soFLOW_GOTO', 'soFLOW_JIZ', 'soFLOW_JNZ', 'soFLOW_CALL', 'soFLOW_CALLEX', 'soFLOW_CALLDYN', 'soFLOW_CALLPTR',
+                'soFLOW_GOTO', 'soFLOW_JIZ', 'soFLOW_JNZ', 'soFLOW_JGZ', 'soFLOW_JGEZ',
+                'soFLOW_JLZ', 'soFLOW_JLEZ', 'soFLOW_CALL', 'soFLOW_CALLEX', 'soFLOW_CALLDYN', 'soFLOW_CALLPTR',
                 'soFLOW_CALLPEX', 'soFLOW_RET', 'soFLOW_PUSHRET',
 
                 // Aritmetic operation
@@ -66,12 +67,16 @@ const
                 'soDAT_PUSHPtr', 'soDAT_PUSHRES',
 
                 // Special Data
-                'soSPEC_INCP', 'soSPEC_CREATE', 'soSPEC_DESTROY', 'soSPEC_UNREF', 'soSPEC_DECP',
+                'soSPEC_INCP', 'soSPEC_INCPD', 'soSPEC_CREATE', 'soSPEC_DESTROY', 'soSPEC_UNREF', 'soSPEC_DECP',
                 'soSPEC_GetRef', 'soSPEC_GetProcPtr',
 
                 // Record Data
                 'soREC_MAKE', 'soREC_FREE', 'soREC_COPY_TO', 'soREC_MARK_DEL', 'soREC_DEL_RECS',
                 'soREC_EQUAL', 'soREC_UNEQUAL',
+                
+                // Array Data
+                'soARR_MAKE', 'soARR_FREE', 'soARR_GLEN', 'soARR_SLEN', 'soARR_SFL', 'soARR_MARK_DEL',
+                'soARR_DEL_ARRS', 'soARR_COPY_TO', 'soARR_CHECK_RANGE',
 
                 // integer increment
                 'soINT_INCSTATIC', 'soINT_INCSTACK',
@@ -135,7 +140,7 @@ begin
   soDAT_LOADEX           : result := 'LOAD EX';
 
 
-  soDAT_PUSHInt32        : result := Format('PUSH Int32 [%d]', [PSE2OpDAT_PUSHInt32(OpCode).Value]);   
+  soDAT_PUSHInt32        : result := Format('PUSH Int32 [%d]', [PSE2OpDAT_PUSHInt32(OpCode).Value]);
   soDAT_PUSHInt64        : result := Format('PUSH Int64 [%d]', [PSE2OpDAT_PUSHInt64(OpCode).Value]);  
   soDAT_PUSHUInt64       : result := Format('PUSH UInt64 [%u]', [PSE2OpDAT_PUSHUInt64(OpCode).Value]);  
   soDAT_PUSHFloat4       : result := Format('PUSH single [%n]', [PSE2OpDAT_PUSHFloat4(OpCode).Value]); 
@@ -143,10 +148,12 @@ begin
   soDAT_PUSHPtr          : result := Format('PUSH ptr [%x]', [PtrInt(PSE2OpDAT_PUSHPtr(OpCode).Value)]);
   soDAT_PUSHRES          : result := Format('PUSH str [%s]', [PE.Strings[PSE2OpDAT_PUSHRES(OpCode).Index]]);
 
-  soSPEC_INCP            : result := Format('INCP [%x %s]', [PSE2OpSPEC_INCP(OpCode).Offset, VarTypeToStr(PSE2OpSPEC_INCP(OpCode).newType)]);
+  soSPEC_INCP            : result := Format('INCP [%x %s %s]', [PSE2OpSPEC_INCP(OpCode).Offset, VarTypeToStr(PSE2OpSPEC_INCP(OpCode).newType), IfThen(PSE2OpSPEC_INCP(OpCode).NoRef, 'NoRef', 'Ref')]);
+  soSPEC_INCPD           : result := Format('INCPD [%s %s]', [VarTypeToStr(PSE2OpSPEC_INCPD(OpCode).newType), IfThen(PSE2OpSPEC_INCPD(OpCode).NoRef, 'NoRef', 'Ref')]);
   soSPEC_CREATE          : result := Format('NEW [%d %s.%s]', [PSE2OpSPEC_CREATE(OpCode).Variables, PE.MetaData[PSE2OpSPEC_CREATE(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpSPEC_CREATE(OpCode).MetaIndex].Name]);
   soSPEC_DESTROY         : result := 'DELETE';
-  soSPEC_UNREF           : result := 'UNREF';   
+  soSPEC_UNREF           : result := 'UNREF';
+  soSPEC_GetRef          : result := Format('LEA [%d %s]', [PSE2OpSPEC_GetRef(OpCode).Offset, IfThen(PSE2OpSPEC_GetRef(OpCode).Static, 'Static', 'Dynamic')]);
   soSPEC_DECP            : result := Format('DECP [%d]', [PSE2OpSPEC_DECP(OpCode).Target]);
   soSPEC_GetProcPtr      : result := Format('PREF [%s, %s]', [ PE.MetaData[PSE2OpSPEC_GetProcPtr(OpCode).MetaIndex].Name, IfThen(PSE2OpSPEC_GetProcPtr(OpCode).HasSelf, 'Self', '-') ]);
 
@@ -157,6 +164,16 @@ begin
   soREC_DEL_RECS         : result := Format('REC.GC [%d]', [PSE2OpREC_DEL_RECS(OpCode).MaxRecords]);
   soREC_EQUAL            : result := 'REC.SAME';
   soREC_UNEQUAL          : result := 'REC.DIFF';
+
+  soARR_MAKE             : result := Format('ARR.NEW [%s.%s]', [PE.MetaData[PSE2OpARR_MAKE(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpARR_MAKE(OpCode).MetaIndex].Name]);
+  soARR_GLEN             : result := 'ARR.GLEN';
+  soARR_SLEN             : result := Format('ARR.SLEN [%s.%s]', [PE.MetaData[PSE2OpARR_SLEN(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpARR_SLEN(OpCode).MetaIndex].Name]);
+  soARR_SFL              : result := Format('ARR.SFL [%d %s.%s]', [PSE2OpARR_SFL(OpCode).Length, PE.MetaData[PSE2OpARR_SFL(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpARR_SFL(OpCode).MetaIndex].Name]);
+  soARR_FREE             : result := Format('ARR.FREE [%d]', [PSE2OpARR_FREE(OpCode).Offset]);
+  soARR_COPY_TO          : result := Format('ARR.POP TO [%d %s] [%s.%s]', [PSE2OpARR_COPY_TO(OpCode).Target, IfThen(PSE2OpARR_COPY_TO(OpCode).Target >= 0, 'Static', 'Dynamic'), PE.MetaData[PSE2OpARR_COPY_TO(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpARR_COPY_TO(OpCode).MetaIndex].Name]);
+  soARR_CHECK_RANGE      : result := 'ARR.CHK';
+  soARR_MARK_DEL         : result := 'ARR.UNUSE';
+  soARR_DEL_ARRS         : result := Format('ARR.GC [%d]', [PSE2OpARR_DEL_ARRS(OpCode).MaxArrays]);
 
   soMEM_MAKE             : result := Format('MEM.MAKE [%s]', [VarTypeToStr(PSE2OpMEM_MAKE(OpCode).AType)]);
   soMEM_REC_MAKE         : result := Format('MEM.REC [%d %s.%s]', [PSE2OpMEM_REC_MAKE(OpCode).Variables, PE.MetaData[PSE2OpMEM_REC_MAKE(OpCode).MetaIndex].AUnitName, PE.MetaData[PSE2OpMEM_REC_MAKE(OpCode).MetaIndex].Name]);
@@ -274,6 +291,15 @@ begin
           result := '0x' + IntToHex(Integer(Data^.tPointer^), 8);
         end;
       end;
+  btArray :
+      begin
+        if Pointer(Data^.tPointer^) = nil then
+           result := 'nil'
+        else
+        begin
+          result := '0x' + IntToHex(Integer(Data^.tPointer^), 8);
+        end;
+      end;
   btPointer, btObject :
       begin
         if Pointer(Data^.tPointer^) = nil then
@@ -375,6 +401,7 @@ begin
   btPWideChar             : result := 'PWideChar';
   btRecord                : result := 'record';
   btProcPtr               : result := 'ProcPtr';
+  btArray                 : result := 'array';
   else                      result := '{unkown}';
   end;
 end;

@@ -26,7 +26,9 @@ implementation
 
 uses
   {$IFNDEF SEII_FPC}
-  Windows, 
+  Windows,
+  {$ELSE}
+  dynlibs,
   {$ENDIF}
   SysUtils;
 

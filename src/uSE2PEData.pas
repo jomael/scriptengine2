@@ -253,7 +253,7 @@ uses SysUtils;
 
 const
   TSE2OpCodes_StreamVersion    = 2;
-  TSE2OpCodes_OpCodeVersion    = 3;
+  TSE2OpCodes_OpCodeVersion    = 4;
   TSE2StringList_StreamVersion = 2;
   TSE2MetaEntry_StreamVersion  = 4;
   TSE2MetaList_StreamVersion   = 1;
@@ -772,7 +772,7 @@ begin
   if (index < 0) or (index >= FList.Count) then
      result := nil
   else
-     result := FList[index];
+     result := FList.List[index];
 end;
 
 procedure TSE2MetaList.Remove(index: integer);
