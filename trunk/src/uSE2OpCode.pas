@@ -143,10 +143,11 @@ type
                 soSTACK_DEC, soSTACK_DEC_NODEL, soSTACK_DEC_COUNT,
 
                 // Memory Methods
-                soMEM_MAKE, soMEM_REC_MAKE, soMEM_REC_FREE,
+                soMEM_MAKE, soMEM_REC_MAKE, soMEM_REC_FREE, soMEM_ARR_MAKE, soMEM_ARR_FREE,
 
                 // Program execution flow
-                soFLOW_GOTO, soFLOW_JIZ, soFLOW_JNZ, soFLOW_CALL, soFLOW_CALLEX, soFLOW_CALLDYN, soFLOW_CALLPTR,
+                soFLOW_GOTO, soFLOW_JIZ, soFLOW_JNZ, soFLOW_JGZ, soFLOW_JGEZ,
+                soFLOW_JLZ, soFLOW_JLEZ, soFLOW_CALL, soFLOW_CALLEX, soFLOW_CALLDYN, soFLOW_CALLPTR,
                 soFLOW_CALLPEX, soFLOW_RET, soFLOW_PUSHRET,
 
                 // Aritmetic operation
@@ -170,12 +171,16 @@ type
                 soDAT_PUSHPtr, soDAT_PUSHRES,
 
                 // Special Data
-                soSPEC_INCP, soSPEC_CREATE, soSPEC_DESTROY, soSPEC_UNREF, soSPEC_DECP,
+                soSPEC_INCP, soSPEC_INCPD, soSPEC_CREATE, soSPEC_DESTROY, soSPEC_UNREF, soSPEC_DECP,
                 soSPEC_GetRef, soSPEC_GetProcPtr,
 
                 // Record Data
                 soREC_MAKE, soREC_FREE, soREC_COPY_TO, soREC_MARK_DEL, soREC_DEL_RECS,
                 soREC_EQUAL, soREC_UNEQUAL,
+
+                // Array Data
+                soARR_MAKE, soARR_FREE, soARR_GLEN, soARR_SLEN, soARR_SFL, soARR_MARK_DEL,
+                soARR_DEL_ARRS, soARR_COPY_TO, soARR_CHECK_RANGE,
 
                 // integer increment
                 soINT_INCSTATIC, soINT_INCSTACK,
@@ -249,6 +254,30 @@ type
 
   PSE2OpFLOW_JNZ = ^TSE2OpFLOW_JNZ;
   TSE2OpFLOW_JNZ = packed record
+    OpCode     : TSE2OpCode;
+    Position   : cardinal;
+  end;
+
+  PSE2OpFLOW_JGZ = ^TSE2OpFLOW_JGZ;
+  TSE2OpFLOW_JGZ = packed record
+    OpCode     : TSE2OpCode;
+    Position   : cardinal;
+  end;
+
+  PSE2OpFLOW_JGEZ = ^TSE2OpFLOW_JGEZ;
+  TSE2OpFLOW_JGEZ = packed record
+    OpCode     : TSE2OpCode;
+    Position   : cardinal;
+  end;
+
+  PSE2OpFLOW_JLZ = ^TSE2OpFLOW_JLZ;
+  TSE2OpFLOW_JLZ = packed record
+    OpCode     : TSE2OpCode;
+    Position   : cardinal;
+  end;
+
+  PSE2OpFLOW_JLEZ = ^TSE2OpFLOW_JLEZ;
+  TSE2OpFLOW_JLEZ = packed record
     OpCode     : TSE2OpCode;
     Position   : cardinal;
   end;
@@ -467,6 +496,13 @@ type
     Offset     : integer;
     newType    : TSE2TypeIdent;
     NoRef      : boolean;
+  end;      
+
+  PSE2OpSPEC_INCPD = ^TSE2OpSPEC_INCPD;
+  TSE2OpSPEC_INCPD = packed record
+    OpCode     : TSE2OpCode;
+    newType    : TSE2TypeIdent;
+    NoRef      : boolean;
   end;
 
   PSE2OpSPEC_DECP = ^TSE2OpSPEC_DECP;
@@ -502,6 +538,62 @@ type
     OpCode     : TSE2OpCode;
   end;
 
+  { Array }
+  
+  PSE2OpARR_MAKE = ^TSE2OpARR_MAKE;
+  TSE2OpARR_MAKE = packed record
+    OpCode     : TSE2OpCode;   
+    Variables  : integer;
+    MetaIndex  : integer;
+  end;
+
+  PSE2OpARR_FREE = ^TSE2OpARR_FREE;
+  TSE2OpARR_FREE = packed record
+    OpCode     : TSE2OpCode;
+    Offset     : integer;
+  end;
+
+  PSE2OpMEM_ARR_MAKE = ^TSE2OpMEM_ARR_MAKE;
+  TSE2OpMEM_ARR_MAKE = packed record
+    OpCode     : TSE2OpCode;
+    Variables  : integer;
+    MetaIndex  : integer;
+  end;
+
+  PSE2OpMEM_ARR_FREE = ^TSE2OpMEM_ARR_FREE;
+  TSE2OpMEM_ARR_FREE = packed record
+    OpCode     : TSE2OpCode;
+    Offset     : integer;
+  end;
+
+  PSE2OpARR_GLEN = ^TSE2OpARR_GLEN;
+  TSE2OpARR_GLEN = packed record
+    OpCode     : TSE2OpCode;
+  end;
+
+  PSE2OpARR_SLEN = ^TSE2OpARR_SLEN;
+  TSE2OpARR_SLEN = packed record
+    OpCode     : TSE2OpCode;
+    MetaIndex  : integer;
+    Offset     : integer;
+  end;
+
+  PSE2OpARR_SFL = ^TSE2OpARR_SFL;
+  TSE2OpARR_SFL = packed record
+    OpCode     : TSE2OpCode;
+    Length     : integer;
+    MetaIndex  : integer;
+  end;
+
+  PSE2OpMEM_ARR_SLEN = ^TSE2OpMEM_ARR_SLEN;
+  TSE2OpMEM_ARR_SLEN = packed record
+    OpCode     : TSE2OpCode;
+    Offset     : integer;
+    MetaIndex  : integer;
+  end;
+
+  { Record }
+
   PSE2OpREC_MAKE = ^TSE2OpREC_MAKE;
   TSE2OpREC_MAKE = packed record
     OpCode     : TSE2OpCode;
@@ -521,6 +613,12 @@ type
     MaxRecords : integer;
   end;
 
+  PSE2OpARR_DEL_ARRS = ^TSE2OpARR_DEL_ARRS;
+  TSE2OpARR_DEL_ARRS = packed record
+    OpCode     : TSE2OpCode;
+    MaxArrays  : integer;
+  end;
+
   PSE2OpREC_EQUAL = ^TSE2OpREC_EQUAL;
   TSE2OpREC_EQUAL = packed record
     OpCode     : TSE2OpCode;
@@ -538,6 +636,19 @@ type
     OpCode     : TSE2OpCode;
     Target     : integer;
     MetaIndex  : integer;
+  end;
+
+  PSE2OpARR_COPY_TO = ^TSE2OpARR_COPY_TO;
+  TSE2OpARR_COPY_TO = packed record
+    OpCode     : TSE2OpCode;
+    Target     : integer;
+    MetaIndex  : integer;
+  end;
+
+  PSE2OpARR_CHECK_RANGE = ^TSE2OpARR_CHECK_RANGE;
+  TSE2OpARR_CHECK_RANGE = packed record
+    OpCode     : TSE2OpCode;
+    ArrayLen   : integer;
   end;
 
   PSE2OpSPEC_UNREF = ^TSE2OpSPEC_UNREF;
@@ -640,14 +751,14 @@ type
   TSE2OpMEM_MAKE = packed record
     OpCode     : TSE2OpCode;
     AType      : TSE2TypeIdent;
-  end;    
+  end;
 
   PSE2OpMEM_REC_MAKE = ^TSE2OpMEM_REC_MAKE;
   TSE2OpMEM_REC_MAKE = packed record
     OpCode     : TSE2OpCode;
     Variables  : integer;
     MetaIndex  : integer;
-  end;    
+  end;
 
   PSE2OpMEM_REC_FREE = ^TSE2OpMEM_REC_FREE;
   TSE2OpMEM_REC_FREE = packed record
@@ -733,6 +844,7 @@ type
     class function NOOP: PSE2OpDefault;
     class function STACK_INC(AType: TSE2TypeIdent): PSE2OpDefault;
     class function STACK_DEC: PSE2OpDefault;
+    class function STACK_DEC_COUNT(count: integer): PSE2OpDefault;
     class function STACK_DEC_NODEL: PSE2OpDefault;
     class function FLOW_GOTO(Position: cardinal): PSE2OpDefault;
     class function FLOW_JIZ(Postion: cardinal): PSE2OpDefault;
@@ -754,6 +866,11 @@ type
     class function DAT_SetFloat(value: double): PSE2OpDefault;
     class function DAT_SetPtr(value: pointer): PSE2OpDefault;
     class function DAT_LOADRES(index: integer): PSE2OpDefault;
+    class function DAT_PUSHInt32(value: integer): PSE2OpDefault;
+    class function DAT_PUSHInt64(value: int64): PSE2OpDefault;
+    class function DAT_PUSHUInt64(value: UInt64): PSE2OpDefault;
+    class function DAT_PUSHFloat4(value: single): PSE2OpDefault;
+    class function DAT_PUSHFloat8(value: double): PSE2OpDefault;
     class function DAT_CLEAR(Static: boolean): PSE2OpDefault;
     class function DAT_LOADEX: PSE2OpDefault;
     class function DAT_CONVERT(NewType: TSE2TypeIdent; Index: integer): PSE2OpDefault;
@@ -764,6 +881,7 @@ type
     class function INT_DECSTACK(Position, value: integer): PSE2OpDefault;
 
     class function SPEC_INCP(Offset: integer; newType: TSE2TypeIdent; NoRef: boolean): PSE2OpDefault;
+    class function SPEC_INCPD(newType: TSE2TypeIdent; NoRef: boolean): PSE2OpDefault;
     class function SPEC_CREATE(Variables: integer; MetaIndex: integer): PSE2OpDefault;
     class function SPEC_DESTROY: PSE2OpDefault;                                     
     class function SPEC_UNREF: PSE2OpDefault;
@@ -779,9 +897,21 @@ type
     class function REC_EQUAL(Meta: integer): PSE2OpDefault;
     class function REC_UNEQUAL(Meta: integer): PSE2OpDefault;
 
+    class function ARR_MAKE(Variables, MetaIndex: integer): PSE2OpDefault;
+    class function ARR_FREE(Offset: integer): PSE2OpDefault;
+    class function ARR_GLEN: PSE2OpDefault;         
+    class function ARR_SFL(Length, MetaIndex: integer): PSE2OpDefault;
+    class function ARR_SLEN(Offset, MetaIndex: integer): PSE2OpDefault;
+    class function ARR_MARK_DEL: PSE2OpDefault;
+    class function ARR_DEL_ARRS(MaxArrays: integer): PSE2OpDefault;
+    class function ARR_COPY_TO(Target: Integer; Meta: integer): PSE2OpDefault;
+    class function ARR_CHECK_RANGE(ArrayLen: integer): PSE2OpDefault;
+
     class function MEM_MAKE(AType: TSE2TypeIdent): PSE2OpDefault;
     class function MEM_REC_MAKE(Variables: integer; MetaIndex: integer): PSE2OpDefault;
     class function MEM_REC_FREE(Offset: integer): PSE2OpDefault;
+    //class function MEM_ARR_MAKE(Variables: integer; MetaIndex: integer): PSE2OpDefault;
+    //class function MEM_ARR_FREE(Offset: integer): PSE2OpDefault;
 
     class function SAFE_TRYFIN(SavePos, LeavePos: integer): PSE2OpDefault;
     class function SAFE_TRYEX(SavePos, LeavePos: integer): PSE2OpDefault;
@@ -1009,8 +1139,16 @@ class function TSE2OpCodeGen.SPEC_INCP(Offset: integer; newType: TSE2TypeIdent; 
 begin
   result := DefaultOP(soSPEC_INCP);
   PSE2OpSPEC_INCP(result)^.Offset := Offset;
-  PSE2OpSPEC_INCP(result)^.newType := newType;    
+  PSE2OpSPEC_INCP(result)^.newType := newType;
   PSE2OpSPEC_INCP(result)^.NoRef := NoRef;
+end;
+
+class function TSE2OpCodeGen.SPEC_INCPD(newType: TSE2TypeIdent;
+  NoRef: boolean): PSE2OpDefault;
+begin
+  result := DefaultOP(soSPEC_INCPD);
+  PSE2OpSPEC_INCPD(result)^.newType := newType;
+  PSE2OpSPEC_INCPD(result)^.NoRef := NoRef;
 end;
 
 class function TSE2OpCodeGen.STACK_DEC: PSE2OpDefault;
@@ -1233,14 +1371,14 @@ begin
 end;
 
 class function TSE2OpCodeGen.MEM_REC_FREE(Offset: integer): PSE2OpDefault;
-begin                              
+begin
   result := DefaultOP(soMEM_REC_FREE);
   PSE2OpMEM_REC_FREE(result)^.Offset := Offset;
 end;
 
 class function TSE2OpCodeGen.MEM_REC_MAKE(Variables,
   MetaIndex: integer): PSE2OpDefault;
-begin               
+begin
   result := DefaultOP(soMEM_REC_MAKE);
   PSE2OpMEM_REC_MAKE(result)^.Variables := Variables;
   PSE2OpMEM_REC_MAKE(result)^.MetaIndex := MetaIndex;
@@ -1249,6 +1387,116 @@ end;
 class function TSE2OpCodeGen.SAVE_INSTANCE: PSE2OpDefault;
 begin
   result := DefaultOP(soSAVE_INSTANCE);
+end;
+
+class function TSE2OpCodeGen.ARR_MAKE(Variables,
+  MetaIndex: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soARR_MAKE);
+  PSE2OpREC_MAKE(result)^.Variables := Variables;
+  PSE2OpREC_MAKE(result)^.MetaIndex := MetaIndex;
+end;
+
+class function TSE2OpCodeGen.ARR_FREE(Offset: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soARR_FREE);
+  PSE2OpREC_FREE(result)^.Offset := Offset;
+end;
+              {
+class function TSE2OpCodeGen.MEM_ARR_MAKE(Variables,
+  MetaIndex: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soMEM_ARR_MAKE);
+  PSE2OpMEM_ARR_MAKE(result)^.Variables := Variables;
+  PSE2OpMEM_ARR_MAKE(result)^.MetaIndex := MetaIndex;
+end;
+
+class function TSE2OpCodeGen.MEM_ARR_FREE(Offset: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soMEM_ARR_FREE);
+  PSE2OpMEM_ARR_FREE(result)^.Offset := Offset;
+end;           }
+
+class function TSE2OpCodeGen.ARR_GLEN: PSE2OpDefault;
+begin
+  result := DefaultOP(soARR_GLEN);
+end;
+
+class function TSE2OpCodeGen.ARR_SLEN(Offset, MetaIndex: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soARR_SLEN);
+  PSE2OpARR_SLEN(result)^.MetaIndex := MetaIndex;
+  PSE2OpARR_SLEN(result)^.Offset    := Offset;
+end;
+
+class function TSE2OpCodeGen.ARR_SFL(Length, MetaIndex: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soARR_SFL);
+  PSE2OpARR_SFL(result)^.Length    := Length;
+  PSE2OpARR_SFL(result)^.MetaIndex := MetaIndex;
+end;
+
+class function TSE2OpCodeGen.ARR_MARK_DEL: PSE2OpDefault;
+begin
+  result := DefaultOP(soARR_MARK_DEL);
+end;
+
+class function TSE2OpCodeGen.DAT_PUSHFloat4(value: single): PSE2OpDefault;
+begin
+  result := DefaultOP(soDAT_PUSHFLOAT4);
+  PSE2OpDAT_PUSHFloat4(result)^.Value := value;
+end;
+
+class function TSE2OpCodeGen.DAT_PUSHFloat8(value: double): PSE2OpDefault;
+begin
+  result := DefaultOP(soDAT_PUSHFLOAT8);
+  PSE2OpDAT_PUSHFloat8(result)^.Value := value;
+end;
+
+class function TSE2OpCodeGen.DAT_PUSHInt32(value: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soDAT_PUSHInt32);
+  PSE2OpDAT_PUSHInt32(result)^.Value := value;
+end;
+
+class function TSE2OpCodeGen.DAT_PUSHInt64(value: int64): PSE2OpDefault;
+begin
+  result := DefaultOP(soDAT_PUSHInt64);
+  PSE2OpDAT_PUSHInt64(result)^.Value := value;
+end;
+
+class function TSE2OpCodeGen.DAT_PUSHUInt64(value: UInt64): PSE2OpDefault;
+begin
+  result := DefaultOP(soDAT_PUSHUInt64);
+  PSE2OpDAT_PUSHUInt64(result)^.Value := value;
+end;
+
+class function TSE2OpCodeGen.ARR_DEL_ARRS(
+  MaxArrays: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soARR_DEL_ARRS);
+  PSE2OpARR_DEL_ARRS(result)^.MaxArrays := MaxArrays;
+end;
+
+class function TSE2OpCodeGen.ARR_COPY_TO(Target,
+  Meta: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soARR_COPY_TO);
+  PSE2OpARR_COPY_TO(result)^.Target := Target;
+  PSE2OpARR_COPY_TO(result)^.MetaIndex := Meta;
+end;
+
+class function TSE2OpCodeGen.ARR_CHECK_RANGE(ArrayLen: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soARR_CHECK_RANGE);
+  PSE2OpARR_CHECK_RANGE(result)^.ArrayLen := ArrayLen;
+end;
+
+class function TSE2OpCodeGen.STACK_DEC_COUNT(
+  count: integer): PSE2OpDefault;
+begin
+  result := DefaultOP(soSTACK_DEC_COUNT);
+  PSE2OpSTACK_DEC_COUNT(result)^.Count := count;
 end;
 
 { TSE2OpCodeList }
@@ -1349,6 +1597,10 @@ begin
   soFLOW_GOTO       : result := PSE2OpFLOW_GOTO(FOpCode).Position;
   soFLOW_JIZ        : result := PSE2OpFLOW_JIZ(FOpCode).Position;
   soFLOW_JNZ        : result := PSE2OpFLOW_JNZ(FOpCode).Position;
+  soFLOW_JGZ        : result := PSE2OpFLOW_JGZ(FOpCode).Position;
+  soFLOW_JGEZ       : result := PSE2OpFLOW_JGEZ(FOpCode).Position;
+  soFLOW_JLZ        : result := PSE2OpFLOW_JLZ(FOpCode).Position;
+  soFLOW_JLEZ       : result := PSE2OpFLOW_JLEZ(FOpCode).Position;
   soFLOW_CALL       : result := PSE2OpFLOW_CALL(FOpCode).Position;
   soFLOW_PUSHRET    : result := PSE2OpFLOW_PUSHRET(FOpCode).Position;
 
@@ -1368,7 +1620,12 @@ begin
   case FOpCode.OpCode of
   soFLOW_GOTO       : PSE2OpFLOW_GOTO(FOpCode).Position   := PSE2OpFLOW_GOTO(FOpCode).Position + Offset;
   soFLOW_JIZ        : PSE2OpFLOW_JIZ(FOpCode).Position    := PSE2OpFLOW_JIZ(FOpCode).Position + Offset;
-  soFLOW_JNZ        : PSE2OpFLOW_JNZ(FOpCode).Position    := PSE2OpFLOW_JNZ(FOpCode).Position + Offset;
+  soFLOW_JNZ        : PSE2OpFLOW_JNZ(FOpCode).Position    := PSE2OpFLOW_JNZ(FOpCode).Position + Offset;  
+  soFLOW_JGZ        : PSE2OpFLOW_JGZ(FOpCode).Position    := PSE2OpFLOW_JGZ(FOpCode).Position + Offset;  
+  soFLOW_JGEZ       : PSE2OpFLOW_JGEZ(FOpCode).Position   := PSE2OpFLOW_JGEZ(FOpCode).Position + Offset;   
+  soFLOW_JLZ        : PSE2OpFLOW_JLZ(FOpCode).Position    := PSE2OpFLOW_JLZ(FOpCode).Position + Offset;  
+  soFLOW_JLEZ       : PSE2OpFLOW_JLEZ(FOpCode).Position   := PSE2OpFLOW_JLEZ(FOpCode).Position + Offset;
+
   soFLOW_CALL       : PSE2OpFLOW_CALL(FOpCode).Position   := PSE2OpFLOW_CALL(FOpCode).Position + Offset;
   soFLOW_PUSHRET    : PSE2OpFLOW_PUSHRET(FOpCode).Position:= PSE2OpFLOW_PUSHRET(FOpCode).Position + Offset;
 
@@ -1412,7 +1669,11 @@ begin
   case FOpCode.OpCode of
   soFLOW_GOTO       : PSE2OpFLOW_GOTO(FOpCode).Position   := index;
   soFLOW_JIZ        : PSE2OpFLOW_JIZ(FOpCode).Position    := index;
-  soFLOW_JNZ        : PSE2OpFLOW_JNZ(FOpCode).Position    := index;
+  soFLOW_JNZ        : PSE2OpFLOW_JNZ(FOpCode).Position    := index; 
+  soFLOW_JGZ        : PSE2OpFLOW_JGZ(FOpCode).Position    := index;
+  soFLOW_JGEZ       : PSE2OpFLOW_JGEZ(FOpCode).Position   := index;
+  soFLOW_JLZ        : PSE2OpFLOW_JLZ(FOpCode).Position    := index;
+  soFLOW_JLEZ       : PSE2OpFLOW_JLEZ(FOpCode).Position   := index;
   soFLOW_CALL       : PSE2OpFLOW_CALL(FOpCode).Position   := index;
   soDAT_COPY_TO     : if PSE2OpDAT_COPY_TO(FOpCode).Static then
                          PSE2OpDAT_COPY_TO(FOpCode).Target   := index;
@@ -1428,6 +1689,8 @@ begin
                          PSE2OpSPEC_GetRef(FOpCode).Offset := index;
   soREC_COPY_TO     : if PSE2OpREC_COPY_TO(FOpCode).Target >= 0 then
                          PSE2OpREC_COPY_TO(FOpCode).Target   := index;
+  soARR_COPY_TO     : if PSE2OpARR_COPY_TO(FOpCode).Target >= 0 then
+                         PSE2OpARR_COPY_TO(FOpCode).Target   := index;
   soINT_INCSTATIC   : PSE2OpINT_INCSTATIC(FOpCode).Offset := index;
   soINT_DECSTATIC   : PSE2OpINT_DECSTATIC(FOpCode).Offset := index;
   soOP_FASTCOMPARE  :

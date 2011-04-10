@@ -186,6 +186,7 @@ begin
   FContext.Run(FExecutionData.AppCode.FinalizationPoint);
   FContext.ProcessGC;
   FContext.ProcessRecordGC;
+  FContext.ProcessArrayGC;
 
   {$IFNDEF SEII_NO_SCRIPT_THREAD}
   ClearThreadContext;

@@ -43,6 +43,7 @@ type
     function  GetDisplayStrVar(Entry: TSE2Variable): string; virtual; abstract;
     function  GetDisplayStrUnit(const Name: string): string; virtual; abstract;
     function  GetDisplayStrKeyWord(const KeyWord: string): string; virtual; abstract;
+    function  GetDisplayStrOther(const TypeName, ElemName, ReturnType: string): string; virtual; abstract;
 
     function  GetInsertStrToken(const Name: string): string; virtual; abstract;
     function  GetInsertStrMethod(Entry: TSE2Method): string; virtual; abstract;
@@ -50,7 +51,9 @@ type
     function  GetInsertStrType(Entry: TSE2Type): string; virtual; abstract;
     function  GetInsertStrConst(Entry: TSE2Constant): string; virtual; abstract;
     function  GetInsertStrVar(Entry: TSE2Variable): string; virtual; abstract;
-    function  GetInsertStrUnit(const Name: string): string; virtual; abstract;
+    function  GetInsertStrUnit(const Name: string): string; virtual; abstract;   
+    function  GetInsertStrOther(const TypeName, ElemName, ReturnType: string): string; virtual; abstract;
+
 
     function  GetDisplayStr(Entry: TSE2BaseType): string; virtual;
     function  GetInsertStr(Entry: TSE2BaseType): string; virtual;
@@ -80,8 +83,8 @@ type
     function  GetDisplayStrVar(Entry: TSE2Variable): string; override;  
     function  GetDisplayStrUnit(const Name: string): string; override;
     function  GetDisplayStrKeyWord(const KeyWord: String): string; override;
-    function GetDisplayStrToken(const Name: String): String; override;
-
+    function  GetDisplayStrToken(const Name: String): String; override;      
+    function GetDisplayStrOther(const TypeName, ElemName, ReturnType: string): String; override;
 
     function  GetInsertStrMethod(Entry: TSE2Method): string; override;
     function  GetInsertStrProperty(Entry: TSE2Property): string; override;
@@ -89,7 +92,8 @@ type
     function  GetInsertStrConst(Entry: TSE2Constant): string; override;
     function  GetInsertStrVar(Entry: TSE2Variable): string; override;
     function  GetInsertStrUnit(const Name: string): string; override;
-    function GetInsertStrToken(const Name: String): String; override;
+    function  GetInsertStrToken(const Name: String): String; override;
+    function GetInsertStrOther(const TypeName, ElemName, ReturnType: string): String; override;
 
   end;
 
@@ -750,6 +754,16 @@ begin
   result := result + ';';
 end;
 
+function TSE2SynCodeCompletion.GetDisplayStrOther(const TypeName, ElemName,
+  ReturnType: string): String;
+begin
+  result := '\color{clTeal}'+TypeName+' \color{clBlack}';
+
+  result := result + ' \column{}\style{+B}'+ElemName+'\style{-B}';
+  result := result + ' : ';
+  result := result + ReturnType;
+end;
+
 function TSE2SynCodeCompletion.GetDisplayStrProperty(
   Entry: TSE2Property): string;
 var i         : integer;
@@ -883,6 +897,12 @@ begin
   end;
 
   result := Entry.Name + result;
+end;
+
+function TSE2SynCodeCompletion.GetInsertStrOther(const TypeName, ElemName,
+  ReturnType: string): String;
+begin
+  result := ElemName;
 end;
 
 function TSE2SynCodeCompletion.GetInsertStrProperty(

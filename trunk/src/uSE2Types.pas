@@ -37,6 +37,7 @@ type
     function  GetCount: integer;
     function  GetItem(index: integer): integer;
     procedure SetItem(index, value: integer);
+    function  GetLast: integer;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -46,9 +47,11 @@ type
 
     procedure Clear;
     procedure Add(value: integer);
+    procedure DeleteLast;
     function  Delete(index: integer): boolean;
     function  IndexOf(value: integer): integer;
 
+    property  Last                 : integer read GetLast;
     property  Items[index: integer]: integer read GetItem  write SetItem; default;
     property  Count                : integer read GetCount; 
   end;
@@ -329,18 +332,33 @@ type
     property RecordSize : integer             read FRecordSize  write FRecordSize;
   end;
 
+  TSE2Variable = class;
+
   TSE2Array = class(TSE2Type)
   private
-    FArrayType  : TSE2Type;
+    FIsDynamic  : boolean;
     FArrayCount : integer;
     FStartIndex : integer;
+    FArraySize  : integer;
+    FContent    : TSE2Variable;
+    FRTTI       : TSE2ClassRTTI;
+  protected
+    function GetElemSize: integer;
   public
+    constructor Create; override;
+    destructor Destroy; override;
+
+    function GenLinkerName(i: Integer = -1): String; override;
     procedure LoadFromStream(Stream: TStream; Weaver: TSE2NameWeaver); override;
     procedure SaveToStream(Stream: TStream); override;
 
-    property ArrayType  : TSE2Type   read FArrayType    write FArrayType;
+    property IsDynamic  : boolean    read FIsDynamic    write FIsDynamic;
+    property ElemSize   : integer    read GetElemSize;
+    property RTTI       : TSE2ClassRTTI read FRTTI;
+    property Content    : TSE2Variable read FContent;
     property ArrayCount : integer    read FArrayCount   write FArrayCount;
     property StartIndex : integer    read FStartIndex   write FStartIndex;
+    property ArraySize  : integer    read FArraySize    write FArraySize;
   end;
 
   TSE2CodeElement = class(TSE2BaseType)
@@ -363,10 +381,12 @@ type
     FIsStatic   : boolean;   // Fixed Memory Position
     FIsExternal : boolean;   // Can be written by the host program
     FIsPublic   : boolean;   // Host program can read the variable
+    FIsDynamic  : boolean;   // Dynamic content (arrays ...)
   public
     procedure LoadFromStream(Stream: TStream; Weaver: TSE2NameWeaver); override;
     procedure SaveToStream(Stream: TStream); override;
 
+    property IsDynamic   : boolean          read FIsDynamic       write FIsDynamic;
     property AType       : TSE2Type         read FType            write FType;
     property IsStatic    : boolean          read FIsStatic        write FIsStatic;
     property IsExternal  : boolean          read FIsExternal      write FIsExternal;
@@ -458,6 +478,9 @@ type
     property ExitTableList     : TSE2IntegerList    read FExitTableList;
   end;
 
+  TSE2Method = class;
+  TSE2MethodCallEvent = procedure(Sender: TObject; CallerMethod, CalledMethod: TSE2Method; CallOwner: TSE2Type; StackElem: TSE2Variable) of object;
+
   TSE2Method = class(TSE2CodeElement)
   private
     FParams         : TSE2BaseTypeList;
@@ -489,6 +512,8 @@ type
     FTypes          : TSE2BaseTypeList;
 
     FOpCodes        : TSE2LinkOpCodeList;
+
+    FOnCallMethod   : TSE2MethodCallEvent;
   protected
     function GetHasSelfParam: boolean;
   public
@@ -529,6 +554,8 @@ type
     //property OwnerClass        : TSE2Class          read FOwnerClass      write FOwnerClass;
     property IsForwarded       : boolean            read FIsForwarded     write FIsForwarded;
     property MethodType        : TSE2MethodType     read FMethodType      write FMethodType;
+
+    property OnCallMethod      : TSE2MethodCallEvent read FOnCallMethod   write FOnCallMethod;
   end;
 
   TSE2Property = class(TSE2BaseType)
@@ -2017,6 +2044,11 @@ begin
   end;
 end;
 
+procedure TSE2IntegerList.DeleteLast;
+begin
+  Delete(FList.Count-1);
+end;
+
 destructor TSE2IntegerList.Destroy;
 begin
   Clear;
@@ -2036,6 +2068,11 @@ begin
   else
      result := PInteger(FList.List[index])^;
 
+end;
+
+function TSE2IntegerList.GetLast: integer;
+begin
+  result := Items[FList.Count-1];
 end;
 
 function TSE2IntegerList.IndexOf(value: integer): integer;
@@ -2196,6 +2233,49 @@ end;
 
 { TSE2Array }
 
+constructor TSE2Array.Create;
+begin
+  inherited;     
+  AType      := btArray;
+  FDataSize  := 4;
+  FRTTI := TSE2ClassRTTI.Create;
+
+  FContent := TSE2Variable.Create;
+  FContent.IsDynamic := True;
+  FContent.Parent    := Self;
+end;
+
+destructor TSE2Array.Destroy;
+begin
+  FRTTI.Free;
+  FContent.Free;
+  inherited;
+end;
+
+function TSE2Array.GenLinkerName(i: Integer): String;
+begin
+  result := '[' + Self.Name + ']' +
+            '[' + Self.AUnitName + ']';
+end;
+
+function TSE2Array.GetElemSize: integer;
+begin
+  if FContent.AType is TSE2Record then
+     result := TSE2Record(FContent.AType).RecordSize
+  else
+  if FContent.AType is TSE2Array then
+  begin
+    if TSE2Array(FContent.AType).IsDynamic then
+       result := FContent.AType.DataSize
+    else
+       result := TSE2Array(FContent.AType).ArraySize;
+  end else
+  if FContent.AType <> nil then
+     result := FContent.AType.DataSize
+  else
+     result := 0;
+end;
+
 procedure TSE2Array.LoadFromStream(Stream: TStream;
   Weaver: TSE2NameWeaver);
 var version: byte;
@@ -2207,9 +2287,18 @@ begin
   case version of
   1 :
       begin
-        Weaver.Add(TSE2StreamHelper.ReadString(Stream), @FArrayType);
         Stream.Read(FArrayCount, SizeOf(FArrayCount));
         Stream.Read(FStartIndex, SizeOf(FStartIndex));
+        Stream.Read(FArraySize, SizeOf(FArraySize));
+        Stream.Read(FIsDynamic, SizeOf(FIsDynamic));
+
+        // Type name of TSE2Variable - will not be readed inside "TSE2Variable.LoadFromStream"
+        TSE2StreamHelper.ReadString(Stream);
+        // Read Variable
+        FContent.LoadFromStream(Stream, Weaver);
+
+        
+        FRTTI.LoadFromStream(Stream, Weaver);
       end;
   else RaiseIncompatibleStream;
   end;
@@ -2222,9 +2311,12 @@ begin
   version := 1;
   Stream.Write(version, SizeOf(version));
 
-  SaveWeaverData(Stream, FArrayType);   
   Stream.Write(FArrayCount, SizeOf(FArrayCount));
   Stream.Write(FStartIndex, SizeOf(FStartIndex));
+  Stream.Write(FArraySize, SizeOf(FArraySize));
+  Stream.Write(FIsDynamic, SizeOf(FIsDynamic));
+  FContent.SaveToStream(Stream);
+  FRTTI.SaveToStream(Stream);
 end;
 
 { TSE2CodeElement }
@@ -2277,6 +2369,7 @@ begin
         Stream.Read(FIsStatic, SizeOF(FIsStatic));
         Stream.Read(FIsPublic, SizeOf(FIsPublic));
         Stream.Read(FIsExternal, SizeOf(FIsExternal));
+        Stream.Read(FIsDynamic, SizeOf(FIsDynamic));
       end;
   else RaiseIncompatibleStream;
   end;
@@ -2292,7 +2385,8 @@ begin
   SaveWeaverData(Stream, FType);
   Stream.Write(FIsStatic, SizeOF(FIsStatic));
   Stream.Write(FIsPublic, SizeOf(FIsPublic));
-  Stream.Write(FIsExternal, SizeOf(FIsExternal));
+  Stream.Write(FIsExternal, SizeOf(FIsExternal));    
+  Stream.Write(FIsDynamic, SizeOf(FIsDynamic));
 end;
 
 { TSE2Parameter }

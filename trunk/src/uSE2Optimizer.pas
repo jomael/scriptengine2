@@ -1,4 +1,4 @@
-unit uSE2Optimizer;  
+unit uSE2Optimizer;
 
 {$INCLUDE ScriptEngine.inc}
 
@@ -14,18 +14,20 @@ type
   TSE2BaseOptimizer = class
   private
     FMethod       : TSE2Method;
+    FDecrease     : integer;
   protected
     procedure AddCodeOffset(Offset, CurrentIndex: integer);
   public
     OpCodes : PSE2OpCodeArrayList;
   public
-    constructor Create; overload;
-    constructor Create(Method: TSE2Method); overload;
+    constructor Create; virtual;
     destructor Destroy; override;
 
     function  IsStartup(OpCode: TSE2LinkOpCode): boolean; virtual; abstract;
     function  Optimize(Index: integer): boolean; virtual; abstract;
     property  Method       : TSE2Method read FMethod write FMethod;
+
+    property  Decrease     : integer    read FDecrease  write FDecrease;
   end;
 
   TSE2OptimizeRemoveUselessPops = class(TSE2BaseOptimizer)
@@ -60,11 +62,43 @@ type
 
   TSE2OptimizeInsertPushConstants = class(TSE2BaseOptimizer)
   public
+    constructor Create; override;
+        
     function Optimize(Index: Integer): Boolean; override;
     function IsStartup(OpCode: TSE2LinkOpCode): Boolean; override;
   end;
 
   TSE2OptimizeUseJumpIfZero = class(TSE2BaseOptimizer)
+  public
+    function Optimize(Index: Integer): Boolean; override;
+    function IsStartup(OpCode: TSE2LinkOpCode): Boolean; override;
+  end;
+
+  TSE2OptimizeUseAroundZero = class(TSE2BaseOptimizer)
+  public
+    function Optimize(Index: integer): Boolean; override;
+    function IsStartup(OpCode: TSE2LinkOpCode): Boolean; override;
+  end;
+
+  TSE2OptimizeBoolNotJump = class(TSE2BaseOptimizer)
+  public
+    function Optimize(Index: Integer): Boolean; override;
+    function IsStartup(OpCode: TSE2LinkOpCode): Boolean; override;
+  end;
+
+  TSE2OptimizeIncDecStack = class(TSE2BaseOptimizer)
+  public
+    function Optimize(Index: Integer): Boolean; override;
+    function IsStartup(OpCode: TSE2LinkOpCode): Boolean; override;
+  end;
+
+  TSE2OptimizeLoadTopVarConst = class(TSE2BaseOptimizer)
+  public
+    function Optimize(Index: Integer): Boolean; override;
+    function IsStartup(OpCode: TSE2LinkOpCode): Boolean; override;
+  end;
+
+  TSE2OptimizeRemoveNearJump = class(TSE2BaseOptimizer) 
   public
     function Optimize(Index: Integer): Boolean; override;
     function IsStartup(OpCode: TSE2LinkOpCode): Boolean; override;
@@ -84,7 +118,7 @@ type
 
   TSE2Optimizer = class
   private
-    FOptimizer : array[0..8] of TSE2BaseOptimizer;
+    FOptimizer : array[0..13] of TSE2BaseOptimizer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -106,15 +140,10 @@ begin
   end;
 end;
 
-constructor TSE2BaseOptimizer.Create(Method: TSE2Method);
-begin
-  inherited Create;
-  FMethod       := Method;
-end;
-
 constructor TSE2BaseOptimizer.Create;
 begin
   inherited Create;
+  FDecrease := -1;
 end;
 
 destructor TSE2BaseOptimizer.Destroy;
@@ -474,6 +503,12 @@ end;
 
 { TSE2OptimizeInsertPushConstants }
 
+constructor TSE2OptimizeInsertPushConstants.Create;
+begin
+  inherited;
+  FDecrease := -2;
+end;
+
 function TSE2OptimizeInsertPushConstants.IsStartup(
   OpCode: TSE2LinkOpCode): Boolean;
 begin
@@ -595,6 +630,270 @@ begin
   result := True;
 end;
 
+{ TSE2OptimizeUseJumpGreaterZero }
+
+function TSE2OptimizeUseAroundZero.IsStartup(
+  OpCode: TSE2LinkOpCode): Boolean;
+begin
+  result := OpCode.OpCode.OpCode in
+      [soDAT_PUSHInt32, soDAT_PUSHInt64, soDAT_PUSHUInt64, soDAT_PUSHFloat4,
+       soDAT_PUSHFloat8, soDAT_PUSHPtr];
+end;
+
+function TSE2OptimizeUseAroundZero.Optimize(Index: integer): Boolean;
+begin
+  result := False;
+  if (OpCodes^[0] = nil) or (OpCodes^[1] = nil) or (OpCodes^[2] = nil) then
+     exit;
+
+  if not ( OpCodes^[0].OpCode.OpCode in
+      [soDAT_PUSHInt32, soDAT_PUSHInt64, soDAT_PUSHUInt64, soDAT_PUSHFloat4,
+       soDAT_PUSHFloat8, soDAT_PUSHPtr]) then
+     exit;
+
+  if OpCodes^[1].OpCode.OpCode <> soOP_COMPARE then
+     exit;
+
+
+  if OpCodes^[2].OpCode.OpCode <> soFLOW_JIZ then
+     exit;
+
+  case OpCodes^[0].OpCode.OpCode of
+  soDAT_PUSHInt32  : if PSE2OpDAT_PUSHInt32(OpCodes^[0].OpCode).Value <> 0 then exit;
+  soDAT_PUSHInt64  : if PSE2OpDAT_PUSHInt64(OpCodes^[0].OpCode).Value <> 0 then exit;
+  soDAT_PUSHUInt64 : if PSE2OpDAT_PUSHUInt64(OpCodes^[0].OpCode).Value <> 0 then exit;
+  soDAT_PUSHFLOAT4 : if PSE2OpDAT_PUSHFloat4(OpCodes^[0].OpCode).Value <> 0 then exit;
+  soDAT_PUSHFLOAT8 : if PSE2OpDAT_PUSHFloat8(OpCodes^[0].OpCode).Value <> 0 then exit;
+  soDAT_PUSHPtr    : if PSE2OpDAT_PUSHPtr(OpCodes^[0].OpCode).Value <> nil then exit;
+  end;
+
+  case PSE2OpOP_COMPARE(OpCodes^[1].OpCode).CompType of
+  2 :
+      begin
+        PSE2OpFLOW_JGEZ(OpCodes^[0].OpCode).OpCode := soFLOW_JGEZ;
+        PSE2OpFLOW_JGEZ(OpCodes^[0].OpCode).Position := PSE2OpFLOW_JIZ(OpCodes^[2].OpCode).Position;
+        OpCodes^[0].CodeIndex := OpCodes^[2].CodeIndex;
+
+        Method.OpCodes.Delete(index + 1);
+        Method.OpCodes.Delete(index + 1);
+        AddCodeOffset(-2, Index);
+        result := True;
+      end;
+  3 :
+      begin
+        PSE2OpFLOW_JLEZ(OpCodes^[0].OpCode).OpCode := soFLOW_JLEZ;
+        PSE2OpFLOW_JLEZ(OpCodes^[0].OpCode).Position := PSE2OpFLOW_JIZ(OpCodes^[2].OpCode).Position;
+        OpCodes^[0].CodeIndex := OpCodes^[2].CodeIndex;
+
+        Method.OpCodes.Delete(index + 1);
+        Method.OpCodes.Delete(index + 1);
+        AddCodeOffset(-2, Index);
+        result := True;
+      end;
+  4 :
+      begin
+        PSE2OpFLOW_JLZ(OpCodes^[0].OpCode).OpCode := soFLOW_JLZ;
+        PSE2OpFLOW_JLZ(OpCodes^[0].OpCode).Position := PSE2OpFLOW_JIZ(OpCodes^[2].OpCode).Position;
+        OpCodes^[0].CodeIndex := OpCodes^[2].CodeIndex;
+
+        Method.OpCodes.Delete(index + 1);
+        Method.OpCodes.Delete(index + 1);
+        AddCodeOffset(-2, Index);
+        result := True;
+      end;     
+  5 :
+      begin
+        PSE2OpFLOW_JGZ(OpCodes^[0].OpCode).OpCode := soFLOW_JGZ;
+        PSE2OpFLOW_JGZ(OpCodes^[0].OpCode).Position := PSE2OpFLOW_JIZ(OpCodes^[2].OpCode).Position;
+        OpCodes^[0].CodeIndex := OpCodes^[2].CodeIndex;
+
+        Method.OpCodes.Delete(index + 1);
+        Method.OpCodes.Delete(index + 1);
+        AddCodeOffset(-2, Index);
+        result := True;
+      end;
+  6 :
+      begin
+        PSE2OpFLOW_JIZ(OpCodes^[0].OpCode).OpCode := soFLOW_JIZ;
+        PSE2OpFLOW_JIZ(OpCodes^[0].OpCode).Position := PSE2OpFLOW_JIZ(OpCodes^[2].OpCode).Position;
+        OpCodes^[0].CodeIndex := OpCodes^[2].CodeIndex;
+
+        Method.OpCodes.Delete(index + 1);
+        Method.OpCodes.Delete(index + 1);
+        AddCodeOffset(-2, Index);
+        result := True;
+      end;
+  else
+      result := False;
+  end;
+end;
+
+{ TSE2OptimizeBoolNotJump }
+
+function TSE2OptimizeBoolNotJump.IsStartup(
+  OpCode: TSE2LinkOpCode): Boolean;
+begin
+  result := OpCode.OpCode.OpCode = soOP_OPERATION;
+  if result then
+     result := PSE2OpOP_OPERATION(OpCode.OpCode).OpType = 21;
+end;
+
+function TSE2OptimizeBoolNotJump.Optimize(Index: Integer): Boolean;
+begin
+  result := False;
+  if (OpCodes^[0] = nil) or (OpCodes^[1] = nil) then
+     exit;
+
+  if not ( OpCodes^[0].OpCode.OpCode = soOP_OPERATION) then
+     exit;
+
+  if PSE2OpOP_OPERATION(OpCodes^[0].OpCode).OpType <> 21 then
+     exit;
+
+  if OpCodes^[1].OpCode.OpCode <> soFLOW_JIZ then
+     exit;
+
+  OpCodes^[0].OpCode.OpCode := soFLOW_JNZ;
+  PSE2OpFLOW_JNZ(OpCodes^[0].OpCode).Position := PSE2OpFLOW_JIZ(OpCodes^[1].OpCode).Position;
+  OpCodes^[0].CodeIndex := OpCodes^[1].CodeIndex;
+
+  Method.OpCodes.Delete(index + 1);
+  AddCodeOffset(-1, Index);
+  result := True;
+end;
+
+{ TSE2OptimizeIncDecStack }
+
+function TSE2OptimizeIncDecStack.IsStartup(
+  OpCode: TSE2LinkOpCode): Boolean;
+begin
+  result := OpCode.OpCode.OpCode in [soDAT_COPY_FROM, soINT_INCSTACK, soINT_DECSTACK];
+end;
+
+function TSE2OptimizeIncDecStack.Optimize(Index: Integer): Boolean;
+begin
+  result := False;
+  if (OpCodes^[0] = nil) or (OpCodes^[1] = nil) or (OpCodes^[2] = nil) then
+     exit;
+
+  if OpCodes^[1].OpCode.OpCode <> soDAT_PUSHInt32 then
+     exit;
+
+  if OpCodes^[2].OpCode.OpCode <> soOP_OPERATION then
+     exit;
+
+  if not (PSE2OpOP_OPERATION(OpCodes^[2].OpCode).OpType in [2, 3]) then  // add + substract
+     exit;
+
+  if PSE2OpOP_OPERATION(OpCodes^[2].OpCode).OpType = 2 then
+     OpCodes^[1].OpCode.OpCode := soINT_INCSTACK
+  else
+     OpCodes^[1].OpCode.OpCode := soINT_DECSTACK;
+  PSE2OpINT_INCSTACK(OpCodes^[1].OpCode).Value  := PSE2OpDAT_PUSHInt32(OpCodes^[1].OpCode).Value;
+  PSE2OpINT_INCSTACK(OpCodes^[1].OpCode).Offset := 0;
+
+
+  Method.OpCodes.Delete(index + 2);
+  AddCodeOffset(-1, Index + 1);
+
+  result := True;
+end;
+
+{ TSE2OptimizeLoadTopVarConst }
+
+function TSE2OptimizeLoadTopVarConst.IsStartup(
+  OpCode: TSE2LinkOpCode): Boolean;
+begin
+  result := OpCode.OpCode.OpCode = soSTACK_INC;
+  if result then
+     result := PSE2OpSTACK_INC(OpCode.OpCode).AType in [btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64, btSingle, btDouble, btPointer];
+end;
+
+function TSE2OptimizeLoadTopVarConst.Optimize(Index: Integer): Boolean;
+var newType: boolean;
+begin
+  result := False;
+  if (OpCodes^[0] = nil) or (OpCodes^[1] = nil) or (OpCodes^[2] = nil) then
+     exit;
+
+  if (OpCodes^[2].OpCode.OpCode = soDAT_CONVERT) then
+  begin
+    if OpCodes^[3] = nil then
+       exit;
+
+    newType := True;
+
+    if OpCodes^[3].OpCode.OpCode <> soDAT_COPY_TO then
+       exit;
+
+    if not ((PSE2OpDAT_COPY_TO(OpCodes^[3].OpCode).Target = -1) and
+            (not PSE2OpDAT_COPY_TO(OpCodes^[3].OpCode).Static)) then
+       exit;
+  end else
+  begin
+    newType := False;
+
+    if OpCodes^[2].OpCode.OpCode <> soDAT_COPY_TO then
+       exit;
+
+    if not ((PSE2OpDAT_COPY_TO(OpCodes^[2].OpCode).Target = -1) and
+            (not PSE2OpDAT_COPY_TO(OpCodes^[2].OpCode).Static)) then
+       exit;
+  end;
+
+  case PSE2OpSTACK_INC(OpCodes^[0].OpCode).AType of
+  btU8, btS8, btU16, btS16, btU32, btS32, btS64, btU64 :
+    if not (OpCodes^[1].OpCode.OpCode in [soDAT_PUSHInt32, soDAT_PUSHInt64]) then
+      exit;
+  btSingle, btDouble :
+    if not (OpCodes^[1].OpCode.OpCode in [soDAT_PUSHFloat4, soDAT_PUSHFloat8]) then
+      exit;
+  btPointer :
+    if not (OpCodes^[1].OpCode.OpCode in [soDAT_PUSHPtr]) then
+       exit;
+  else
+    exit;
+  end;
+
+  OpCodes^[0].OpCode^ := OpCodes^[1].OpCode^;
+  if newType then
+  begin
+    OpCodes^[1].OpCode^ := OpCodes^[2].OpCode^;
+    Method.OpCodes.Delete(index + 2);
+    Method.OpCodes.Delete(index + 2);
+    AddCodeOffset(-2, Index);
+  end else
+  begin
+    Method.OpCodes.Delete(index + 1);
+    Method.OpCodes.Delete(Index + 1);
+    AddCodeOffset(-2, Index);
+  end;
+
+  result := True;
+end;     
+
+{ TSE2OptimizeRemoveNearJump }
+
+function TSE2OptimizeRemoveNearJump.IsStartup(
+  OpCode: TSE2LinkOpCode): Boolean;
+begin
+  result := OpCode.OpCode.OpCode = soFLOW_GOTO;
+end;
+
+function TSE2OptimizeRemoveNearJump.Optimize(Index: Integer): Boolean;
+begin
+  result := False;
+  if (OpCodes^[0] = nil) then
+     exit;
+
+  if PSE2OpFLOW_GOTO(OpCodes^[0].OpCode).Position = cardinal(Index + 1) then
+  begin
+    Method.OpCodes.Delete(Index);
+    AddCodeOffset(-1, Index);
+    result := True;
+  end;
+end;
+
 { TSE2OptimizeCombinePops }
 
 function TSE2OptimizeCombinePops.IsStartup(
@@ -689,8 +988,13 @@ begin
   FOptimizer[4] := TSE2OptimizeRemoveConstIntConverts.Create();
   FOptimizer[5] := TSE2OptimizeInsertPushConstants.Create();
   FOptimizer[6] := TSE2OptimizeUseJumpIfZero.Create();
-  FOptimizer[7] := TSE2OptimizeCombinePops.Create();
-  FOptimizer[8] := TSE2OptimizeRemoveNOOPs.Create();
+  FOptimizer[7] := TSE2OptimizeUseAroundZero.Create();
+  FOptimizer[8] := TSE2OptimizeBoolNotJump.Create();
+  FOptimizer[9] := TSE2OptimizeIncDecStack.Create();
+  FOptimizer[10] := TSE2OptimizeLoadTopVarConst.Create();
+  FOptimizer[11] := TSE2OptimizeRemoveNearJump.Create();
+  FOptimizer[12] := TSE2OptimizeCombinePops.Create();
+  FOptimizer[13] := TSE2OptimizeRemoveNOOPs.Create();
 end;
 
 destructor TSE2Optimizer.Destroy;
@@ -705,6 +1009,14 @@ procedure TSE2Optimizer.Optimize(Method: TSE2Method);
 var i, j      : integer;
     OpCodes   : TSE2OpCodeArrayList;
     Mode      : integer;
+
+  function max(i1, i2: integer): integer;
+  begin
+    result := i1;
+    if i2 > result then
+       result := i2;
+  end;
+
 begin
   for Mode := Low(FOptimizer) to High(FOptimizer) do
   begin
@@ -721,7 +1033,7 @@ begin
       if FOptimizer[Mode].IsStartup(OpCodes[0]) then
         if FOptimizer[Mode].Optimize(i) then
         begin
-          i := i - 1;
+          i := max(-1, i + FOptimizer[Mode].Decrease);
           break;
         end;
 

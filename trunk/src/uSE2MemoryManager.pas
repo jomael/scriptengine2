@@ -12,7 +12,7 @@ type
   private
     {$IFDEF SEII_MM_USE_CACHE}
     FCache    : Pointer;
-    FCacheEnd : integer;
+    FCacheEnd : Pointer;
     FEntryC   : integer;
     FEntries  : TList;
     {$ENDIF}
@@ -74,7 +74,7 @@ begin
   System.GetMem(FCache, CacheSize);
   FillChar(FCache^, CacheSize, 0);
 
-  FCacheEnd := cardinal(FCache) + CacheSize - 1;
+  FCacheEnd := Pointer(cardinal(FCache) + CacheSize - 1);
   FEntries.Count := (CacheSize div MaxDataSize);
   for i:=0 to (CacheSize div MaxDataSize) - 1 do
     FEntries.List[i] := (Pointer(  cardinal(FCache) + i*MaxDataSize  ));
@@ -89,7 +89,7 @@ begin
      System.FreeMem(FCache);
   FCache := nil;
   FEntries.Clear;
-  FCacheEnd := -1;
+  FCacheEnd := nil;
   FEntryC   := -1;
 end;
 {$ENDIF}

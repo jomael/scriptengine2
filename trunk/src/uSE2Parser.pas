@@ -31,7 +31,7 @@ type
     LastVariable   : TSE2Variable;
     LastProperty   : TSE2Property;
     LastMethod     : TSE2Method;
-    RootRecord     : TSE2Record;
+    RootOffsetObj  : TSE2Type;
     LastTargetVar  : TSE2Variable;
     LastSetVariable: TSE2Variable;
     CurrentOwner   : TSE2Type;
@@ -39,9 +39,11 @@ type
     WasFunction    : boolean;
     NoStaticPointer: boolean;
     RecordsCreated : integer;
+    ArraysCreated  : integer;
     IsInExceptBlock: boolean; 
     IsInFinallyBlock: boolean;
     IsInUsesBlock  : boolean;
+    IsInTryBlock   : boolean;
 
     TargetType     : TSE2Type;
     Method         : TSE2Method;
@@ -60,7 +62,8 @@ type
     {$HINTS OFF}
 {$ENDIF}
 
-  TSE2SetterEvent = procedure(Sender: TObject; State: TSE2ParseState; Method: TSE2Method; Target: TSE2Type) of object;
+  PSE2Type = ^TSE2Type;
+  TSE2SetterEvent = procedure(Sender: TObject; State: TSE2ParseState; Method: TSE2Method; Target: TSE2Type; NewValueType: PSE2Type) of object;
 
   TSE2Parser = class(TSE2Object)
   private
@@ -87,16 +90,19 @@ type
     function  CompileUnitName: string;
 
     function  GenIncompatibleExpression(Current, Target: TSE2Type; Operation: TSE2TokenType = sesNone): string;
-
+    procedure ArrayMethodCall(Sender: TObject; CallerMethod, CalledMethod: TSE2Method; CallOwner: TSE2Type; StackElem: TSE2Variable);
+    procedure LinkArrayMethodEvents;
 
     procedure ShowUnusedVariables(OnlyPrivate: boolean);
     procedure ParseUnit(State: TSE2ParseState);
     procedure ParseProgram(State: TSE2ParseState);
+    function  TypeIsNoRefType(aType: TSE2Type): boolean;
 
     procedure VariableDeclaration(State: TSE2ParseState; Method: TSE2Method);
     procedure TypeDeclaration(State: TSE2ParseState; Method: TSE2Method);
     procedure ConstDeclaration(State: TSE2ParseState; Method: TSE2Method);
 
+    procedure ChangeArrayLenAndPopToVar(State: TSE2ParseState; Method: TSE2Method; ArrayType: TSE2Type; Variable: TSE2Variable);
     procedure ProcessDeprecatedExpression(State: TSE2ParseState; Elem: TSE2BaseType);
     procedure MethodTypeDeclaration(State: TSE2ParseState; MethodName: string);
     procedure TypeTypeDeclaration(State: TSE2ParseState; Method: TSE2Method; TypeName: string);
@@ -106,8 +112,8 @@ type
     procedure InterfaceDeclaration(State: TSE2ParseState; InterfaceName: string);
     procedure ArrayTypeDeclaration(State: TSE2ParseState; ArrayName: string);
     procedure PushVarToStack(State: TSE2ParseState; Method: TSE2Method; Variable: TSE2Variable; MoveData: boolean);
-    procedure PopStackToVar(State: TSE2ParseState; Method: TSE2Method; Variable: TSE2Variable);
-                                        
+    procedure PopStackToVar(State: TSE2ParseState; Method: TSE2Method; Variable: TSE2Variable; StackValue: TSE2Type = nil);
+
     procedure IncreaseStackPosition(State: TSE2ParseState; OpCode: PSE2OpDefault; Offset, MinStackDist: integer);
     procedure IncreaseMethodStackPositions(State: TSE2ParseState; Method: TSE2Method; Start, Stop, Offset, MinStackDist: integer);
     function  GetOverwrittenMethod(Method: TSE2Method): TSE2Method;
@@ -132,7 +138,7 @@ type
     procedure PopMethodVariables(State: TSE2ParseState; Method: TSE2Method);
     function  ExceptionCreation(State: TSE2ParseState; Method: TSE2Method): boolean;
 
-    procedure IdentifierSetterEvent(Sender: TObject; State: TSE2ParseState; Method: TSE2Method; Target: TSE2Type);
+    procedure IdentifierSetterEvent(Sender: TObject; State: TSE2ParseState; Method: TSE2Method; Target: TSE2Type; newValueType: PSE2Type);
     function  IdentifierExpression(State: TSE2ParseState; Method: TSE2Method; SetterCallBack: TSE2SetterEvent; AccessSet: boolean = False; UseVarMove: boolean = False): TSE2Type;
 
     procedure AtStatement(State: TSE2ParseState; Method: TSE2Method);
@@ -170,6 +176,7 @@ type
     function  GetStringType: TSE2Type;
     function  GetPointerType: TSE2Type;
     function  GetExternalObjectType: TSE2Type;
+    function  GetBaseArrayType: TSE2Type;
     function  GetScriptObjectType: TSE2Type;
     function  GetScriptExceptionType: TSE2Type;
     function  IsScriptExceptionType(aType: TSE2Type): boolean;
@@ -606,6 +613,26 @@ var pUnit : TSE2Unit;
            p := p.InheritFrom;
       end;
     end else
+    if Parent is TSE2Array then
+    begin
+      if Method <> nil then
+        if aUnit <> FUnit then
+          if Method.Parent = Parent then
+            vis := [visProtected, visPublic];
+
+      p := Parent;
+      while p <> nil do
+      begin
+        result := aUnit.ElemList.FindItem(IdentName, '', p, nil, ClassTypes, vis, AcceptSetType);
+        if result = nil then
+           result := aUnit.TypeList.FindItem(IdentName, '', p, nil, ClassTypes, vis, AcceptSetType);
+
+        if result <> nil then
+           break
+        else
+           p := p.InheritFrom;
+      end;
+    end else
     begin
       result := aUnit.ElemList.FindItem(IdentName, '', Parent, nil, ClassTypes, vis, AcceptSetType);
       if result = nil then
@@ -816,7 +843,8 @@ begin
 
   State.IsInInterface := True;
   State.Visibility    := visPublic;
-  UsesDeclaration(State);
+  UsesDeclaration(State);    
+  LinkArrayMethodEvents;
 
   State.IsInInterface := False;
   MainBodyDeclaration(State);
@@ -866,6 +894,8 @@ begin
   State.Visibility    := visPublic;
 
   UsesDeclaration(State);
+  LinkArrayMethodEvents;
+
   MainBodyDeclaration(State);
 
   ExpectToken([sesImplementation]);
@@ -1058,7 +1088,7 @@ procedure TSE2Parser.VariableDeclaration(State: TSE2ParseState;
 var NewVaribles: TSE2BaseTypeList;
     NewVar     : TSE2Variable;
     VarType    : TSE2BaseType;
-    i, rt      : integer;
+    i, rt, y   : integer;
     IsPublic   : boolean;
     IsExternal : boolean;
     ASearchTmp : TSE2BaseType;
@@ -1246,7 +1276,7 @@ begin
               btAnsiString,
               btPAnsiChar,
               btPWideChar  : TSE2Class(State.CurrentOwner).RTTI.Add(TSE2Type(NewVar.AType.InheritRoot).AType, NewVar.CodePos, SizeOf(Pointer));
-              btArray      : ;
+              btArray      : TSE2Class(State.CurrentOwner).RTTI.Add(btArray, NewVar.CodePos, integer(TSE2Array(NewVar.AType)));
               btRecord     : TSE2Class(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(TSE2Record(NewVar.AType.InheritRoot)));
               end;
             end else
@@ -1264,6 +1294,17 @@ begin
 
                 //TSE2Record(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(NewVar.AType));
               end else
+              if (NewVar.AType is TSE2Array) and (not TSE2Array(NewVar.AType).IsDynamic) then
+              begin
+                TSE2Record(State.CurrentOwner).RecordSize := TSE2Record(State.CurrentOwner).RecordSize + TSE2Array(NewVar.AType).ArraySize;
+                for rt:=0 to TSE2Array(NewVar.AType).RTTI.Count-1 do
+                begin
+                  for y:=0 to TSE2Array(NewVar.AType).ArrayCount-1 do
+                    TSE2Record(State.CurrentOwner).RTTI.Add(
+                      TSE2Array(NewVar.AType).RTTI.Duplicate(rt, NewVar.CodePos + y * TSE2Array(NewVar.AType).ElemSize)
+                    );
+                end;
+              end else
               begin
                 if TSE2Type(NewVar.AType.InheritRoot).DataSize = 0 then
                    RaiseError(petError, 'Internal error: data size can not be 0');
@@ -1277,7 +1318,7 @@ begin
                 btAnsiString,
                 btPAnsiChar,
                 btPWideChar  : TSE2Record(State.CurrentOwner).RTTI.Add(TSE2Type(NewVar.AType.InheritRoot).AType, NewVar.CodePos, SizeOf(Pointer));
-                btArray      : ;
+                btArray      : TSE2Record(State.CurrentOwner).RTTI.Add(btArray, NewVar.CodePos, integer(NewVar.AType));
                 btRecord     : TSE2Record(State.CurrentOwner).RTTI.Add(btRecord, NewVar.CodePos, integer(NewVar.AType));
                 end;
               end;
@@ -1645,6 +1686,7 @@ begin
       ClassType.IsPartial   := IsPartial;
       ClassType.IsForwarded := True;
       ClassType.IsSealed    := IsSealed;
+      ClassType.AType       := btObject;
       FUnit.TypeList.Add(ClassType);
 
       BaseClass := GetScriptObjectType;
@@ -1947,49 +1989,125 @@ procedure TSE2Parser.ArrayTypeDeclaration(State: TSE2ParseState;
 var minIndex, maxIndex: integer;
     newType           : TSE2Array;
     BaseType          : TSE2BaseType;
+    constType         : TSE2Constant;
+    i                 : integer;
+    isDynamic         : boolean;
 begin
   State.Method     := nil;
   State.AParent    := nil;
   State.TargetType := nil;
 
+  if FindIdentifier(nil, ArrayName, nil, FUnit.Name, TSE2BaseTypeFilter.Create([TSE2Type])) <> nil then
+     RaiseError(petError, 'The identifier "'+ArrayName+'" is already in usage');
+
+
   if ExpectToken([sesArray]) then
   begin
-    RaiseError(petError, 'Arrays are not really supported yet');
+    RaiseError(petWarning, 'Array implementation is not finished yet and only experimental at the moment! Usage at own risk!');
+    //RaiseError(petError, 'Arrays are not really supported yet');
 
+    minIndex := 0;
+    maxIndex := 0;
     ReadNextToken;
-    ExpectToken([sesOpenBracket]);
-    ReadNextToken;
-    ExpectToken([sesInteger]);
-    minIndex := FTokenizer.Token.AsInteger;
-    ReadNextToken;
-    ExpectToken([sesDot]);
-    ReadNextToken;
-    ExpectToken([sesDot]);
-    ReadNextToken;
-    ExpectToken([sesInteger]);
-    maxIndex := FTokenizer.Token.AsInteger;
+    if Tokenizer.Token.AType = sesOpenBracket then
+    begin
+      isDynamic := False;
+      ExpectToken([sesOpenBracket]);
+      ReadNextToken;
+      ExpectToken([sesInteger, sesIdentifier]);
+      if Tokenizer.Token.AType = sesInteger then
+         minIndex := FTokenizer.Token.AsInteger
+      else
+      begin
+        constType := ConstExpression(State.Method);
+        if constType = nil then
+           RaiseError(petError, 'Constant expression expected for min index');
+        if not constType.IsInteger then
+           RaiseError(petError, 'Ordinal constant expected for min index');
 
-    if minIndex > maxIndex then
-       RaiseError(petError, 'Min index can not be greater than max index');
+        minIndex := constType.AsInteger;
+      end;
 
-    ReadNextToken;
-    ExpectToken([sesCloseBracket]);
-    ReadNextToken;
+      ReadNextToken;
+      ExpectToken([sesDotDot]);
+      ReadNextToken;
+      ExpectToken([sesInteger, sesIdentifier]);
+      if Tokenizer.Token.AType = sesInteger then
+         maxIndex := FTokenizer.Token.AsInteger
+      else
+      begin
+        constType := ConstExpression(State.Method);
+        if constType = nil then
+           RaiseError(petError, 'Constant expression expected for max index');
+        if not constType.IsInteger then
+           RaiseError(petError, 'Ordinal constant expected for max index');
+
+        maxIndex := constType.AsInteger;
+      end;
+
+      if minIndex > maxIndex then
+         RaiseError(petError, 'Min index can not be greater than max index');
+
+      ReadNextToken;
+      ExpectToken([sesCloseBracket]);
+      ReadNextToken;
+    end else
+      isDynamic := True;
     ExpectToken([sesOf]);
     ReadNextToken;
     ExpectToken([sesIdentifier]);
 
-    BaseType := FindIdentifier(nil, Tokenizer.Token.Value, nil, '', TSE2BaseTypeFilter.Create([TSE2Type]));
+    BaseType := TypeExpression(State.Method);
     if BaseType = nil then
        RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"')
     else
     begin
       newType := TSE2Array.Create;
+      newType.InheritFrom := GetBaseArrayType;
       DeclareType(State, newType, ArrayName);
-      newType.ArrayType  := TSE2Type(BaseType);
-      newType.StartIndex := minIndex;
-      newType.ArrayCount := maxIndex + 1 - minIndex;
-      newType.AType      := btArray;
+      newType.Content.AType := TSE2Type(BaseType);
+      if isDynamic then
+      begin
+        newType.IsDynamic  := True;
+        newType.StartIndex := 0;
+        newType.ArrayCount := 0;
+      end else
+      begin
+        newType.IsDynamic  := False;
+        newType.StartIndex := minIndex;
+        newType.ArrayCount := maxIndex + 1 - minIndex;
+      end;
+      if newType.Content.AType is TSE2Record then
+      begin
+        newType.ArraySize  := newType.ArrayCount * TSE2Record(newType.Content.AType).RecordSize;
+        for i:=0 to TSE2Record(newType.Content.AType).RTTI.Count-1 do
+          newType.RTTI.Add(TSE2Record(newType.Content.AType).RTTI.Duplicate(i, 0));
+      end else
+      if newType.Content.AType is TSE2Array then
+      begin
+        if TSE2Array(newType.Content.AType).IsDynamic then
+        begin
+          newType.ArraySize := newType.ArrayCount * TSE2Type(newType.Content.AType).DataSize;
+          newType.RTTI.Add(btArray, 0, integer(newType.Content.AType));
+        end else
+        begin
+          newType.ArraySize  := newType.ArrayCount * TSE2Array(newType.Content.AType).ArraySize;
+          for i:=0 to TSE2Array(newType.Content.AType).RTTI.Count-1 do
+            newType.RTTI.Add(TSE2Array(newType.Content.AType).RTTI.Duplicate(i, 0));
+        end;
+      end else
+      begin
+        newType.ArraySize  := newType.ArrayCount * TSE2Type(newType.Content.AType.InheritRoot).DataSize;
+        case TSE2Type(newType.Content.AType.InheritRoot).AType of
+        btString,
+        btUTF8String,
+        btWideString,
+        btPChar,
+        btAnsiString,
+        btPAnsiChar,
+        btPWideChar  : newType.RTTI.Add(TSE2Type(newType.Content.AType.InheritRoot).AType, 0, SizeOf(Pointer));
+        end;
+      end;
 
       //if Method <> nil then
       //   Method.Types.Add(newType)
@@ -2254,7 +2372,17 @@ begin
       NewType.InheritFrom := BaseType;
       newType.DataSize := TSE2Type(BaseType).DataSize;
       if newType is TSE2Record then
-         TSE2Record(newType).RecordSize := TSE2Record(BaseType).RecordSize;
+         TSE2Record(newType).RecordSize := TSE2Record(BaseType).RecordSize
+      else
+      if newType is TSE2Array then
+      begin
+        TSE2Array(newType).ArrayCount := TSE2Array(BaseType).ArrayCount;
+        TSE2Array(newType).ArraySize  := TSE2Array(BaseType).ArraySize;
+        TSE2Array(newType).IsDynamic  := TSE2Array(BaseType).IsDynamic;
+        TSE2Array(newType).Content.AType := TSE2Array(BaseType).Content.AType;
+        TSE2Array(newType).StartIndex := TSE2Array(BaseType).StartIndex;
+        TSE2Array(newType).AType      := TSE2Array(BaseType).AType;
+      end;
 
 
       //if IsStrict then
@@ -3033,14 +3161,18 @@ end;
 procedure TSE2Parser.StatementSquence(State: TSE2ParseState; Method: TSE2Method);
 var oldStackSize : integer;
     oldRecords   : integer;
+    oldArrays    : integer;
 
   procedure DoStatement;
+  var oldStack: integer;
   begin
+    oldStack := State.StackSize;
     try
       Statement(State, Method);
     except
       on E: ESE2ParserError do
       begin
+        State.StackSize    := oldStack;
         State.IsExpression := False;
         State.LastVariable := nil;
         State.LastProperty := nil;
@@ -3059,6 +3191,7 @@ begin
   State.TargetType := nil;
   State.LastSetVariable := nil;
 
+  oldArrays    := State.ArraysCreated;
   oldRecords   := State.RecordsCreated;
   oldStackSize := State.StackSize;
   DoStatement;
@@ -3068,6 +3201,11 @@ begin
     begin
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_DEL_RECS(State.RecordsCreated - oldRecords), ''));
     end;
+    if oldArrays < State.ArraysCreated then
+    begin
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_DEL_ARRS(State.ArraysCreated - oldArrays), ''));
+    end;
+    State.ArraysCreated  := oldArrays;
     State.RecordsCreated := oldRecords;
 
     ReadNextToken;
@@ -3078,6 +3216,11 @@ begin
   begin
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_DEL_RECS(State.RecordsCreated - oldRecords), ''));
   end;
+  if oldArrays < State.ArraysCreated then
+  begin
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_DEL_ARRS(State.ArraysCreated - oldArrays), ''));
+  end;
+  State.ArraysCreated  := oldArrays;
   State.RecordsCreated := oldRecords;
 
   if not FHasError then
@@ -3324,6 +3467,19 @@ begin
         State.RecordsCreated := State.RecordsCreated + 1;
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + result.GenLinkerName));
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MARK_DEL, ''));
+      end else
+      if result is TSE2Array then
+      begin
+        State.ArraysCreated := State.ArraysCreated + 1;
+        if TSE2Array(result).IsDynamic then
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_MAKE(0, 0), 'META_' + result.GenLinkerName));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_MARK_DEL, ''));
+        end else
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_SFL(TSE2Array(result).ArrayCount, 0), 'META_' + result.GenLinkerName));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_MARK_DEL, ''));
+        end;
       end;
     end else
     begin
@@ -3443,6 +3599,19 @@ begin
             State.RecordsCreated := State.RecordsCreated + 1;
             Method.OpCodes.Items[ResultCodeIndex + 1].ChangeOpCode(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + result.GenLinkerName);
             Method.OpCodes.Items[ResultCodeIndex + 2].ChangeOpCode(TSE2OpCodeGen.REC_MARK_DEL, '');
+          end else
+          if result is TSE2Array then
+          begin
+            State.ArraysCreated := State.ArraysCreated + 1;
+            if TSE2Array(result).IsDynamic then
+            begin
+              Method.OpCodes.Items[ResultCodeIndex + 1].ChangeOpCode(TSE2OpCodeGen.ARR_MAKE(0, 0), 'META_' + result.GenLinkerName);
+              Method.OpCodes.Items[ResultCodeIndex + 2].ChangeOpCode(TSE2OpCodeGen.ARR_MARK_DEL, '');
+            end else
+            begin
+              Method.OpCodes.Items[ResultCodeIndex + 1].ChangeOpCode(TSE2OpCodeGen.ARR_SFL(TSE2Array(result).ArrayCount, 0), 'META_' + result.GenLinkerName);
+              Method.OpCodes.Items[ResultCodeIndex + 2].ChangeOpCode(TSE2OpCodeGen.ARR_MARK_DEL, '');
+            end;
           end;
         end;
       end;
@@ -3574,6 +3743,19 @@ begin
               State.RecordsCreated := State.RecordsCreated + 1;
               Method.OpCodes.Items[ResultCodeIndex + 1].ChangeOpCode(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + result.GenLinkerName);
               Method.OpCodes.Items[ResultCodeIndex + 2].ChangeOpCode(TSE2OpCodeGen.REC_MARK_DEL, '');
+            end else
+            if result is TSE2Array then
+            begin
+              State.ArraysCreated := State.ArraysCreated + 1;
+              if TSE2Array(result).IsDynamic then
+              begin
+                Method.OpCodes.Items[ResultCodeIndex + 1].ChangeOpCode(TSE2OpCodeGen.ARR_MAKE(0, 0), 'META_' + result.GenLinkerName);
+                Method.OpCodes.Items[ResultCodeIndex + 2].ChangeOpCode(TSE2OpCodeGen.ARR_MARK_DEL, '');
+              end else
+              begin
+                Method.OpCodes.Items[ResultCodeIndex + 1].ChangeOpCode(TSE2OpCodeGen.ARR_SFL(TSE2Array(result).ArrayCount, 0), 'META_' + result.GenLinkerName);
+                Method.OpCodes.Items[ResultCodeIndex + 2].ChangeOpCode(TSE2OpCodeGen.ARR_MARK_DEL, '');
+              end;
             end;
           end;
         end;
@@ -3585,7 +3767,7 @@ begin
 
     wasStaticPointer := State.NoStaticPointer;
     if Assigned(LastParamSetter) then
-       LastParamSetter(Self, State, Method, TSE2Parameter(CallMethod.Params[iStop]).AType);
+       LastParamSetter(Self, State, Method, TSE2Parameter(CallMethod.Params[iStop]).AType, nil);
     State.NoStaticPointer := wasStaticPointer;
 
     if (CallMethod.AUnitName <> '') and (CallMethod.Name <> '') and (not (CallMethod.IsMethodType)) then
@@ -3692,13 +3874,20 @@ begin
 
     // Pop Parameters from stack
     for i:=CallMethod.Params.Count-1 downto 0 do
-    begin
+    begin                                              {
       case TSE2Parameter(CallMethod.Params[i]).ParameterType of
       ptConst,
       ptDefault : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
       ptVar     : GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC_NODEL, ''));
-      end;
+      end;     }
       State.DecStack;
+    end;
+    if CallMethod.Params.Count > 0 then
+    begin
+      if CallMethod.Params.Count > 1 then
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC_COUNT(CallMethod.Params.Count), ''))
+      else
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
     end;
 
     if CallMethod.HasSelfParam then
@@ -3750,6 +3939,105 @@ begin
   State.ParamMethod := nil;
 end;
 
+procedure TSE2Parser.ChangeArrayLenAndPopToVar(State: TSE2ParseState;
+  Method: TSE2Method; ArrayType: TSE2Type; Variable: TSE2Variable);
+var CodeIndex: integer;
+begin
+  GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_FREE(-1), ''));
+  GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_SLEN(0, 0), 'META_' + ArrayType.GenLinkerName));
+  State.DecStack;
+
+  if (Variable.Parent = nil) or (Variable.IsStatic) then
+  begin
+    if Variable.IsStatic then
+       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(0, True), Variable.GenLinkerName))
+    else
+    begin
+      CodeIndex := -(State.StackSize) - Method.StackSize + Variable.CodePos + 1;
+      if Variable is TSE2Parameter then
+         CodeIndex := CodeIndex - 1;
+
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(CodeIndex, False), ''));
+    end;
+  end else
+     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+
+  State.DecStack;
+end;
+
+procedure TSE2Parser.ArrayMethodCall(Sender: TObject; CallerMethod, CalledMethod: TSE2Method;
+  CallOwner: TSE2Type; StackElem: TSE2Variable);
+var aType     : TSE2Type;
+    wasExpr   : boolean;
+begin
+  if not (CallOwner is TSE2Array) then
+     RaiseError(petError, 'Internal error: method expected array type');
+
+  if CalledMethod.IsName('GetMinIndex') then
+  begin
+    GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+    GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(CallOwner).StartIndex), ''));
+  end else
+  if CalledMethod.IsName('GetMaxIndex') then
+  begin
+    if TSE2Array(CallOwner).IsDynamic then
+    begin
+       GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_GLEN, ''));
+       GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(-1), ''));
+       if TSE2Array(CallOwner).StartIndex <> 0 then
+       begin
+         GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(CallOwner).StartIndex), ''));
+         GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(2), '')); // add
+       end;
+       GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(2), '')); // add
+    end else
+    begin
+      GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+      GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(
+                          TSE2Array(CallOwner).StartIndex +
+                          TSE2Array(CallOwner).ArrayCount - 1), ''));
+    end;
+  end else
+  if CalledMethod.IsName('GetLength') then
+  begin
+    if TSE2Array(CallOwner).IsDynamic then
+       GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_GLEN, ''))
+    else
+    begin
+      GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+      GenCode(CallerMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(CallOwner).ArrayCount), ''));
+    end;
+  end else
+  if CalledMethod.IsName('SetLength') then
+  begin
+    if TSE2Array(CallOwner).IsDynamic then
+    begin
+      if StackElem = nil then
+         RaiseError(petError, 'Array length can not be changed here');
+
+      if StackElem is TSE2Parameter then
+        if TSE2Parameter(StackElem).ParameterType <> ptVar then
+           RaiseError(petError, 'The size of array-parameters can only be changed, if they are declared as var-parameters');
+
+      ExpectToken([sesBecomes]);
+      ReadNextToken;
+
+      wasExpr := State.IsExpression;
+      State.IsExpression := True;
+      aType := Expression(State, CallerMethod, GetIntegerType(False));
+      if aType = nil then
+         RaiseError(petError, 'Expression does not return any value');
+      State.IsExpression := wasExpr;
+
+      if not IsCompatible(GetIntegerType(False), aType, sesNone, False, Self) then
+         RaiseError(petError, GenIncompatibleExpression(aType, GetIntegerType(False)));
+
+      ChangeArrayLenAndPopToVar(State, CallerMethod, CallOwner, StackElem);
+    end else
+      RaiseError(petError, 'Array length can only changed for dynamic arrays');
+  end;
+end;
+
 function TSE2Parser.IdentifierExpression(State: TSE2ParseState;
   Method: TSE2Method; SetterCallBack: TSE2SetterEvent; AccessSet: boolean = False; UseVarMove: boolean = False): TSE2Type;
 var pSearchUnit   : TSE2Unit;
@@ -3759,6 +4047,7 @@ var pSearchUnit   : TSE2Unit;
     pSearchParent : TSE2BaseType;
     FindItem      : TSE2BaseType;
     LastItem      : TSE2BaseType;
+    ParentItem    : TSE2BaseType;
     StringIndex   : string;
     wasExpression : boolean;
     sCheckUnitName: string;
@@ -3766,8 +4055,50 @@ var pSearchUnit   : TSE2Unit;
 
   function DoMethodCall(CallMethod: TSE2Method; UseBrackets: boolean = False; LastParamSetter: TSE2SetterEvent = nil;
              AllowDynamic: boolean = True; ParentType: TSE2BaseType = nil; AlternativeMethod: TSE2Method = nil): TSE2Type;
+  var aType: TSE2Type;
+      elem : TSE2Variable;
   begin
-    result := MethodCall(State, Method, CallMethod, UseBrackets, LastParamSetter, AllowDynamic, ParentType, False, AlternativeMethod);
+    if not Assigned(CallMethod.OnCallMethod) then
+       result := MethodCall(State, Method, CallMethod, UseBrackets, LastParamSetter, AllowDynamic, ParentType, False, AlternativeMethod)
+    else
+    begin
+      if ParentItem is TSE2Variable then
+      begin
+         aType := TSE2Variable(ParentItem).AType;
+         elem  := TSE2Variable(ParentItem);
+      end else
+      if ParentItem is TSE2Type then
+      begin
+         aType := TSE2Type(ParentItem);
+         elem  := nil;
+      end else
+      if ParentItem is TSE2Property then
+      begin
+         aType := TSE2Type(ParentItem.Parent);
+         if TSE2Property(ParentItem).Getter is TSE2Variable then
+            elem := TSE2Variable(TSE2Property(ParentItem).Getter)
+         else
+            elem := nil;
+      end else
+      if ParentItem is TSE2Method then
+      begin
+        if TSE2Method(ParentItem).ReturnValue <> nil then
+           aType := TSE2Method(ParentItem).ReturnValue.AType
+        else
+           aType := nil;
+
+        elem := nil;
+      end else
+      begin
+         aType := nil;
+         elem  := nil;
+      end;
+      CallMethod.OnCallMethod(Self, Method, CallMethod, aType, elem);
+      if CallMethod.ReturnValue <> nil then
+         result := CallMethod.ReturnValue.AType
+      else
+         result := nil;
+    end;
     State.NoStaticPointer := False;
   end;
 
@@ -3793,14 +4124,14 @@ var pSearchUnit   : TSE2Unit;
     begin
       if not TSE2Variable(FindItem).IsStatic then
       begin
-        if State.RootRecord = nil then
-          State.RootRecord := TSE2Record(TSE2Variable(FindItem).Parent);
+        if State.RootOffsetObj = nil then
+          State.RootOffsetObj := TSE2Record(TSE2Variable(FindItem).Parent);
       end else
-        State.RootRecord := nil;
+        State.RootOffsetObj := nil;
     end;
 
     if (TSE2Variable(FindItem).AType is TSE2Class) then
-       State.RootRecord := nil;
+       State.RootOffsetObj := nil;
 
     if result is TSE2MethodVariable then
     begin
@@ -3830,12 +4161,15 @@ var pSearchUnit   : TSE2Unit;
     end;
   end;
 
+var SetterCallbackType: TSE2Type;
 begin
-  State.RootRecord := nil;
+  State.RootOffsetObj := nil;
   State.LastMethod := nil;
   State.AParent    := nil;
   State.NoStaticPointer := False;
 
+  ParentItem  := nil;
+  FindItem    := nil;
   result      := nil;
   SearchUnit  := '';
   sCheckUnitName := '';
@@ -3869,6 +4203,7 @@ begin
   State.LastProperty := nil;
   while True do
   begin
+    ParentItem := FindItem;
     ExpectToken([sesIdentifier]);
 
     searchString := Tokenizer.Token.Value;
@@ -3896,11 +4231,13 @@ begin
                 State.NoStaticPointer := True;
            end;
          end;
-                   
+
+
       if FindItem = nil then
          RaiseError(petError, 'Unkown identifier: "'+Tokenizer.Token.Value+'"');
+
     end;
-                                       
+
     // Method deprecated is used in "CallMethod" because of overloads
     if not (FindItem is TSE2Method) then
        CheckForDeprecated(FindItem);
@@ -3942,7 +4279,7 @@ begin
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_INC(btPointer), ''));
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_CLEAR(False), ''));
           end;
-        
+
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_GetProcPtr(0, TSE2Method(FindItem).HasSelfParam), TSE2Method(FindItem).GenLinkerName()));
         TSE2Method(FindItem).Used := True;
         if not TSE2Method(FindItem).HasSelfParam then
@@ -4062,7 +4399,7 @@ begin
          sCheckUnitName := sCheckUnitName + '.';
       sCheckUnitName := sCheckUnitName + searchString;
 
-      State.LastVariable := nil;    
+      State.LastVariable := nil;
       if not State.IsExpression then
          State.LastTargetVar := nil;
       pSearchUnit := TSE2Unit(FindItem);
@@ -4074,6 +4411,7 @@ begin
       result        := nil;
       pSearchParent := nil;
     end else
+    if FindItem <> nil then
       RaiseError(petError, 'Unexpected identifier type "'+Tokenizer.Token.Value+'"');
 
 
@@ -4154,19 +4492,65 @@ begin
 
           if (TSE2Variable(FindItem).AType is TSE2Array) then
           begin
-            ReadNextToken;
-            State.IsExpression := True;
-            pTempType := Expression(State, Method, GetIntegerType);
-            if not (IsCompatible(GetIntegerType, pTempType, sesNone, False, Self)) then
-               RaiseError(petError, 'Expression is not valid');
-            State.IsExpression := False;
-            ExpectToken([sesCloseBracket]);
-
-            LastItem := FindItem;
-            FindItem := TSE2Array(TSE2Variable(FindItem).AType).ArrayType;
-            result   := TSE2Type(FindItem);
+            if State.RootOffsetObj <> nil then
+            begin
+              // GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_GetRef(0, False, False), ''));
+            end;
 
             ReadNextToken;
+            while true do
+            begin
+              wasExpression      := State.IsExpression;
+              State.IsExpression := True;
+              pTempType := Expression(State, Method, GetIntegerType);
+              if not (IsCompatible(GetIntegerType, pTempType, sesNone, False, Self)) then
+                 RaiseError(petError, 'Expression is not valid');
+              State.IsExpression := wasExpression;
+
+              if ((TSE2Variable(FindItem).Parent is TSE2Array) or
+                  (TSE2Variable(FindItem).Parent is TSE2Record)) and
+                 (not TSE2Array(TSE2Variable(FindItem).AType).IsDynamic) then
+                GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_CHECK_RANGE(TSE2Array(TSE2Variable(FindItem).AType).ArrayCount), ''))
+              else
+                GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_CHECK_RANGE(-1), ''));
+
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(TSE2Variable(FindItem).AType).ElemSize), ''));
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(4), '')); // multiply
+
+              if TSE2Array(TSE2Variable(FindItem).AType).StartIndex <> 0 then
+              begin
+                GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(TSE2Variable(FindItem).AType).StartIndex * TSE2Array(TSE2Variable(FindItem).AType).ElemSize), ''));
+                GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.OP_OPERATION(3), '')); // substract
+              end;
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCPD(
+                                                    TSE2Type(TSE2Array(TSE2Variable(FindItem).AType).Content.AType.InheritRoot).AType,
+                                                    TypeIsNoRefType(TSE2Array(TSE2Variable(FindItem).AType).Content.AType)), ''));
+
+              State.DecStack;
+              if TypeIsNoRefType(TSE2Array(TSE2Variable(FindItem).AType).Content.AType) then
+                 State.RootOffsetObj := nil
+              else
+                 State.RootOffsetObj := TSE2Array(TSE2Variable(FindItem).AType);
+              ExpectToken([sesCloseBracket, sesColon]);
+
+
+              FindItem   := TSE2Array(TSE2Variable(FindItem).AType).Content;
+              result     := TSE2Variable(FindItem).AType;     
+              LastItem   := FindItem;
+              State.LastVariable := TSE2Variable(FindItem);
+
+              if Tokenizer.Token.AType = sesCloseBracket then
+              begin
+                ReadNextToken;
+                if Tokenizer.Token.AType <> sesOpenBracket then
+                   break;
+              end;
+
+              if not (TSE2Variable(FindItem).AType is TSE2Array) then
+                 RaiseError(petError, 'Array type expected, but found "' + result.GetStrongName + '" instead');
+
+              ReadNextToken;
+            end;
           end else
             RaiseError(petError, '"[" is not allowed here');
         end;
@@ -4184,7 +4568,7 @@ begin
             if TSE2Property(FindItem).Getter is TSE2Variable then
             begin
               if TSE2Variable(TSE2Property(FindItem).Getter).Parent <> nil then
-                if TSE2Variable(TSE2Property(FindItem).Getter).IsStatic then 
+                if TSE2Variable(TSE2Property(FindItem).Getter).IsStatic then
                   if not State.NoStaticPointer then
                   begin
                     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
@@ -4235,26 +4619,8 @@ begin
                    Continue;
                 end else
                    RaiseError(petError, 'Internal error: property access type is not supported in read only property');
-                //RaiseError(petError, 'Property is read only');
               end else
               begin
-                { Invalid code: properties with index can not access
-                if TSE2Property(FindItem).Setter is TSE2Variable then
-                begin
-                  if TSE2Variable(TSE2Property(FindItem).Setter).Parent <> nil then
-                    if TSE2Variable(TSE2Property(FindItem).Setter).IsStatic then
-                      if not State.NoStaticPointer then
-                      begin
-                        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
-                        State.DecStack;
-                      end;
-                  State.NoStaticPointer := False;
-                  SetterCallBack(Self, State, Method, TSE2Property(LastItem).AType);
-                  PopStackToVar(State, Method, TSE2Variable(TSE2Property(FindItem).Setter));
-                  //RaiseError(petError, 'Variable as setter target not supported yet');
-                   //PushVarToStack(State, Method, TSE2Variable(TSE2Property(FindItem).Getter), False);
-                   //State.IncStack;
-                end else   }
                 if TSE2Property(FindItem).Setter is TSE2Method then
                 begin
                    result := DoMethodCall(TSE2Method(TSE2Property(FindItem).Setter), True, SetterCallBack, True, nil,
@@ -4341,7 +4707,20 @@ begin
             end else
               RaiseError(petError, 'Internal error: lost parser state');
           end;
-        end; // if FindItem is TSE2Property then
+        end else // if FindItem is TSE2Property then
+        if (LastItem is TSE2Variable) and
+             ((TSE2Variable(LastItem).AType is TSE2Array) or
+              (TSE2Variable(LastItem).IsDynamic)) then
+        begin
+          if Tokenizer.Token.AType in [sesDot, sesOpenBracket] then
+          begin
+            ExpectToken([sesDot, sesOpenBracket]);
+            pSearchParent := TSE2Variable(LastItem).AType;
+            State.AParent := TSE2Type(pSearchParent);
+            ReadNextToken;
+            continue;
+          end;
+        end;
       end; // if Tokenizer.Token.AType <> sesBecomes then
       break;
     end; // if (Tokenizer.Token.AType = sesDot) then else
@@ -4380,9 +4759,15 @@ begin
                                TSE2Type(TSE2Variable(TSE2Property(LastItem).Setter).AType.InheritRoot).AType,
                                False), '')
              );
-          SetterCallBack(Self, State, Method, TSE2Property(LastItem).AType);
+          SetterCallBack(Self, State, Method, TSE2Property(LastItem).AType, nil);
           PopStackToVar(State, Method, TSE2Variable(TSE2Property(LastItem).Setter));
         end;
+      end else
+      if LastItem is TSE2Type then
+      begin
+        State.LastSetVariable := nil;
+        RaiseError(petError, 'Internal error: multi dimensional array assignment not supported yet');
+
       end else
       begin
         State.LastSetVariable := State.LastVariable;
@@ -4396,16 +4781,15 @@ begin
 
         if TSE2Variable(LastItem).Parent = nil then
         begin
-          if TSE2Variable(LastItem).AType is TSE2Array then
-          begin
-
-          end else
+          if not (LastItem.Parent is TSE2Array) then
           begin
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
             State.DecStack;
-
-            SetterCallBack(Self, State, Method, TSE2Variable(LastItem).AType);
-            //ConvertVariableCode(State, Method,  );
+            SetterCallBack(Self, State, Method, TSE2Variable(LastItem).AType, nil);
+            PopStackToVar(State, Method, TSE2Variable(LastItem));
+          end else
+          begin
+            SetterCallBack(Self, State, Method, TSE2Variable(LastItem).AType, nil);
             PopStackToVar(State, Method, TSE2Variable(LastItem));
           end;
         end else
@@ -4416,8 +4800,9 @@ begin
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
             State.DecStack;
           end;
-          SetterCallBack(Self, State, Method, TSE2Variable(LastItem).AType);
-          PopStackToVar(State, Method, TSE2Variable(LastItem));
+
+          SetterCallBack(Self, State, Method, TSE2Variable(LastItem).AType, @SetterCallbackType);
+          PopStackToVar(State, Method, TSE2Variable(LastItem), SetterCallbackType);
         end else
         if TSE2Variable(LastItem).Parent is TSE2Record then
         begin
@@ -4426,8 +4811,13 @@ begin
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
             State.DecStack;
           end;
-          SetterCallBack(Self, State, Method, TSE2Variable(LastItem).AType);
-          PopStackToVar(State, Method, TSE2Variable(LastItem));
+          SetterCallBack(Self, State, Method, TSE2Variable(LastItem).AType, @SetterCallbackType);
+          PopStackToVar(State, Method, TSE2Variable(LastItem), SetterCallbackType);
+        end else
+        if TSE2Variable(LastItem).Parent is TSE2Array then
+        begin
+          SetterCallBack(Self, State, Method, TSE2Variable(LastItem).AType, @SetterCallbackType);
+          PopStackToVar(State, Method, TSE2Variable(LastItem), SetterCallbackType);
         end else
           RaiseError(petError, 'Internal error: variable parent not as expected');
       end;
@@ -4563,7 +4953,7 @@ begin
     begin
       if MoveData then
          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_MOVE_FROM(0, True), Variable.GenLinkerName))
-      else                                                                                                    
+      else
          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, True), Variable.GenLinkerName));
     end else
     begin
@@ -4587,13 +4977,21 @@ begin
         //if State.WasFunction then
         //   GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MARK_DEL, ''));
 
-        if State.RootRecord = nil then
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(Variable.CodePos, TSE2Type(Variable.AType.InheritRoot).AType, TSE2Type(Variable.AType.InheritRoot).AType = btRecord), ''))
+        if State.RootOffsetObj = nil then
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(Variable.CodePos, TSE2Type(Variable.AType.InheritRoot).AType, TypeIsNoRefType(Variable.AType)), ''))
         else
         begin
-          PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).Offset  := PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).Offset + Variable.CodePos;
-          PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).newType := TSE2Type(Variable.AType.InheritRoot).AType;
-          PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).NoRef   := TSE2Type(Variable.AType.InheritRoot).AType = btRecord;
+          if (State.RootOffsetObj is TSE2Array) or
+             (Method.OpCodes.Last.OpCode.OpCode = soSPEC_INCPD) then
+          begin
+            // GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_GetRef(0, False, False), ''));
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_INCP(Variable.CodePos, TSE2Type(Variable.AType.InheritRoot).AType, TypeIsNoRefType(Variable.AType)), ''));
+          end else
+          begin
+            PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).Offset  := PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).Offset + Variable.CodePos;
+            PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).newType := TSE2Type(Variable.AType.InheritRoot).AType;
+            PSE2OpSPEC_INCP(Method.OpCodes.Last.OpCode).NoRef   := TypeIsNoRefType(Variable.AType);
+          end;
         end;
         // Decrease stack because last intruction of this method is IncStack and SPEC_INCP does not change stack size
         // --> StackSize = StackSize - 1 + 1 = StackSize;
@@ -4607,13 +5005,18 @@ begin
 end;
 
 procedure TSE2Parser.PopStackToVar(State: TSE2ParseState;
-  Method: TSE2Method; Variable: TSE2Variable);  
+  Method: TSE2Method; Variable: TSE2Variable; StackValue: TSE2Type = nil);
 var CodeIndex: integer;
 
   procedure MakeRecordPop;
   begin
     //if (State.WasFunction) then
     //    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_FREE(0), ''));
+    GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+  end;
+
+  procedure MakeArrayPop;
+  begin
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
   end;
 
@@ -4626,6 +5029,29 @@ begin
     begin
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
       MakeRecordPop;
+    end else
+    if (Variable.AType.InheritRoot is TSE2Array) and (not Variable.IsStatic) then
+    begin
+      if TSE2Array(Variable.AType).IsDynamic then
+      begin
+        if TSE2Parameter(Variable).ParameterType <> ptVar then
+           RaiseError(petError, 'Array parameters can only be changed for var-parameters');
+
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(CodeIndex, False), ''));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_GLEN, ''));
+        State.IncStack;
+        State.IncStack;
+        ChangeArrayLenAndPopToVar(State, Method, Variable.AType, Variable);
+      end;
+
+      if TSE2Array(Variable.AType).IsDynamic then
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(-1), ''))
+      else
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(Variable.AType).ArrayCount), ''));
+
+      GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_COPY_TO(CodeIndex - 1, 0), 'META_'+ Variable.AType.GenLinkerName));
+      MakeArrayPop;
     end else
     if TSE2Parameter(Variable).ParameterType = ptVar then
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(CodeIndex), ''))
@@ -4647,6 +5073,50 @@ begin
            CodeIndex := -(State.StackSize) - Method.StackSize + 1 + Variable.CodePos;
            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
            MakeRecordPop;
+        end;
+      end else
+      if Variable.AType.InheritRoot is TSE2Array then
+      begin
+        if Variable.IsStatic then
+        begin
+          if TSE2Array(Variable.AType).IsDynamic then
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(0, True), Variable.GenLinkerName));
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_GLEN, ''));
+            State.IncStack;
+            State.IncStack;
+            ChangeArrayLenAndPopToVar(State, Method, Variable.AType, Variable);
+          end;
+
+          if TSE2Array(Variable.AType).IsDynamic then
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(-1), ''))
+          else
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(Variable.AType).ArrayCount), ''));
+
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_COPY_TO(0, 0), Variable.GenLinkerName));
+          MakeArrayPop;
+        end else
+        begin
+          CodeIndex := -(State.StackSize) - Method.StackSize + 1 + Variable.CodePos;
+
+          if TSE2Array(Variable.AType).IsDynamic then
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(CodeIndex, False), ''));
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_GLEN, ''));
+            State.IncStack;
+            State.IncStack;
+            ChangeArrayLenAndPopToVar(State, Method, Variable.AType, Variable);
+          end;
+
+          if TSE2Array(Variable.AType).IsDynamic then
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(-1), ''))
+          else
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(Variable.AType).ArrayCount), ''));
+
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_COPY_TO(CodeIndex - 1, 0), 'META_' + Variable.AType.GenLinkerName));
+          MakeArrayPop;
         end;
       end else
       begin
@@ -4673,6 +5143,46 @@ begin
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
           MakeRecordPop;
+          State.DecStack;
+        end;
+      end else
+      if Variable.AType.InheritRoot is TSE2Array then
+      begin
+        if (StackValue is TSE2Array) then
+        begin
+          if TSE2Array(StackValue).IsDynamic then
+          begin
+            if Variable.IsStatic then
+               GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_MOVE_FROM(0, True), Variable.GenLinkerName))
+            else
+               GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_MOVE_FROM(-1, False), ''));
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_GLEN, ''));
+            State.IncStack;
+            State.IncStack;
+            ChangeArrayLenAndPopToVar(State, Method, StackValue, Variable);
+          end;
+
+          if TSE2Array(StackValue).IsDynamic then
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(-1), ''))
+          else
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(Variable.AType).ArrayCount), ''));
+
+          if Variable.IsStatic then
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_COPY_TO(0, 0), Variable.GenLinkerName))
+          else
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_COPY_TO(-2, 0), 'META_' + StackValue.GenLinkerName));
+          MakeArrayPop;
+
+          if not Variable.IsStatic then
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+            State.DecStack;
+          end;
+        end else
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
           State.DecStack;
         end;
       end else
@@ -4704,6 +5214,59 @@ begin
           State.DecStack;
         end;
       end else
+      if Variable.AType.InheritRoot is TSE2Array then
+      begin
+        if (StackValue is TSE2Array) then
+        begin
+          if Variable.IsStatic then
+          begin
+            if TSE2Array(Variable.AType).IsDynamic then
+            begin
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_MOVE_FROM(0, True), Variable.GenLinkerName));
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_GLEN, ''));
+              State.IncStack;
+              State.IncStack;
+              ChangeArrayLenAndPopToVar(State, Method, Variable.AType, Variable);
+            end;
+
+            if TSE2Array(Variable.AType).IsDynamic then
+               GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(-1), ''))
+            else
+               GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(Variable.AType).ArrayCount), ''));
+
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_COPY_TO(0, 0), Variable.GenLinkerName));
+            MakeArrayPop;
+          end else
+          begin
+            if TSE2Array(StackValue).IsDynamic then
+            begin
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_MOVE_FROM(-1, False), ''));
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+              GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_GLEN, ''));
+              State.IncStack;
+              State.IncStack;
+              ChangeArrayLenAndPopToVar(State, Method, StackValue, Variable);
+            end;
+
+            if TSE2Array(StackValue).IsDynamic then
+               GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(-1), ''))
+            else
+               GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(Variable.AType).ArrayCount), ''));
+
+
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_COPY_TO(-2, 0), 'META_' + StackValue.GenLinkerName));
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+            MakeArrayPop;
+            State.DecStack;
+          end;
+        end else
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+          State.DecStack;
+        end;
+      end else
       begin                  
         if Variable.IsStatic then
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_TO(0, True), Variable.GenLinkerName))
@@ -4715,7 +5278,46 @@ begin
         end;
       end;
     end else
+    if Variable.Parent is TSE2Array then
+    begin
+      if Variable.AType.InheritRoot is TSE2Record then
+      begin
+        CodeIndex := -1;
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_COPY_TO(CodeIndex, 0), 'META_' + Variable.AType.GenLinkerName));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC_COUNT(1), ''));
+        MakeRecordPop;
+        State.DecStack;
+      end else
+      if Variable.AType.InheritRoot is TSE2Array then
+      begin
+        if TSE2Array(Variable.AType).IsDynamic then
+        begin
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_MOVE_FROM(-1, False), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_COPY_FROM(-1, False), ''));
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_GLEN, ''));
+          State.IncStack;
+          State.IncStack;
+          ChangeArrayLenAndPopToVar(State, Method, Variable.AType, Variable);
+        end;
+
+        if TSE2Array(Variable.AType).IsDynamic then
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(-1), ''))
+        else
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_PUSHInt32(TSE2Array(Variable.AType).ArrayCount), ''));
+
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_COPY_TO(-2, 0), 'META_' + Variable.AType.GenLinkerName));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC_COUNT(2), ''));
+        State.DecStack
+
+      end else
+      begin
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_DECP(-1), ''));
+        GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        State.DecStack;
+      end;
+    end else
        RaiseError(petError, 'Internal error: variable owner not as expected');
+
   end;
   State.DecStack;
 end;
@@ -5188,6 +5790,16 @@ begin
         if newVariable.AType is TSE2Record then
         begin
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + TSE2Record(newVariable.AType).GenLinkerName));
+        end else
+        if newVariable.AType is TSE2Array then
+        begin
+          if TSE2Array(newVariable.AType).IsDynamic then
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_MAKE(0, 0), 'META_' + newVariable.AType.GenLinkerName));
+          end else
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_SFL(TSE2Array(newVariable.AType).ArrayCount, 0), 'META_' + newVariable.AType.GenLinkerName));
+          end;
         end;
 
 
@@ -5376,6 +5988,16 @@ begin
         begin
           PSE2OpSTACK_INC(Method.OpCodes[enumAnonymPos + 1].OpCode).OpCode := soREC_MAKE;
           Method.OpCodes[enumAnonymPos + 1].CodeIndex := 'META_' + TSE2Record(State.LastTargetVar.AType).GenLinkerName;
+        end else
+        if State.LastTargetVar.AType is TSE2Array then
+        begin
+          if TSE2Array(State.LastTargetVar.AType).IsDynamic then
+          begin
+            Method.OpCodes[enumAnonymPos + 1].ChangeOpCode(TSE2OpCodeGen.ARR_MAKE(0, 0), 'META_' + newVariable.AType.GenLinkerName);
+          end else
+          begin
+            Method.OpCodes[enumAnonymPos + 1].ChangeOpCode(TSE2OpCodeGen.ARR_SFL(TSE2Array(newVariable.AType).ArrayCount, 0), 'META_' + newVariable.AType.GenLinkerName);
+          end;
         end;
         Method.Variables.Add(State.LastTargetVar);
       end;
@@ -5520,6 +6142,9 @@ begin
         for i:=State.StackSize-1 downto State.LoopStackSize do
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
 
+        if State.IsInTryBlock then
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.NOOP, ''));
+
         Method.Lists.ContinueList.Add(Method.OpCodes.Count);
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
         ReadNextToken;
@@ -5532,6 +6157,10 @@ begin
         for i:=State.StackSize-1 downto State.LoopStackSize do
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
 
+        
+        if State.IsInTryBlock then
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.NOOP, ''));
+
         Method.Lists.BreakList.Add(Method.OpCodes.Count);
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
         ReadNextToken;
@@ -5541,8 +6170,18 @@ begin
         if Method.Lists.ExitTableList.Count = 0 then
            RaiseError(petError, 'Exit not allowed here');
 
-        for i:=State.StackSize downto Method.Lists.ExitTableList[Method.Lists.ExitTableList.Count-1] + 1 do
-           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        {if State.IsInTryBlock then
+        begin
+          for i:=State.StackSize-1 downto State.LoopStackSize do
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        end else  { }
+        begin
+          for i:=State.StackSize-1 downto Method.Lists.ExitTableList.Last do
+             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+        end;
+
+        if State.IsInTryBlock then
+           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.NOOP, ''));
 
         Method.Lists.ExitList.Add(Method.OpCodes.Count);
         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
@@ -5932,7 +6571,7 @@ begin
 end;   
 
 function TSE2Parser.GetPointerType: TSE2Type;
-begin  
+begin
   result := TSE2Type(FindIdentifier(nil, C_SE2Pointer, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Type])));
   if result = nil then
      RaiseError(petError, 'Internal error: pointer type not found');
@@ -6158,12 +6797,12 @@ begin
 
   orgTarget  := nil;
   orgCurrent := nil;
-  if TargetType.InheritRoot is TSE2Type then
+  if (TargetType.InheritRoot is TSE2Type) and not (TargetType is TSE2Array) then
   begin
      orgTarget  := TargetType;
      TargetType := TSE2Type(TargetType.InheritRoot);
   end;
-  if CurrentType.InheritRoot is TSE2Type then
+  if (CurrentType.InheritRoot is TSE2Type) and not (CurrentType is TSE2Array) then
   begin
      orgCurrent  := CurrentType;
      CurrentType := TSE2Type(CurrentType.InheritRoot);
@@ -6196,6 +6835,11 @@ begin
       begin
         result := (CurrentType = TargetType) or (CurrentType.AType in [btObject, btPointer]);
       end;
+  btArray :
+      begin
+        result := (CurrentType = TargetType) or
+                 IsCompatible(TSE2Array(TargetType).Content.AType, CurrentType, Operation, StrictInt, AInstance);
+      end;
   btObject  :
       begin
         result := CurrentType.AType in [btObject, btPointer];
@@ -6204,6 +6848,7 @@ begin
             if orgTarget is TSE2Class then
               if not ClassesAreCompatible(TSE2Class(orgTarget), TSE2Class(orgCurrent)) then
               begin
+                result := False;
                 if AInstance <> nil then
                    AInstance.RaiseError(petError,
                      Format('Classes are not compatible: "%s" can not be assigned to "%s"',
@@ -6431,6 +7076,9 @@ begin
         if aType is TSE2Record then
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(TSE2Record(aType).RecordSize), ''))
         else
+        if aType is TSE2Array then
+          GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(TSE2Array(aType).ArraySize), ''))
+        else
           GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.DAT_SetInt(aType.DataSize), ''));
         State.IncStack;
       end;
@@ -6530,7 +7178,11 @@ begin
   for i:=Method.Variables.Count-1 downto 0 do
   begin
     if TSE2Type(TSE2Variable(Method.Variables[i]).AType.InheritRoot) is TSE2Record then
-       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_FREE(0), ''));
+       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_FREE(0), ''))
+    else
+    if TSE2Type(TSE2Variable(Method.Variables[i]).AType.InheritRoot) is TSE2Array then
+       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_FREE(0), ''));
+
     GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
   end;
 end;
@@ -6560,6 +7212,14 @@ begin
     begin
       State.RecordsCreated := State.RecordsCreated + 1;
       GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.REC_MAKE(0, 0), 'META_' + TSE2Record(TSE2Variable(Method.Variables[i]).AType).GenLinkerName));
+    end else
+    if TSE2Variable(Method.Variables[i]).AType is TSE2Array then
+    begin                                                                 
+      State.ArraysCreated := State.ArraysCreated + 1;
+      if TSE2Array(TSE2Variable(Method.Variables[i]).AType).IsDynamic then
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_MAKE(0, 0), 'META_' + TSE2Array(TSE2Variable(Method.Variables[i]).AType).GenLinkerName))
+      else
+         GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.ARR_SFL(TSE2Array(TSE2Variable(Method.Variables[i]).AType).ArrayCount, 0), 'META_' + TSE2Array(TSE2Variable(Method.Variables[i]).AType).GenLinkerName));
     end;
   end;
 
@@ -6586,7 +7246,7 @@ begin
 end;
 
 procedure TSE2Parser.IdentifierSetterEvent(Sender: TObject;
-  State: TSE2ParseState; Method: TSE2Method; Target: TSE2Type);
+  State: TSE2ParseState; Method: TSE2Method; Target: TSE2Type; newValueType: PSE2Type);
 var Ident: TSE2Type;
     iPos, iLine : integer;
 begin
@@ -6606,6 +7266,9 @@ begin
 
   ConvertVariableCode(State, Method, Ident, Target);
   State.IsExpression := False;
+
+  if newValueType <> nil then
+     newValueType^ := Ident;
 end;
 
 procedure TSE2Parser.ValidateForwards(State: TSE2ParseState);
@@ -6702,7 +7365,7 @@ type
 
   function MethodMatchesParam(MethodParam: TSE2Parameter; Param: TSE2ParamExpression; Filter: TSearchFilter): boolean;
   begin
-    result := IsCompatible(MethodParam.AType, Param.AType, sesNone, False, Self);
+    result := IsCompatible(MethodParam.AType, Param.AType, sesNone, False, nil);
     if (Filter = sfLoose) or (not result) then
        exit;
 
@@ -6777,7 +7440,8 @@ type
       param := TSE2ParamExpression(ParamList[i]);
       if TSE2Parameter(CallMethod.Params[i]).ParameterType = ptVar then
       begin
-        Method.OpCodes[param.CodePos - 1 + CodeOffset].OpCode.OpCode := soDAT_MOVE_FROM;
+        if Method.OpCodes[param.CodePos - 1 + CodeOffset].OpCode.OpCode = soDAT_COPY_FROM then
+           Method.OpCodes[param.CodePos - 1 + CodeOffset].OpCode.OpCode := soDAT_MOVE_FROM;
       end else
       begin
         if param.Variable <> nil then
@@ -7900,6 +8564,10 @@ begin
           begin
             GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_GetRef(0, False, False), ''));
           end else
+          if variable.Parent is TSE2Array then
+          begin
+            GenCode(Method, TSE2LinkOpCode.Create(TSE2OpCodeGen.SPEC_GetRef(0, False, False), ''));
+          end else
             RaiseError(petError, 'Internal error: variable owner not as expected');
         end;
       end;
@@ -7986,9 +8654,15 @@ begin
       end;
   soREC_COPY_TO    :
       begin
-        if PSE2OpREC_COPY_TO(OpCode).Target >= 0 then   
+        if PSE2OpREC_COPY_TO(OpCode).Target >= 0 then
            if DistanceOk(PSE2OpREC_COPY_TO(OpCode).Target) then
               PSE2OpREC_COPY_TO(OpCode).Target := PSE2OpREC_COPY_TO(OpCode).Target + Offset;
+      end;
+  soARR_COPY_TO :
+      begin
+        if PSE2OpARR_COPY_TO(OpCode).Target >= 0 then
+           if DistanceOk(PSE2OpARR_COPY_TO(OpCode).Target) then
+              PSE2OpARR_COPY_TO(OpCode).Target := PSE2OpARR_COPY_TO(OpCode).Target + Offset;
       end;
   end;
 end;
@@ -8364,12 +9038,68 @@ end;
 
 procedure TSE2Parser.CheckForDeprecated(aType: TSE2BaseType);
 begin
-  if aType.IsDeprecated then
+  if aType <> nil then
+    if aType.IsDeprecated then
+    begin
+      if aType.DeprecatedValue <> '' then
+         RaiseError(petWarning, aType.GetStrongName + ' is deprecated. ' + aType.DeprecatedValue)
+      else
+         RaiseError(petWarning, aType.GetStrongName + ' is deprecated.');
+    end;
+end;
+
+function TSE2Parser.GetBaseArrayType: TSE2Type;
+begin
+  result := TSE2Type(FindIdentifier(nil, C_SE2BaseSystemArray, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Type])));
+  if result = nil then
+     RaiseError(petError, 'Internal error: array type not found');
+end;
+
+procedure TSE2Parser.LinkArrayMethodEvents;
+var ArrayType: TSE2Type;
+    Method   : TSE2Method;
+    aUnit    : TSE2Unit;
+    Filter   : TSE2BaseTypeFilter;
+begin
+  ArrayType := TSE2Type(FindIdentifier(nil, C_SE2BaseSystemArray, nil, C_SE2SystemUnitName, TSE2BaseTypeFilter.Create([TSE2Type])));
+  if ArrayType = nil then
+     exit;
+
+  aUnit     := TSE2Unit(FUnitList.FindItem(C_SE2SystemUnitName));
+  if aUnit = nil then
+     exit;
+
+  Filter := TSE2BaseTypeFilter.Create([TSE2Method]);
+  try
+    Method    := TSE2Method(aUnit.ElemList.FindItem('GetMinIndex', C_SE2SystemUnitName, ArrayType, nil, Filter, CAllVisibilities));
+    if Method <> nil then
+       Method.OnCallMethod := ArrayMethodCall;
+
+    Method    := TSE2Method(aUnit.ElemList.FindItem('GetMaxIndex', C_SE2SystemUnitName, ArrayType, nil, Filter, CAllVisibilities));
+    if Method <> nil then
+       Method.OnCallMethod := ArrayMethodCall;
+
+    Method    := TSE2Method(aUnit.ElemList.FindItem('GetLength', C_SE2SystemUnitName, ArrayType, nil, Filter, CAllVisibilities));
+    if Method <> nil then
+       Method.OnCallMethod := ArrayMethodCall;
+
+    Method    := TSE2Method(aUnit.ElemList.FindItem('SetLength', C_SE2SystemUnitName, ArrayType, nil, Filter, CAllVisibilities));
+    if Method <> nil then
+       Method.OnCallMethod := ArrayMethodCall;
+  finally
+    Filter.Free;
+  end;
+end;
+
+function TSE2Parser.TypeIsNoRefType(aType: TSE2Type): boolean;
+begin
+  result := False;
+  if TSE2Type(aType.InheritRoot).AType in [btArray, btRecord] then
   begin
-    if aType.DeprecatedValue <> '' then
-       RaiseError(petWarning, aType.GetStrongName + ' is deprecated. ' + aType.DeprecatedValue)
+    if TSE2Type(aType.InheritRoot).AType = btRecord then
+       result := True
     else
-       RaiseError(petWarning, aType.GetStrongName + ' is deprecated.');
+       result := not TSE2Array(aType).IsDynamic;
   end;
 end;
 
@@ -8401,12 +9131,19 @@ begin
 end;
 
 procedure TSE2TryBlock.Step2_TryContent;
+var wasInTryBlock: boolean;
 begin
-  FParser.StatementSquence(FState, FMethod);
+  wasInTryBlock := FState.IsInTryBlock;
+  FState.IsInTryBlock := True;
+  try
+    FParser.StatementSquence(FState, FMethod);
+  finally
+    FState.IsInTryBlock := wasInTryBlock;
+  end;
 end;
 
 procedure TSE2TryBlock.Step3(IsFinally: boolean);
-var i: integer;
+var i, j: integer;
 begin
   FIsExceptBlock := not IsFinally;
 
@@ -8426,7 +9163,14 @@ begin
     if FMethod.Lists.ExitList.Count > FoldExitList then
     begin
       for i:=FMethod.Lists.ExitList.Count-1 downto FoldExitList do
+      begin
+        for j:=2 to 1 + FState.LoopStackSize - FMethod.Lists.ExitTableList.Last do
+        begin
+          Assert(FMethod.OpCodes[FMethod.Lists.ExitList[i]-j].OpCode.OpCode = soSTACK_DEC);
+          PSE2OpSTACK_DEC(FMethod.OpCodes[FMethod.Lists.ExitList[i]-j].OpCode).OpCode := soNOOP;
+        end;
         PSE2OpFLOW_GOTO(FMethod.OpCodes[FMethod.Lists.ExitList[i]].OpCode).Position := FMethod.OpCodes.Count;
+      end;
       FexitRETPos := FMethod.OpCodes.Count;
       FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(0, 0), ''));
       FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
@@ -8469,6 +9213,28 @@ begin
 
   end else
   begin
+    if FMethod.Lists.ExitList.Count > FoldExitList then
+    begin
+      for i:=FMethod.Lists.ExitList.Count-1 downto FoldExitList do
+      begin
+        FMethod.OpCodes[FMethod.Lists.ExitList[i] - 1].OpCode.OpCode := soSAFE_TRYEND;
+      end;
+    end;
+    if FMethod.Lists.ContinueList.Count > FoldContinueList then
+    begin
+      for i:=FMethod.Lists.ContinueList.Count-1 downto FoldContinueList do
+      begin
+        FMethod.OpCodes[FMethod.Lists.ContinueList[i] - 1].OpCode.OpCode := soSAFE_TRYEND;
+      end;
+    end;    
+    if FMethod.Lists.BreakList.Count > FoldBreakList then
+    begin
+      for i:=FMethod.Lists.BreakList.Count-1 downto FoldBreakList do
+      begin
+        FMethod.OpCodes[FMethod.Lists.BreakList[i] - 1].OpCode.OpCode := soSAFE_TRYEND;
+      end;
+    end;
+
     PSE2OpSAFE_TRYEX(FMethod.OpCodes[FOpCodePos2].OpCode).OpCode := soSAFE_TRYEX;
     FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_BLOCK(0, True), ''));
   end;
@@ -8511,7 +9277,7 @@ procedure TSE2TryBlock.Step5;
     FMethod.UsedMethods.Add(aMethod);
     {$ELSE}
     aMethod.Used := True;
-    {$ENDIF}                       
+    {$ENDIF}
 
     FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.SAFE_PEX, ''));
     FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_PUSHRET(FMethod.OpCodes.Count + 2, 0), ''));
@@ -8519,6 +9285,7 @@ procedure TSE2TryBlock.Step5;
     FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
   end;
 
+var i: integer;
 begin
   FState.IsInFinallyBlock := FwasInTryFinally;
 
@@ -8530,6 +9297,20 @@ begin
     if FexitEntry then
     begin
       PSE2OpFLOW_PUSHRET(FMethod.OpCodes[FexitRETPos].OpCode).Position  := FMethod.OpCodes.Count;
+                {
+      if FState.IsInTryBlock then
+      begin
+        for i:=FState.StackSize-1 downto FState.LoopStackSize do
+          FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+      end else  { }
+      begin
+        for i:=FState.StackSize-1 downto FMethod.Lists.ExitTableList.Last do
+          FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.STACK_DEC, ''));
+      end;       { }
+      
+      if FState.IsInTryBlock then
+         FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.NOOP, ''));
+
       FMethod.Lists.ExitList.Add(FMethod.OpCodes.Count);
       FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
     end;
@@ -8537,6 +9318,10 @@ begin
     if FcontinueEntry then
     begin
       PSE2OpFLOW_PUSHRET(FMethod.OpCodes[FcontinueRETPos].OpCode).Position  := FMethod.OpCodes.Count;
+
+      if FState.IsInTryBlock then
+         FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.NOOP, ''));
+
       FMethod.Lists.ContinueList.Add(FMethod.OpCodes.Count);
       FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
     end;
@@ -8544,6 +9329,10 @@ begin
     if FbreakEntry then
     begin
       PSE2OpFLOW_PUSHRET(FMethod.OpCodes[FbreakRETPos].OpCode).Position  := FMethod.OpCodes.Count;
+
+      if FState.IsInTryBlock then
+         FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.NOOP, ''));
+
       FMethod.Lists.BreakList.Add(FMethod.OpCodes.Count);
       FParser.GenCode(FMethod, TSE2LinkOpCode.Create(TSE2OpCodeGen.FLOW_GOTO(0), ''));
     end;

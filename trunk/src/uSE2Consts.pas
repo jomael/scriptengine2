@@ -121,6 +121,7 @@ const
   C_SE2String                   = 'String';
   C_SE2Double                   = 'Double';
   C_SE2Pointer                  = 'Pointer';
+  C_SE2BaseSystemArray          = 'Array';
   C_SE2PEHeaderStr              : AnsiString = 'SEII_PE';
 
   C_SE2Enumerator_Getter        = 'GetEnumerator';
@@ -184,7 +185,7 @@ type
   end;
 
 const
-  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 6; Patch: 0; Build: 0);
+  CSE2Version : TSE2ScriptEngineVersion = (Major: 0; Minor: 6; Patch: 1; Build: 0);
 
 
 function SE2SplitFullQualifiedName(const Input: string; var AUnitName, ATypeName: string): boolean;
@@ -415,7 +416,7 @@ end;
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
 class function TSE2ScriptEngineInfo.BuildDate: TDateTime;
 begin
-  result := EncodeDate(2010, 11, 28);
+  result := EncodeDate(2011, 04, 10);
 end;
 
 { YOU ARE NOT ALLOWED TO MODIFY AND/OR TO REMOVE THIS COMMENT AND/OR THE FOLLOWING FUNCTION }
